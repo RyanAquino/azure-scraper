@@ -22,9 +22,12 @@
         * Activity:
         * Blocked:
     * description.md:
-    * discussion.md:
-        * Title: <Joe commented Jan 11, 2016>
-        * Content:
+    * discussion (folder):
+        * attachments (folder): (store any graphical content from discussion record here)
+            * <yyyy_mm_dd>_<username>_<id>.<relevant file extension> 
+        * <yyyy_mm_dd>_<username>.md:
+            * Title: <Joe commented Jan 11, 2016>
+            * Content:
     * definition_of_done.md (Definition of Done please ignore this filed):
     * development (folder): (each change set as file )
         * changeset_<ID>.md
