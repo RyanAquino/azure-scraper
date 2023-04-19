@@ -25,10 +25,12 @@
     * discussion.md:
         * Title: <Joe commented Jan 11, 2016>
         * Content:
-    * definition_of_done.md (Definition of Done):
-    * development.md:
-        * Change set:
-        * Time:
+    * definition_of_done.md (Definition of Done please ignore this filed):
+    * development (folder): (each change set as file )
+        * changeset_<ID>.md
+            * File name:
+            * Path:
+            * Content:
     * related_work.md (linked):
         * Type:
             * Link to item file:
