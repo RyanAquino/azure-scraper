@@ -2,7 +2,7 @@
 
 ## Folder
 
-* Epic
+* Epic name convention for all sub folder (<id>_<title>)
     * Feature
         * Backlog
             * Task
