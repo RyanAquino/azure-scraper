@@ -5,6 +5,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options as ChromeOptions
 import time
 import config
+import json
 
 
 def click_button_by_id(driver, id):
@@ -63,21 +64,26 @@ def login(driver, email, password):
     click_button_by_id(driver, "idSIButton9")
 
 
-def scrape_child_work_items(driver, dialog_box, data):
+def scrape_child_work_items(driver, dialog_box):
     child_xpath = (
         ".//div[child::div[contains(@class, 'la-group-title') "
         "and contains(text(), 'Child')]]//div[@class='la-item']"
     )
+    work_id_xpath = ".//div[contains(@class, 'work-item-form-id initialized')]//span"
+    title_xpath = ".//div[contains(@class, 'work-item-form-title initialized')]//input"
+
+    work_item_data = {
+        "ID": find_element_by_xpath(dialog_box, work_id_xpath).text,
+        "title": find_element_by_xpath(dialog_box, title_xpath).get_attribute("value"),
+    }
 
     child_work_items = find_elements_by_xpath(dialog_box, child_xpath)
 
     if child_work_items:
+        children = []
         for work_item in child_work_items:
             work_item_element = find_element_by_xpath(work_item, ".//a")
             child_id = work_item_element.get_attribute("href").split("/")[-1]
-            task = work_item_element.text
-
-            print(task, child_id)
 
             work_item_element.click()
             time.sleep(5)
@@ -88,14 +94,17 @@ def scrape_child_work_items(driver, dialog_box, data):
             )
 
             child_dialog_box = find_element_by_xpath(driver, dialog_xpath)
-            scrape_child_work_items(driver, child_dialog_box, data)
+            child_data = scrape_child_work_items(driver, child_dialog_box)
+            children.append(child_data)
 
             click_button_by_xpath(
                 child_dialog_box, ".//button[contains(@class, 'ui-button')]"
             )
+        work_item_data["children"] = children
+    return work_item_data
 
 
-def main(driver, url, email, password):
+def scraper(driver, url, email, password, file_path):
     # Navigate to the site and login
     driver.get(url)
     login(driver, email, password)
@@ -103,16 +112,11 @@ def main(driver, url, email, password):
     # Find each work item
     work_items = find_elements_by_xpath(driver, '//div[@aria-level="1"]')
 
-    data = {}
+    result_set = []
     for work_item in work_items:
         time.sleep(5)
 
         work_item_element = find_element_by_xpath(work_item, ".//a")
-
-        work_item_id = work_item_element.get_attribute("href").split("/")[-1]
-        title = work_item_element.text
-
-        data[work_item_id] = {"title": title}
 
         # Click
         work_item_element.click()
@@ -120,10 +124,14 @@ def main(driver, url, email, password):
         dialog_box = find_element_by_xpath(work_item, dialog_xpath)
 
         # Scrape Child Items
-        scrape_child_work_items(driver, dialog_box, data)
+        work_item_data = scrape_child_work_items(driver, dialog_box)
+        result_set.append(work_item_data)
 
         # Close dialog box
         click_button_by_xpath(dialog_box, ".//button[contains(@class, 'ui-button')]")
+
+    with open(file_path, "w") as outfile:
+        json.dump(result_set, outfile)
 
 
 if __name__ == "__main__":
@@ -131,6 +139,7 @@ if __name__ == "__main__":
     # chrome_options.add_argument("--headless=new")
     # chrome_options.add_experimental_option('excludeSwitches', ['enable-automation'])
     chrome_options.add_experimental_option("detach", True)
+    save_file = "Azure Directories/scrape_result.json"
 
     with webdriver.Chrome(options=chrome_options) as wd:
-        main(wd, config.URL, config.EMAIL, config.PASSWORD)
+        scraper(wd, config.URL, config.EMAIL, config.PASSWORD, save_file)
