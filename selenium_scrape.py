@@ -6,6 +6,7 @@ from selenium.webdriver.chrome.options import Options as ChromeOptions
 import time
 import config
 import json
+import os
 
 
 def click_button_by_id(driver, id):
@@ -134,6 +135,18 @@ def scraper(driver, url, email, password, file_path):
         json.dump(result_set, outfile)
 
 
+def create_directory_hierarchy(dicts, path="Azure Directories", indent=0):
+    for d in dicts:
+        dir_name = f"{d['ID']}_{d['title']}"
+        dir_path = os.path.join(path, dir_name)
+
+        print(" " * indent + dir_name)
+        os.makedirs(dir_path, exist_ok=True)  # create directory if it doesn't exist
+
+        if "children" in d:
+            create_directory_hierarchy(d["children"], dir_path, indent + 2)
+
+
 if __name__ == "__main__":
     chrome_options = ChromeOptions()
     # chrome_options.add_argument("--headless=new")
@@ -141,5 +154,9 @@ if __name__ == "__main__":
     chrome_options.add_experimental_option("detach", True)
     save_file = "Azure Directories/scrape_result.json"
 
-    with webdriver.Chrome(options=chrome_options) as wd:
-        scraper(wd, config.URL, config.EMAIL, config.PASSWORD, save_file)
+    # with webdriver.Chrome(options=chrome_options) as wd:
+    #     scraper(wd, config.URL, config.EMAIL, config.PASSWORD, save_file)
+    with open(save_file) as f:
+        scrape_result = json.load(f)
+        create_directory_hierarchy(scrape_result)
+
