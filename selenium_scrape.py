@@ -78,12 +78,41 @@ def scrape_child_work_items(driver, dialog_box):
         ".//div[child::div[contains(@class, 'la-group-title') "
         "and contains(text(), 'Child')]]//div[@class='la-item']"
     )
-    work_id_xpath = ".//div[contains(@class, 'work-item-form-id initialized')]//span"
-    title_xpath = ".//div[contains(@class, 'work-item-form-title initialized')]//input"
+    work_item_control_xpath = (
+        ".//div[contains(@class, 'work-item-control initialized')]"
+    )
+
+    work_id_xpath = f".//div[contains(@class, 'work-item-form-id initialized')]" \
+                    f"//*[@aria-label='ID Field']"
+    title_xpath = f".//div[contains(@class, 'work-item-form-title initialized')]" \
+                  f"//*[@aria-label='Title Field']"
+    username_xpath = f".//div[contains(@class, 'work-item-form-assignedTo initialized')]" \
+                     f"//*[@aria-label='Assigned To Field']"
+    state_xpath = f"{work_item_control_xpath}//*[@aria-label='State Field']"
+    area_xpath = f"{work_item_control_xpath}//*[@aria-label='Area Path']"
+    iteration_xpath = f"{work_item_control_xpath}//*[@aria-label='Iteration Path']"
+    priority_xpath = f"{work_item_control_xpath}//*[@aria-label='Priority']"
+    remaining_xpath = f"{work_item_control_xpath}//*[@aria-label='']"
+    activity_xpath = f"{work_item_control_xpath}//*[@aria-label='']"
+    blocked_xpath = f"{work_item_control_xpath}//*[@aria-label='']"
+    description = f"{work_item_control_xpath}//*[@aria-label='Description']"
 
     work_item_data = {
-        "ID": find_element_by_xpath(dialog_box, work_id_xpath).text,
-        "title": find_element_by_xpath(dialog_box, title_xpath).get_attribute("value"),
+        "Task id": find_element_by_xpath(dialog_box, work_id_xpath).text,
+        "Title": find_element_by_xpath(dialog_box, title_xpath).get_attribute("value"),
+        "User Name": find_element_by_xpath(dialog_box, username_xpath).text,
+        "State": find_element_by_xpath(dialog_box, state_xpath).get_attribute("value"),
+        "Area": find_element_by_xpath(dialog_box, area_xpath).get_attribute("value"),
+        "Iteration": find_element_by_xpath(dialog_box, iteration_xpath).get_attribute(
+            "value"
+        ),
+        "Priority": find_element_by_xpath(dialog_box, priority_xpath).get_attribute(
+            "value"
+        ),
+        # "Remaining Work": find_element_by_xpath(dialog_box, remaining_xpath).text,
+        # "Activity": find_element_by_xpath(dialog_box, activity_xpath).text,
+        # "Blocked": find_element_by_xpath(dialog_box, blocked_xpath).text,
+        "description": find_element_by_xpath(dialog_box, description).text,
     }
 
     child_work_items = find_elements_by_xpath(dialog_box, child_xpath)
@@ -116,7 +145,6 @@ def scrape_child_work_items(driver, dialog_box):
 
 
 def scraper(driver, url, email, password, file_path):
-
     driver.maximize_window()
 
     logging.info(f"Navigate and login to {url}")
@@ -156,12 +184,16 @@ def scraper(driver, url, email, password, file_path):
 
 def create_directory_hierarchy(dicts, path="Azure Directories", indent=0):
     for d in dicts:
-        dir_name = f"{d['ID']}_{d['title']}"
+        dir_name = f"{d['Task id']}_{d['Title']}"
         dir_path = os.path.join(path, dir_name)
 
         print(" " * indent + dir_name)
         logging.info(f"Creating directory in {dir_path}")
         os.makedirs(dir_path, exist_ok=True)  # create directory if it doesn't exist
+
+        with open(os.path.join(dir_path, "metadata.md"), "w") as file:
+            for key, value in d.items():
+                file.write(f"{key}: {value}\n")
 
         if "children" in d:
             create_directory_hierarchy(d["children"], dir_path, indent + 2)
