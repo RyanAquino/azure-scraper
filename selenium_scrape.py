@@ -82,12 +82,12 @@ def scrape_child_work_items(driver, dialog_box):
         ".//div[contains(@class, 'work-item-control initialized')]"
     )
 
-    work_id_xpath = f".//div[contains(@class, 'work-item-form-id initialized')]" \
-                    f"//*[@aria-label='ID Field']"
-    title_xpath = f".//div[contains(@class, 'work-item-form-title initialized')]" \
-                  f"//*[@aria-label='Title Field']"
-    username_xpath = f".//div[contains(@class, 'work-item-form-assignedTo initialized')]" \
-                     f"//*[@aria-label='Assigned To Field']"
+    work_id_xpath = f".//div[contains(@class, 'work-item-form-id initialized')]//span"
+    title_xpath = f".//div[contains(@class, 'work-item-form-title initialized')]//input"
+    username_xpath = (
+        f".//div[contains(@class, 'work-item-form-assignedTo initialized')]"
+        f"//span[contains(@class, 'text-cursor')]"
+    )
     state_xpath = f"{work_item_control_xpath}//*[@aria-label='State Field']"
     area_xpath = f"{work_item_control_xpath}//*[@aria-label='Area Path']"
     iteration_xpath = f"{work_item_control_xpath}//*[@aria-label='Iteration Path']"
@@ -109,9 +109,9 @@ def scrape_child_work_items(driver, dialog_box):
         "Priority": find_element_by_xpath(dialog_box, priority_xpath).get_attribute(
             "value"
         ),
-        # "Remaining Work": find_element_by_xpath(dialog_box, remaining_xpath).text,
-        # "Activity": find_element_by_xpath(dialog_box, activity_xpath).text,
-        # "Blocked": find_element_by_xpath(dialog_box, blocked_xpath).text,
+        "Remaining Work": "",
+        "Activity": "",
+        "Blocked": "",
         "description": find_element_by_xpath(dialog_box, description).text,
     }
 
@@ -191,12 +191,17 @@ def create_directory_hierarchy(dicts, path="Azure Directories", indent=0):
         logging.info(f"Creating directory in {dir_path}")
         os.makedirs(dir_path, exist_ok=True)  # create directory if it doesn't exist
 
+        with open(os.path.join(dir_path, "description.md"), "w") as file:
+            file.write(d.pop("description"))
+
         with open(os.path.join(dir_path, "metadata.md"), "w") as file:
             for key, value in d.items():
-                file.write(f"{key}: {value}\n")
+                if key != "children":
+                    file.write(f"{key}: {value}\n")
 
         if "children" in d:
             create_directory_hierarchy(d["children"], dir_path, indent + 2)
+
 
 
 if __name__ == "__main__":
