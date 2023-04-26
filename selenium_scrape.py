@@ -7,6 +7,14 @@ import time
 import config
 import json
 import os
+import logging
+
+logging.basicConfig(
+    level=logging.INFO,
+    filename="scrape.log",
+    filemode="w",
+    format="%(asctime)s %(levelname)s %(message)s",
+)
 
 
 def click_button_by_id(driver, id):
@@ -86,6 +94,7 @@ def scrape_child_work_items(driver, dialog_box):
             work_item_element = find_element_by_xpath(work_item, ".//a")
             child_id = work_item_element.get_attribute("href").split("/")[-1]
 
+            logging.info(f"Open dialog box for '{work_item_element.text}'")
             work_item_element.click()
             time.sleep(5)
 
@@ -98,6 +107,7 @@ def scrape_child_work_items(driver, dialog_box):
             child_data = scrape_child_work_items(driver, child_dialog_box)
             children.append(child_data)
 
+            logging.info(f"Close dialog box for '{work_item_element.text}'")
             click_button_by_xpath(
                 child_dialog_box, ".//button[contains(@class, 'ui-button')]"
             )
@@ -106,19 +116,26 @@ def scrape_child_work_items(driver, dialog_box):
 
 
 def scraper(driver, url, email, password, file_path):
+
+    driver.maximize_window()
+
+    logging.info(f"Navigate and login to {url}")
     # Navigate to the site and login
     driver.get(url)
     login(driver, email, password)
+    logging.info(f"Done")
 
     # Find each work item
     work_items = find_elements_by_xpath(driver, '//div[@aria-level="1"]')
 
     result_set = []
     for work_item in work_items:
+        logging.info(f"Sleeping...")
         time.sleep(5)
 
         work_item_element = find_element_by_xpath(work_item, ".//a")
 
+        logging.info(f"Open dialog box for '{work_item_element.text}'")
         # Click
         work_item_element.click()
         dialog_xpath = "//div[contains(@tabindex, '-1') and contains(@role, 'dialog')]"
@@ -128,9 +145,11 @@ def scraper(driver, url, email, password, file_path):
         work_item_data = scrape_child_work_items(driver, dialog_box)
         result_set.append(work_item_data)
 
+        logging.info(f"Close dialog box for '{work_item_element.text}'")
         # Close dialog box
         click_button_by_xpath(dialog_box, ".//button[contains(@class, 'ui-button')]")
 
+    logging.info(f"Saving result to {file_path}")
     with open(file_path, "w") as outfile:
         json.dump(result_set, outfile)
 
@@ -141,6 +160,7 @@ def create_directory_hierarchy(dicts, path="Azure Directories", indent=0):
         dir_path = os.path.join(path, dir_name)
 
         print(" " * indent + dir_name)
+        logging.info(f"Creating directory in {dir_path}")
         os.makedirs(dir_path, exist_ok=True)  # create directory if it doesn't exist
 
         if "children" in d:
@@ -149,14 +169,14 @@ def create_directory_hierarchy(dicts, path="Azure Directories", indent=0):
 
 if __name__ == "__main__":
     chrome_options = ChromeOptions()
-    # chrome_options.add_argument("--headless=new")
+    chrome_options.add_argument("--headless=new")
     # chrome_options.add_experimental_option('excludeSwitches', ['enable-automation'])
     chrome_options.add_experimental_option("detach", True)
     save_file = "Azure Directories/scrape_result.json"
 
-    # with webdriver.Chrome(options=chrome_options) as wd:
-    #     scraper(wd, config.URL, config.EMAIL, config.PASSWORD, save_file)
+    with webdriver.Chrome(options=chrome_options) as wd:
+        scraper(wd, config.URL, config.EMAIL, config.PASSWORD, save_file)
+
     with open(save_file) as f:
         scrape_result = json.load(f)
         create_directory_hierarchy(scrape_result)
-
