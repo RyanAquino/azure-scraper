@@ -1,5 +1,8 @@
 # Scrap TFS
 
+## Important Note
+**_The package use selenium and chromedriver to do the scraping, so it is necessary to install chrome before proceeding._**
+
 ## Setup
 
 ### Update the file config.py with the url and credentials.
@@ -25,8 +28,3 @@ pip install -r requirements.txt
 ```
 python selenium_scrape.py 
 ```
-
-## TODO:
-* scrape into files and folders, please find more details in tree.md
-* Fix recursion
-

@@ -1,3 +1,4 @@
+from selenium.webdriver.chrome.service import Service
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.wait import WebDriverWait
@@ -6,8 +7,9 @@ from selenium.webdriver.chrome.options import Options as ChromeOptions
 import time
 import config
 import json
-import os
 import logging
+import os
+import platform
 
 logging.basicConfig(
     level=logging.INFO,
@@ -17,21 +19,32 @@ logging.basicConfig(
 )
 
 
-def click_button_by_id(driver, id):
-    element = WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.ID, id)))
+def get_driver_by_os():
+    ps = platform.system()
+
+    if ps == "Windows":
+        driver_path = "chromedriver.exe"
+    elif ps == "Darwin":
+        driver_path = "chromedriver_mac"
+
+        if platform.processor() == "arm":
+            driver_path = "chromedriver_mac_arm"
+    else:
+        driver_path = "chromedriver_linux"
+
+    logging.info(f"Using driver {driver_path}.")
+
+    return Service(executable_path=f"drivers/{driver_path}")
+
+
+def click_button_by_id(driver, element_id):
+    element = WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.ID, element_id)))
     element.click()
 
 
 def click_button_by_xpath(driver, xpath):
     element = WebDriverWait(driver, 10).until(
         EC.element_to_be_clickable((By.XPATH, xpath))
-    )
-    element.click()
-
-
-def click_button_by_tag(driver, tag):
-    element = WebDriverWait(driver, 10).until(
-        EC.element_to_be_clickable((By.TAG_NAME, tag))
     )
     element.click()
 
@@ -203,15 +216,15 @@ def create_directory_hierarchy(dicts, path="Azure Directories", indent=0):
             create_directory_hierarchy(d["children"], dir_path, indent + 2)
 
 
-
 if __name__ == "__main__":
     chrome_options = ChromeOptions()
     chrome_options.add_argument("--headless=new")
-    # chrome_options.add_experimental_option('excludeSwitches', ['enable-automation'])
+    chrome_options.add_argument("--incognito")
     chrome_options.add_experimental_option("detach", True)
     save_file = "Azure Directories/scrape_result.json"
+    chrome_driver = get_driver_by_os()
 
-    with webdriver.Chrome(options=chrome_options) as wd:
+    with webdriver.Chrome(options=chrome_options, service=chrome_driver) as wd:
         scraper(wd, config.URL, config.EMAIL, config.PASSWORD, save_file)
 
     with open(save_file) as f:
