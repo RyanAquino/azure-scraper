@@ -1,13 +1,16 @@
+from selenium.webdriver.chrome.service import Service
 from selenium import webdriver
 from selenium.webdriver.common.by import By
+from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options as ChromeOptions
 import time
 import config
 import json
-import os
 import logging
+import os
+import platform
 
 logging.basicConfig(
     level=logging.INFO,
@@ -17,21 +20,32 @@ logging.basicConfig(
 )
 
 
-def click_button_by_id(driver, id):
-    element = WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.ID, id)))
+def get_driver_by_os():
+    ps = platform.system()
+
+    if ps == "Windows":
+        driver_path = "chromedriver.exe"
+    elif ps == "Darwin":
+        driver_path = "chromedriver_mac"
+
+        if platform.processor() == "arm":
+            driver_path = "chromedriver_mac_arm"
+    else:
+        driver_path = "chromedriver_linux"
+
+    logging.info(f"Using driver {driver_path}.")
+
+    return Service(executable_path=f"drivers/{driver_path}")
+
+
+def click_button_by_id(driver, element_id):
+    element = WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.ID, element_id)))
     element.click()
 
 
 def click_button_by_xpath(driver, xpath):
     element = WebDriverWait(driver, 10).until(
         EC.element_to_be_clickable((By.XPATH, xpath))
-    )
-    element.click()
-
-
-def click_button_by_tag(driver, tag):
-    element = WebDriverWait(driver, 10).until(
-        EC.element_to_be_clickable((By.TAG_NAME, tag))
     )
     element.click()
 
@@ -78,15 +92,47 @@ def scrape_child_work_items(driver, dialog_box):
         ".//div[child::div[contains(@class, 'la-group-title') "
         "and contains(text(), 'Child')]]//div[@class='la-item']"
     )
-    work_id_xpath = ".//div[contains(@class, 'work-item-form-id initialized')]//span"
-    title_xpath = ".//div[contains(@class, 'work-item-form-title initialized')]//input"
+    work_item_control_xpath = (
+        ".//div[contains(@class, 'work-item-control initialized')]"
+    )
+
+    work_id_xpath = f".//div[contains(@class, 'work-item-form-id initialized')]//span"
+    title_xpath = f".//div[contains(@class, 'work-item-form-title initialized')]//input"
+    username_xpath = (
+        f".//div[contains(@class, 'work-item-form-assignedTo initialized')]"
+        f"//span[contains(@class, 'text-cursor')]"
+    )
+    state_xpath = f"{work_item_control_xpath}//*[@aria-label='State Field']"
+    area_xpath = f"{work_item_control_xpath}//*[@aria-label='Area Path']"
+    iteration_xpath = f"{work_item_control_xpath}//*[@aria-label='Iteration Path']"
+    priority_xpath = f"{work_item_control_xpath}//*[@aria-label='Priority']"
+    remaining_xpath = f"{work_item_control_xpath}//*[@aria-label='']"
+    activity_xpath = f"{work_item_control_xpath}//*[@aria-label='']"
+    blocked_xpath = f"{work_item_control_xpath}//*[@aria-label='']"
+    description = f"{work_item_control_xpath}//*[@aria-label='Description']"
+
+    desc = find_element_by_xpath(dialog_box, description)
 
     work_item_data = {
-        "ID": find_element_by_xpath(dialog_box, work_id_xpath).text,
-        "title": find_element_by_xpath(dialog_box, title_xpath).get_attribute("value"),
+        "Task id": find_element_by_xpath(dialog_box, work_id_xpath).text,
+        "Title": find_element_by_xpath(dialog_box, title_xpath).get_attribute("value"),
+        "User Name": find_element_by_xpath(dialog_box, username_xpath).text,
+        "State": find_element_by_xpath(dialog_box, state_xpath).get_attribute("value"),
+        "Area": find_element_by_xpath(dialog_box, area_xpath).get_attribute("value"),
+        "Iteration": find_element_by_xpath(dialog_box, iteration_xpath).get_attribute(
+            "value"
+        ),
+        "Priority": find_element_by_xpath(dialog_box, priority_xpath).get_attribute(
+            "value"
+        ),
+        "Remaining Work": "",
+        "Activity": "",
+        "Blocked": "",
+        "description": desc.text,
     }
 
     child_work_items = find_elements_by_xpath(dialog_box, child_xpath)
+    action = ActionChains(driver)
 
     if child_work_items:
         children = []
@@ -102,6 +148,7 @@ def scrape_child_work_items(driver, dialog_box):
                 f"//span[@aria-label='ID Field' and "
                 f"contains(text(), '{child_id}')]//ancestor::div"
             )
+            action.move_to_element(desc).perform()
 
             child_dialog_box = find_element_by_xpath(driver, dialog_xpath)
             child_data = scrape_child_work_items(driver, child_dialog_box)
@@ -116,7 +163,6 @@ def scrape_child_work_items(driver, dialog_box):
 
 
 def scraper(driver, url, email, password, file_path):
-
     driver.maximize_window()
 
     logging.info(f"Navigate and login to {url}")
@@ -154,14 +200,22 @@ def scraper(driver, url, email, password, file_path):
         json.dump(result_set, outfile)
 
 
-def create_directory_hierarchy(dicts, path="Azure Directories", indent=0):
+def create_directory_hierarchy(dicts, path="data", indent=0):
     for d in dicts:
-        dir_name = f"{d['ID']}_{d['title']}"
+        dir_name = f"{d['Task id']}_{d['Title']}"
         dir_path = os.path.join(path, dir_name)
 
         print(" " * indent + dir_name)
         logging.info(f"Creating directory in {dir_path}")
         os.makedirs(dir_path, exist_ok=True)  # create directory if it doesn't exist
+
+        with open(os.path.join(dir_path, "description.md"), "w") as file:
+            file.write(d.pop("description"))
+
+        with open(os.path.join(dir_path, "metadata.md"), "w") as file:
+            for key, value in d.items():
+                if key != "children":
+                    file.write(f"{key}: {value}\n")
 
         if "children" in d:
             create_directory_hierarchy(d["children"], dir_path, indent + 2)
@@ -169,13 +223,13 @@ def create_directory_hierarchy(dicts, path="Azure Directories", indent=0):
 
 if __name__ == "__main__":
     chrome_options = ChromeOptions()
+    chrome_options.add_argument("--headless=new")
     chrome_options.add_argument("--incognito")
-    # chrome_options.add_argument("--headless=new")
-    # chrome_options.add_experimental_option('excludeSwitches', ['enable-automation'])
     chrome_options.add_experimental_option("detach", True)
-    save_file = "Azure Directories/scrape_result.json"
+    save_file = "data/scrape_result.json"
+    chrome_driver = get_driver_by_os()
 
-    with webdriver.Chrome(options=chrome_options) as wd:
+    with webdriver.Chrome(options=chrome_options, service=chrome_driver) as wd:
         scraper(wd, config.URL, config.EMAIL, config.PASSWORD, save_file)
 
     with open(save_file) as f:
