@@ -1,6 +1,7 @@
 from selenium.webdriver.chrome.service import Service
 from selenium import webdriver
 from selenium.webdriver.common.by import By
+from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options as ChromeOptions
@@ -110,6 +111,8 @@ def scrape_child_work_items(driver, dialog_box):
     blocked_xpath = f"{work_item_control_xpath}//*[@aria-label='']"
     description = f"{work_item_control_xpath}//*[@aria-label='Description']"
 
+    desc = find_element_by_xpath(dialog_box, description)
+
     work_item_data = {
         "Task id": find_element_by_xpath(dialog_box, work_id_xpath).text,
         "Title": find_element_by_xpath(dialog_box, title_xpath).get_attribute("value"),
@@ -125,10 +128,11 @@ def scrape_child_work_items(driver, dialog_box):
         "Remaining Work": "",
         "Activity": "",
         "Blocked": "",
-        "description": find_element_by_xpath(dialog_box, description).text,
+        "description": desc.text,
     }
 
     child_work_items = find_elements_by_xpath(dialog_box, child_xpath)
+    action = ActionChains(driver)
 
     if child_work_items:
         children = []
@@ -144,6 +148,7 @@ def scrape_child_work_items(driver, dialog_box):
                 f"//span[@aria-label='ID Field' and "
                 f"contains(text(), '{child_id}')]//ancestor::div"
             )
+            action.move_to_element(desc).perform()
 
             child_dialog_box = find_element_by_xpath(driver, dialog_xpath)
             child_data = scrape_child_work_items(driver, child_dialog_box)

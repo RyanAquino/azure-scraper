@@ -4,4 +4,3 @@ venv/
 .idea/
 *.json
 *.log
-Azure Directories/*
