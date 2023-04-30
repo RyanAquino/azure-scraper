@@ -28,7 +28,7 @@ def get_driver_by_os():
     elif ps == "Darwin":
         driver_path = "chromedriver_mac"
 
-        if platform.processor() == "arm":
+        if platform.machine() == "arm64":
             driver_path = "chromedriver_mac_arm"
     else:
         driver_path = "chromedriver_linux"

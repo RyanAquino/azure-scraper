@@ -12,19 +12,24 @@
 * Google Chrome
 
 ### Setup
+
+Navigate to source directory
+```bash
+cd src
+```
+
 Set login credentials on `config.py` 
 ```
-URL = ""
 EMAIL = ""
 PASSWORD = ""
 ```
 
-Navigate to virtual environment and install dependencies
+Install dependencies
 ```bash
 pip install -r requirements.txt
 ```
 
 Run scrape
 ```bash
-python selenium_scrape.py 
+python main.py 
 ```
