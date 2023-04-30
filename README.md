@@ -1,30 +1,35 @@
 # Scrap TFS
 
-## Important Note
-**_The package use selenium and chromedriver to do the scraping, so it is necessary to install chrome before proceeding._**
+## TODO:
+* scarp into files and folders, please find more details in tree.md
 
-## Setup
 
-### Update the file config.py with the url and credentials.
+### Issues
+* Selenium was used instead of Scrapy to deal with the anti scrape security of Azure website
 
+### Requirements
+* Python 3
+* [Ungoogled-Chromium Web Browser](https://ungoogled-software.github.io/ungoogled-chromium-binaries/)
+
+### Setup
+Navigate to source directory
+```bash
+cd src
 ```
-URL = ""
+
+Set Azure login credentials and replace Chromium binary path on `config.py`
+```
 EMAIL = ""
 PASSWORD = ""
-
+BINARY_PATH_LOCATION = ""
 ```
 
-### Install the necessary requirements. It is advisable to create a virtual environment before installing the requirements.
-
-```
-python -m venv venv
-.\venv\Scripts\activate
+Install dependencies
+```bash
 pip install -r requirements.txt
 ```
 
-## Usage:
-
-
-```
-python selenium_scrape.py 
+Run scrape
+```bash
+python main.py 
 ```
