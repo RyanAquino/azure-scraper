@@ -205,6 +205,7 @@ def create_directory_hierarchy(dicts, path="data", indent=0):
 
 if __name__ == "__main__":
     chrome_options = ChromeOptions()
+    chrome_options.binary_location = config.BINARY_PATH_LOCATION
     chrome_options.add_argument("--headless=new")
     chrome_options.add_argument("--incognito")
     chrome_options.add_experimental_option("detach", True)

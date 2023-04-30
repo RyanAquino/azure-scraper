@@ -9,21 +9,22 @@
 
 ### Requirements
 * Python 3
-* [Google Chrome Web Browser](https://www.google.com/intl/en_ph/chrome/)
+* [Ungoogled-Chromium Web Browser](https://github.com/ungoogled-software/ungoogled-chromium#downloads)
 * [Google Chrome Web Driver](https://chromedriver.chromium.org/downloads)
 
 ### Setup
-Make sure to download the correct chrome web driver and copy it to root directory 
+> Make sure to download the chrome web driver and copy it to root directory
 
 Navigate to source directory
 ```bash
 cd src
 ```
 
-Set Azure login credentials on `config.py` 
+Set Azure login credentials and replace Chromium binary path on `config.py`
 ```
 EMAIL = ""
 PASSWORD = ""
+BINARY_PATH_LOCATION = ""
 ```
 
 Install dependencies
