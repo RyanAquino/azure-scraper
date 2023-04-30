@@ -1,4 +1,3 @@
-from selenium.webdriver.chrome.service import Service
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.action_chains import ActionChains
@@ -10,7 +9,6 @@ import config
 import json
 import logging
 import os
-import platform
 
 logging.basicConfig(
     level=logging.INFO,
@@ -21,7 +19,9 @@ logging.basicConfig(
 
 
 def click_button_by_id(driver, element_id):
-    element = WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.ID, element_id)))
+    element = WebDriverWait(driver, 10).until(
+        EC.element_to_be_clickable((By.ID, element_id))
+    )
     element.click()
 
 

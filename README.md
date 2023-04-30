@@ -9,12 +9,9 @@
 
 ### Requirements
 * Python 3
-* [Ungoogled-Chromium Web Browser](https://github.com/ungoogled-software/ungoogled-chromium#downloads)
-* [Google Chrome Web Driver](https://chromedriver.chromium.org/downloads)
+* [Ungoogled-Chromium Web Browser](https://ungoogled-software.github.io/ungoogled-chromium-binaries/)
 
 ### Setup
-> Make sure to download the chrome web driver and copy it to root directory
-
 Navigate to source directory
 ```bash
 cd src
