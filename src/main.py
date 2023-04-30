@@ -20,24 +20,6 @@ logging.basicConfig(
 )
 
 
-def get_driver_by_os():
-    ps = platform.system()
-
-    if ps == "Windows":
-        driver_path = "chromedriver.exe"
-    elif ps == "Darwin":
-        driver_path = "chromedriver_mac"
-
-        if platform.machine() == "arm64":
-            driver_path = "chromedriver_mac_arm"
-    else:
-        driver_path = "chromedriver_linux"
-
-    logging.info(f"Using driver {driver_path}.")
-
-    return Service(executable_path=f"drivers/{driver_path}")
-
-
 def click_button_by_id(driver, element_id):
     element = WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.ID, element_id)))
     element.click()
@@ -227,9 +209,8 @@ if __name__ == "__main__":
     chrome_options.add_argument("--incognito")
     chrome_options.add_experimental_option("detach", True)
     save_file = "data/scrape_result.json"
-    chrome_driver = get_driver_by_os()
 
-    with webdriver.Chrome(options=chrome_options, service=chrome_driver) as wd:
+    with webdriver.Chrome(options=chrome_options) as wd:
         scraper(wd, config.URL, config.EMAIL, config.PASSWORD, save_file)
 
     with open(save_file) as f:

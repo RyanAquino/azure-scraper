@@ -9,16 +9,18 @@
 
 ### Requirements
 * Python 3
-* Google Chrome
+* [Google Chrome Web Browser](https://www.google.com/intl/en_ph/chrome/)
+* [Google Chrome Web Driver](https://chromedriver.chromium.org/downloads)
 
 ### Setup
+Make sure to download the correct chrome web driver and copy it to root directory 
 
 Navigate to source directory
 ```bash
 cd src
 ```
 
-Set login credentials on `config.py` 
+Set Azure login credentials on `config.py` 
 ```
 EMAIL = ""
 PASSWORD = ""
