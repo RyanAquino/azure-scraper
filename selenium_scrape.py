@@ -87,6 +87,11 @@ def login(driver, email, password):
     click_button_by_id(driver, "idSIButton9")
 
 
+def get_input_value(driver, xpath):
+    if element := find_element_by_xpath(driver, xpath):
+        return element.get_attribute("value")
+
+
 def scrape_child_work_items(driver, dialog_box):
     child_xpath = (
         ".//div[child::div[contains(@class, 'la-group-title') "
@@ -106,28 +111,24 @@ def scrape_child_work_items(driver, dialog_box):
     area_xpath = f"{work_item_control_xpath}//*[@aria-label='Area Path']"
     iteration_xpath = f"{work_item_control_xpath}//*[@aria-label='Iteration Path']"
     priority_xpath = f"{work_item_control_xpath}//*[@aria-label='Priority']"
-    remaining_xpath = f"{work_item_control_xpath}//*[@aria-label='']"
-    activity_xpath = f"{work_item_control_xpath}//*[@aria-label='']"
-    blocked_xpath = f"{work_item_control_xpath}//*[@aria-label='']"
+    remaining_xpath = f"{work_item_control_xpath}//*[@aria-label='Remaining Work']"
+    activity_xpath = f"{work_item_control_xpath}//*[@aria-label='Activity']"
+    blocked_xpath = f"{work_item_control_xpath}//*[@aria-label='Blocked']"
     description = f"{work_item_control_xpath}//*[@aria-label='Description']"
 
     desc = find_element_by_xpath(dialog_box, description)
 
     work_item_data = {
         "Task id": find_element_by_xpath(dialog_box, work_id_xpath).text,
-        "Title": find_element_by_xpath(dialog_box, title_xpath).get_attribute("value"),
+        "Title": get_input_value(dialog_box, title_xpath),
         "User Name": find_element_by_xpath(dialog_box, username_xpath).text,
-        "State": find_element_by_xpath(dialog_box, state_xpath).get_attribute("value"),
-        "Area": find_element_by_xpath(dialog_box, area_xpath).get_attribute("value"),
-        "Iteration": find_element_by_xpath(dialog_box, iteration_xpath).get_attribute(
-            "value"
-        ),
-        "Priority": find_element_by_xpath(dialog_box, priority_xpath).get_attribute(
-            "value"
-        ),
-        "Remaining Work": "",
-        "Activity": "",
-        "Blocked": "",
+        "State": get_input_value(dialog_box, state_xpath),
+        "Area": get_input_value(dialog_box, area_xpath),
+        "Iteration": get_input_value(dialog_box, iteration_xpath),
+        "Priority": get_input_value(dialog_box, priority_xpath),
+        "Remaining Work": get_input_value(dialog_box, remaining_xpath),
+        "Activity": get_input_value(dialog_box, activity_xpath),
+        "Blocked": get_input_value(dialog_box, blocked_xpath),
         "description": desc.text,
     }
 
