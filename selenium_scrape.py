@@ -39,7 +39,9 @@ def get_driver_by_os():
 
 
 def click_button_by_id(driver, element_id):
-    element = WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.ID, element_id)))
+    element = WebDriverWait(driver, 10).until(
+        EC.element_to_be_clickable((By.ID, element_id))
+    )
     element.click()
 
 
@@ -92,6 +94,11 @@ def get_input_value(driver, xpath):
         return element.get_attribute("value")
 
 
+def get_text(driver, xpath):
+    if element := find_element_by_xpath(driver, xpath):
+        return element.text
+
+
 def scrape_child_work_items(driver, dialog_box):
     child_xpath = (
         ".//div[child::div[contains(@class, 'la-group-title') "
@@ -116,6 +123,11 @@ def scrape_child_work_items(driver, dialog_box):
     blocked_xpath = f"{work_item_control_xpath}//*[@aria-label='Blocked']"
     description = f"{work_item_control_xpath}//*[@aria-label='Description']"
 
+    discussions_xpath = (
+        ".//div[contains(@class, 'initialized work-item-discussion-control')]"
+        "//div[contains(@class, 'wit-comment-item')]"
+    )
+
     desc = find_element_by_xpath(dialog_box, description)
 
     work_item_data = {
@@ -131,6 +143,23 @@ def scrape_child_work_items(driver, dialog_box):
         "Blocked": get_input_value(dialog_box, blocked_xpath),
         "description": desc.text,
     }
+    discussions = find_elements_by_xpath(dialog_box, discussions_xpath)
+
+    if discussions:
+        work_item_data["discussions"] = []
+
+        for discussion in discussions:
+            content = get_text(discussion, "//p")
+
+            if content:
+                work_item_data["discussions"].append(
+                    {
+                        "Title": get_text(
+                            discussion, "//span[@class='user-display-name']"
+                        ),
+                        "Content": content,
+                    }
+                )
 
     child_work_items = find_elements_by_xpath(dialog_box, child_xpath)
     action = ActionChains(driver)
@@ -209,6 +238,13 @@ def create_directory_hierarchy(dicts, path="Azure Directories", indent=0):
         print(" " * indent + dir_name)
         logging.info(f"Creating directory in {dir_path}")
         os.makedirs(dir_path, exist_ok=True)  # create directory if it doesn't exist
+        os.makedirs(os.path.join("attachments"), exist_ok=True)
+
+        if "discussions" in d and d["discussions"]:
+            with open(os.path.join(dir_path, "discussion.md"), "w") as file:
+                for discussion in d.pop("discussions"):
+                    file.write(discussion["Title"] + "\n")
+                    file.write(discussion["Content"] + "\n")
 
         with open(os.path.join(dir_path, "description.md"), "w") as file:
             file.write(d.pop("description"))
@@ -217,7 +253,6 @@ def create_directory_hierarchy(dicts, path="Azure Directories", indent=0):
             for key, value in d.items():
                 if key != "children":
                     file.write(f"{key}: {value}\n")
-
         if "children" in d:
             create_directory_hierarchy(d["children"], dir_path, indent + 2)
 
