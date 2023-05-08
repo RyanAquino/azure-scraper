@@ -253,6 +253,10 @@ def create_directory_hierarchy(dicts, path="Azure Directories", indent=0):
             for key, value in d.items():
                 if key != "children":
                     file.write(f"{key}: {value}\n")
+
+        with open(os.path.join(dir_path, "origin.md"), "w") as file:
+            file.write(config.BASE_URL + config.WORK_ITEM_ENDPOINT + d["Task id"])
+
         if "children" in d:
             create_directory_hierarchy(d["children"], dir_path, indent + 2)
 
@@ -266,7 +270,7 @@ if __name__ == "__main__":
     chrome_driver = get_driver_by_os()
 
     with webdriver.Chrome(options=chrome_options, service=chrome_driver) as wd:
-        scraper(wd, config.URL, config.EMAIL, config.PASSWORD, save_file)
+        scraper(wd, config.BASE_URL + config.BACKLOG_ENDPOINT, config.EMAIL, config.PASSWORD, save_file)
 
     with open(save_file) as f:
         scrape_result = json.load(f)

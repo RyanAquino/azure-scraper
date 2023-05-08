@@ -25,7 +25,7 @@
     - [x] discussion.md:
         - [ ] Title: <Joe commented Jan 11, 2016>
         - [x] Content:
-    - [ ] definition_of_done.md (Definition of Done please ignore this filed):
+    - [ ] definition_of_done.md (Definition of Done please ignore this field):
     - [ ] development (folder): (each change set as file )
         - [ ] changeset_<ID>.md
             - [ ] File name:
@@ -44,5 +44,5 @@
             - [ ] Link to item file:
             - [ ] Title:
     - [ ] attachments (store attached files in this folder):
-    - [ ] origin.md (Origin URL link to work item)
+    - [x] origin.md (Origin URL link to work item)
 
