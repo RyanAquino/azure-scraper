@@ -11,6 +11,8 @@ import json
 import logging
 import os
 import platform
+import urllib.parse
+from uuid import uuid4
 
 logging.basicConfig(
     level=logging.INFO,
@@ -99,6 +101,40 @@ def get_text(driver, xpath):
         return element.text
 
 
+def scrape_attachments(driver, dialog_box):
+
+    # Attachment count
+    attachment_count_xpath = ".//span[contains(@class, 'attachment-count')][last()]"
+    attachment_count = find_element_by_xpath(dialog_box, attachment_count_xpath)
+
+    if not attachment_count or not attachment_count.text.strip():
+        return None
+
+    # Navigate to attachments page
+    attachment_xpath = "//li[@aria-label='Attachments']"
+    attachment_button = find_elements_by_xpath(dialog_box, attachment_xpath)
+    attachment_button[-1].click()
+
+    # Retrieve attachment links
+    attachment_count = attachment_count.text
+    attachment_count = "".join([char for char in attachment_count.strip() if char.isdigit()])
+    a_href_xpath = ".//div[contains(@class, 'attachments-grid-file-name')]//a"
+    attachments = find_elements_by_xpath(dialog_box, a_href_xpath)
+
+    for attachment in attachments[-int(attachment_count):]:
+        attachment_url = attachment.get_attribute("href")
+        parsed_url = urllib.parse.urlparse(attachment_url)
+        query_params = urllib.parse.parse_qs(parsed_url.query)
+        query_params['fileName'] = [f"{uuid4()}_{query_params.get('fileName')[0]}"]
+        updated_url = urllib.parse.urlunparse(parsed_url._replace(query=urllib.parse.urlencode(query_params, doseq=True)))
+        driver.get(updated_url)
+
+    # Navigate back to details
+    details_tab_xpath = "//li[@aria-label='Details']"
+    details_tab_button = find_elements_by_xpath(dialog_box, details_tab_xpath)
+    details_tab_button[-1].click()
+
+
 def scrape_child_work_items(driver, dialog_box):
     child_xpath = (
         ".//div[child::div[contains(@class, 'la-group-title') "
@@ -111,8 +147,7 @@ def scrape_child_work_items(driver, dialog_box):
     work_id_xpath = f".//div[contains(@class, 'work-item-form-id initialized')]//span"
     title_xpath = f".//div[contains(@class, 'work-item-form-title initialized')]//input"
     username_xpath = (
-        f".//div[contains(@class, 'work-item-form-assignedTo initialized')]"
-        f"//span[contains(@class, 'text-cursor')]"
+        ".//div[contains(@class, 'work-item-form-assignedTo initialized')]//span[contains(@class, 'text-cursor')]"
     )
     state_xpath = f"{work_item_control_xpath}//*[@aria-label='State Field']"
     area_xpath = f"{work_item_control_xpath}//*[@aria-label='Area Path']"
@@ -143,6 +178,7 @@ def scrape_child_work_items(driver, dialog_box):
         "Blocked": get_input_value(dialog_box, blocked_xpath),
         "description": desc.text,
     }
+    scrape_attachments(driver, dialog_box)
     discussions = find_elements_by_xpath(dialog_box, discussions_xpath)
 
     if discussions:
@@ -203,15 +239,21 @@ def scraper(driver, url, email, password, file_path):
 
     # Find each work item
     work_items = find_elements_by_xpath(driver, '//div[@aria-level="1"]')
+    work_items_count = len(work_items)
+    work_items_ctr = 0
 
     result_set = []
-    for work_item in work_items:
+    while work_items_ctr < work_items_count:
+        work_items = find_elements_by_xpath(driver, '//div[@aria-level="1"]')
+        work_item = work_items[work_items_ctr]
+
         logging.info(f"Sleeping...")
         time.sleep(5)
 
         work_item_element = find_element_by_xpath(work_item, ".//a")
+        work_item_element_text = work_item_element.text
 
-        logging.info(f"Open dialog box for '{work_item_element.text}'")
+        logging.info(f"Open dialog box for '{work_item_element_text}'")
         # Click
         work_item_element.click()
         dialog_xpath = "//div[contains(@tabindex, '-1') and contains(@role, 'dialog')]"
@@ -221,24 +263,26 @@ def scraper(driver, url, email, password, file_path):
         work_item_data = scrape_child_work_items(driver, dialog_box)
         result_set.append(work_item_data)
 
-        logging.info(f"Close dialog box for '{work_item_element.text}'")
+        logging.info(f"Close dialog box for '{work_item_element_text}'")
         # Close dialog box
         click_button_by_xpath(dialog_box, ".//button[contains(@class, 'ui-button')]")
+        work_items_ctr += 1
 
     logging.info(f"Saving result to {file_path}")
     with open(file_path, "w") as outfile:
         json.dump(result_set, outfile)
 
 
-def create_directory_hierarchy(dicts, path="Azure Directories", indent=0):
+def create_directory_hierarchy(dicts, path="data", indent=0):
     for d in dicts:
         dir_name = f"{d['Task id']}_{d['Title']}"
         dir_path = os.path.join(path, dir_name)
+        attachments_path = os.path.join(f"{path}/attachments")
 
         print(" " * indent + dir_name)
         logging.info(f"Creating directory in {dir_path}")
         os.makedirs(dir_path, exist_ok=True)  # create directory if it doesn't exist
-        os.makedirs(os.path.join("attachments"), exist_ok=True)
+        os.makedirs(attachments_path, exist_ok=True)
 
         if "discussions" in d and d["discussions"]:
             with open(os.path.join(dir_path, "discussion.md"), "w") as file:
@@ -262,11 +306,23 @@ def create_directory_hierarchy(dicts, path="Azure Directories", indent=0):
 
 
 if __name__ == "__main__":
+    download_directory = f'{os.getcwd()}/data/attachments'
+
     chrome_options = ChromeOptions()
     chrome_options.add_argument("--headless=new")
     chrome_options.add_argument("--incognito")
+    chrome_options.add_experimental_option(
+        "prefs",
+        {
+            "download.default_directory": download_directory,
+            "download.prompt_for_download": False,
+            "download.directory_upgrade": True,
+            "safebrowsing.enabled": True,
+        },
+    )
+
     chrome_options.add_experimental_option("detach", True)
-    save_file = "Azure Directories/scrape_result.json"
+    save_file = "data/scrape_result.json"
     chrome_driver = get_driver_by_os()
 
     with webdriver.Chrome(options=chrome_options, service=chrome_driver) as wd:

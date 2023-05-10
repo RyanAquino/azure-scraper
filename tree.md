@@ -22,10 +22,13 @@
         - [x] Activity:
         - [x] Blocked:
     - [x] description.md:
-    - [x] discussion.md:
-        - [ ] Title: <Joe commented Jan 11, 2016>
-        - [x] Content:
-    - [ ] definition_of_done.md (Definition of Done please ignore this field):
+    - [ ] discussion.md:
+        - [ ] attachments (folder): (store any graphical content from discussion record here)
+          - <yyyy_mm_dd>_<username>_<id>.<relevant file extension> 
+        - [ ] <yyyy_mm_dd>_<username>.md:
+          - Title: <Joe commented Jan 11, 2016>
+          - Content:
+    - [x] definition_of_done.md (Definition of Done please ignore this field):
     - [ ] development (folder): (each change set as file )
         - [ ] changeset_<ID>.md
             - [ ] File name:
@@ -43,6 +46,6 @@
             - [ ] Type:
             - [ ] Link to item file:
             - [ ] Title:
-    - [ ] attachments (store attached files in this folder):
+    - [x] attachments (store attached files in this folder):
     - [x] origin.md (Origin URL link to work item)
 
