@@ -143,7 +143,6 @@ def scrape_child_work_items(driver, dialog_box):
     work_item_control_xpath = (
         ".//div[contains(@class, 'work-item-control initialized')]"
     )
-
     work_id_xpath = f".//div[contains(@class, 'work-item-form-id initialized')]//span"
     title_xpath = f".//div[contains(@class, 'work-item-form-title initialized')]//input"
     username_xpath = (
@@ -196,6 +195,42 @@ def scrape_child_work_items(driver, dialog_box):
                         "Content": content,
                     }
                 )
+
+    details_xpath = ".//li[@aria-label='Details']"
+    history_xpath = ".//li[@aria-label='History']"
+    links_xpath = ".//li[@aria-label='Links']"
+    attachments_xpath = ".//li[@aria-label='Attachments']"
+
+    # Navigate to history tab
+    click_button_by_xpath(dialog_box, history_xpath)
+
+    # Check if there are collapsed history items
+    collapsed_xpath = ".//div[@aria-expanded='false']"
+    collapsed = find_elements_by_xpath(dialog_box, collapsed_xpath)
+
+    if collapsed:
+        for collapse_item in collapsed:
+            collapse_item.click()
+
+    history_item_xpath = ".//div[@class='history-item-summary']"
+    history_items = find_elements_by_xpath(dialog_box, history_item_xpath)
+
+    for history in history_items:
+        summary_text_xpath = "//span[contains(@class,'history-item-summary-text')]"
+        print(get_text(history, summary_text_xpath))
+
+        history.click()
+
+        # history_item_detail_xpath = ".//div[@class='history-item-detail']"
+        # history_item_detail = find_elements_by_xpath(dialog_box, history_item_detail_xpath)
+        #
+        # field_name = ".//div[@class='field-name']//span"
+        # fields = find_elements_by_xpath(history_item_detail, field_name)
+        #
+        # for field in fields:
+        #     print(field.text)
+
+    click_button_by_xpath(dialog_box, details_xpath)
 
     child_work_items = find_elements_by_xpath(dialog_box, child_xpath)
     action = ActionChains(driver)
@@ -309,7 +344,7 @@ if __name__ == "__main__":
     download_directory = f'{os.getcwd()}/data/attachments'
 
     chrome_options = ChromeOptions()
-    chrome_options.add_argument("--headless=new")
+    # chrome_options.add_argument("--headless=new")
     chrome_options.add_argument("--incognito")
     chrome_options.add_experimental_option(
         "prefs",
