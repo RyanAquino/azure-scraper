@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from selenium.webdriver.chrome.service import Service
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -104,7 +106,7 @@ def get_text(driver, xpath):
 def scrape_attachments(driver, dialog_box):
 
     # Attachment count
-    attachment_count_xpath = ".//span[contains(@class, 'attachment-count')][last()]"
+    attachment_count_xpath = "(.//span[contains(@class, 'attachment-count')])[last()]"
     attachment_count = find_element_by_xpath(dialog_box, attachment_count_xpath)
 
     if not attachment_count or not attachment_count.text.strip():
@@ -133,6 +135,41 @@ def scrape_attachments(driver, dialog_box):
     details_tab_xpath = "//li[@aria-label='Details']"
     details_tab_button = find_elements_by_xpath(dialog_box, details_tab_xpath)
     details_tab_button[-1].click()
+
+
+def scrape_related_work(dialog_box):
+    related_work_xpath = (
+        "(.//div[@class='links-control-container']/div[@class='la-main-component'])[last()]/div[@class='la-list']/div"
+    )
+    related_work_items = find_elements_by_xpath(dialog_box, related_work_xpath)
+    results = []
+
+    for related_work_item in related_work_items:
+        related_work_type_xpath = "div[@class='la-group-title']"
+        # related_work_type = related_work_item.find_element(By.XPATH, related_work_type_xpath)
+        related_work_type = find_element_by_xpath(related_work_item, related_work_type_xpath)
+
+        if not related_work_type:
+            continue
+
+        related_work_type = related_work_type.text
+        related_work_type = related_work_type.split(" ")[0]
+        result = {"type": related_work_type, "related_work_items": []}
+
+        related_works_xpath = "div[@class='la-item']//a"
+        related_works = related_work_item.find_elements(By.XPATH, related_works_xpath)
+
+        for related_work in related_works:
+            related_work_url = related_work.get_attribute("href").split("/")[-1]
+            related_work_title = related_work.text
+            result["related_work_items"].append({
+                "link": f"{related_work_url}_{related_work_title}",
+                "updated_at": ""
+            })
+
+        results.append(result)
+
+    return results
 
 
 def scrape_child_work_items(driver, dialog_box):
@@ -177,6 +214,7 @@ def scrape_child_work_items(driver, dialog_box):
         "Activity": get_input_value(dialog_box, activity_xpath),
         "Blocked": get_input_value(dialog_box, blocked_xpath),
         "description": desc.text,
+        "related_work": scrape_related_work(dialog_box)
     }
     scrape_attachments(driver, dialog_box)
     discussions = find_elements_by_xpath(dialog_box, discussions_xpath)
@@ -295,7 +333,7 @@ def create_directory_hierarchy(dicts, path="data", indent=0):
 
         with open(os.path.join(dir_path, "metadata.md"), "w") as file:
             for key, value in d.items():
-                if key != "children":
+                if key != "children" or key != "related_work":
                     file.write(f"{key}: {value}\n")
 
         with open(os.path.join(dir_path, "origin.md"), "w") as file:
@@ -305,10 +343,47 @@ def create_directory_hierarchy(dicts, path="data", indent=0):
             create_directory_hierarchy(d["children"], dir_path, indent + 2)
 
 
+def create_related_work_contents(scrape_results):
+    for item in scrape_results:
+        task_id = item.get("Task id")
+        task_title = item.get("Title")
+        folder_name = f"{task_id}_{task_title}"
+
+        folder_path = [i for i in Path(Path.cwd() / "data").resolve().rglob(folder_name)]
+
+        if not folder_path:
+            continue
+
+        contents = ""
+        for related_work in item.get("related_work"):
+            related_work_type = related_work.get("type")
+            related_work_data = {
+                "type": related_work_type,
+                "links to item file": []
+            }
+
+            for work_items in related_work.get("related_work_items", []):
+                work_item_path = [i for i in Path(Path.cwd() / "data").resolve().rglob(work_items)]
+                if not work_item_path:
+                    continue
+
+                work_item_path = work_item_path[0]
+                related_work_data["links to item file"].append(work_item_path)
+
+        print(contents)
+        with open(os.path.join(folder_path[0], "related_work.md"), "w") as file:
+            # TODO write
+            # Type
+            # Link to item file
+            pass
+            # file.write()
+
+
 if __name__ == "__main__":
     download_directory = f'{os.getcwd()}/data/attachments'
 
     chrome_options = ChromeOptions()
+    chrome_options.binary_location = config.BINARY_PATH_LOCATION
     chrome_options.add_argument("--headless=new")
     chrome_options.add_argument("--incognito")
     chrome_options.add_experimental_option(
@@ -325,9 +400,11 @@ if __name__ == "__main__":
     save_file = "data/scrape_result.json"
     chrome_driver = get_driver_by_os()
 
-    with webdriver.Chrome(options=chrome_options, service=chrome_driver) as wd:
+    with webdriver.Chrome(options=chrome_options) as wd:
         scraper(wd, config.BASE_URL + config.BACKLOG_ENDPOINT, config.EMAIL, config.PASSWORD, save_file)
 
-    with open(save_file) as f:
-        scrape_result = json.load(f)
-        create_directory_hierarchy(scrape_result)
+    # with open(save_file) as f:
+    #     scrape_result = json.load(f)
+    #     create_directory_hierarchy(scrape_result)
+    #     create_related_work_contents(scrape_result)
+
