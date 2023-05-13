@@ -432,7 +432,7 @@ def create_related_work_contents(scrape_results, path: Path = Path("data")):
             create_related_work_contents(item["children"], dir_path)
 
 
-if __name__ == "__main__":
+def chrome_settings_init():
     download_directory = f'{os.getcwd()}/data/attachments'
 
     chrome_options = ChromeOptions()
@@ -449,7 +449,6 @@ if __name__ == "__main__":
     )
 
     chrome_options.add_experimental_option("detach", True)
-    save_file = "data/scrape_result.json"
     chrome_settings = {"options": chrome_options}
 
     if config.BINARY_PATH_LOCATION:
@@ -457,12 +456,19 @@ if __name__ == "__main__":
     else:
         chrome_settings["service"] = get_driver_by_os()
 
-    with webdriver.Chrome(**chrome_settings) as wd:
+    return chrome_settings, download_directory
+
+
+if __name__ == "__main__":
+    save_file = "data/scrape_result.json"
+    chrome_config, chrome_downloads = chrome_settings_init()
+
+    with webdriver.Chrome(**chrome_config) as wd:
         scraper(wd, config.BASE_URL + config.BACKLOG_ENDPOINT, config.EMAIL, config.PASSWORD, save_file)
 
     # Clean attachments directory
-    if os.path.isdir(download_directory):
-        shutil.rmtree(download_directory)
+    if os.path.isdir(chrome_downloads):
+        shutil.rmtree(chrome_downloads)
 
     with open(save_file) as f:
         scrape_result = json.load(f)
