@@ -8,6 +8,7 @@ from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options as ChromeOptions
 import time
+import shutil
 import config
 import json
 import logging
@@ -246,34 +247,34 @@ def scrape_child_work_items(driver, dialog_box):
     links_xpath = ".//li[@aria-label='Links']"
     attachments_xpath = ".//li[@aria-label='Attachments']"
 
-    # Navigate to history tab
-    click_button_by_xpath(dialog_box, history_xpath)
-
-    # Check if there are collapsed history items
-    collapsed_xpath = ".//div[@aria-expanded='false']"
-    collapsed = find_elements_by_xpath(dialog_box, collapsed_xpath)
-
-    if collapsed:
-        for collapse_item in collapsed:
-            collapse_item.click()
-
-    history_item_xpath = ".//div[@class='history-item-summary']"
-    history_items = find_elements_by_xpath(dialog_box, history_item_xpath)
-
-    for history in history_items:
-        summary_text_xpath = "//span[contains(@class,'history-item-summary-text')]"
-        print(get_text(history, summary_text_xpath))
-
-        history.click()
-
-        # history_item_detail_xpath = ".//div[@class='history-item-detail']"
-        # history_item_detail = find_elements_by_xpath(dialog_box, history_item_detail_xpath)
-        #
-        # field_name = ".//div[@class='field-name']//span"
-        # fields = find_elements_by_xpath(history_item_detail, field_name)
-        #
-        # for field in fields:
-        #     print(field.text)
+    # # Navigate to history tab
+    # click_button_by_xpath(dialog_box, history_xpath)
+    #
+    # # Check if there are collapsed history items
+    # collapsed_xpath = ".//div[@aria-expanded='false']"
+    # collapsed = find_elements_by_xpath(dialog_box, collapsed_xpath)
+    #
+    # if collapsed:
+    #     for collapse_item in collapsed:
+    #         collapse_item.click()
+    #
+    # history_item_xpath = ".//div[@class='history-item-summary']"
+    # history_items = find_elements_by_xpath(dialog_box, history_item_xpath)
+    #
+    # for history in history_items:
+    #     summary_text_xpath = "//span[contains(@class,'history-item-summary-text')]"
+    #     print(get_text(history, summary_text_xpath))
+    #
+    #     history.click()
+    #
+    #     # history_item_detail_xpath = ".//div[@class='history-item-detail']"
+    #     # history_item_detail = find_elements_by_xpath(dialog_box, history_item_detail_xpath)
+    #     #
+    #     # field_name = ".//div[@class='field-name']//span"
+    #     # fields = find_elements_by_xpath(history_item_detail, field_name)
+    #     #
+    #     # for field in fields:
+    #     #     print(field.text)
 
     click_button_by_xpath(dialog_box, details_xpath)
 
@@ -435,7 +436,6 @@ if __name__ == "__main__":
     download_directory = f'{os.getcwd()}/data/attachments'
 
     chrome_options = ChromeOptions()
-    chrome_options.binary_location = config.BINARY_PATH_LOCATION
     chrome_options.add_argument("--headless=new")
     chrome_options.add_argument("--incognito")
     chrome_options.add_experimental_option(
@@ -450,14 +450,19 @@ if __name__ == "__main__":
 
     chrome_options.add_experimental_option("detach", True)
     save_file = "data/scrape_result.json"
-    chrome_driver = get_driver_by_os()
+    chrome_settings = {"options": chrome_options}
 
-    with webdriver.Chrome(options=chrome_options) as wd:
+    if config.BINARY_PATH_LOCATION:
+        chrome_options.binary_location = config.BINARY_PATH_LOCATION
+    else:
+        chrome_settings["service"] = get_driver_by_os()
+
+    with webdriver.Chrome(**chrome_settings) as wd:
         scraper(wd, config.BASE_URL + config.BACKLOG_ENDPOINT, config.EMAIL, config.PASSWORD, save_file)
 
     # Clean attachments directory
     if os.path.isdir(download_directory):
-        os.removedirs(download_directory)
+        shutil.rmtree(download_directory)
 
     with open(save_file) as f:
         scrape_result = json.load(f)
