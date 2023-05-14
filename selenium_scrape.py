@@ -96,13 +96,17 @@ def get_input_value(driver, xpath):
         return element.get_attribute("value")
 
 
+def get_anchor_link(driver, xpath):
+    if element := find_element_by_xpath(driver, xpath):
+        return element.get_attribute("href")
+
+
 def get_text(driver, xpath):
     if element := find_element_by_xpath(driver, xpath):
         return element.text
 
 
 def scrape_attachments(driver, dialog_box):
-
     # Attachment count
     attachment_count_xpath = ".//span[contains(@class, 'attachment-count')][last()]"
     attachment_count = find_element_by_xpath(dialog_box, attachment_count_xpath)
@@ -117,22 +121,99 @@ def scrape_attachments(driver, dialog_box):
 
     # Retrieve attachment links
     attachment_count = attachment_count.text
-    attachment_count = "".join([char for char in attachment_count.strip() if char.isdigit()])
+    attachment_count = "".join(
+        [char for char in attachment_count.strip() if char.isdigit()]
+    )
     a_href_xpath = ".//div[contains(@class, 'attachments-grid-file-name')]//a"
     attachments = find_elements_by_xpath(dialog_box, a_href_xpath)
 
-    for attachment in attachments[-int(attachment_count):]:
+    for attachment in attachments[-int(attachment_count) :]:
         attachment_url = attachment.get_attribute("href")
         parsed_url = urllib.parse.urlparse(attachment_url)
         query_params = urllib.parse.parse_qs(parsed_url.query)
-        query_params['fileName'] = [f"{uuid4()}_{query_params.get('fileName')[0]}"]
-        updated_url = urllib.parse.urlunparse(parsed_url._replace(query=urllib.parse.urlencode(query_params, doseq=True)))
+        query_params["fileName"] = [f"{uuid4()}_{query_params.get('fileName')[0]}"]
+        updated_url = urllib.parse.urlunparse(
+            parsed_url._replace(query=urllib.parse.urlencode(query_params, doseq=True))
+        )
         driver.get(updated_url)
 
     # Navigate back to details
     details_tab_xpath = "//li[@aria-label='Details']"
     details_tab_button = find_elements_by_xpath(dialog_box, details_tab_xpath)
     details_tab_button[-1].click()
+
+
+def scrape_history(dialog_box):
+    results = []
+
+    # Check if there are collapsed history items
+    collapsed_xpath = ".//div[@aria-expanded='false']"
+    collapsed = find_elements_by_xpath(dialog_box, collapsed_xpath)
+
+    if collapsed:
+        for collapse_item in collapsed:
+            collapse_item.click()
+
+    history_item_xpath = ".//div[@class='history-item-summary']"
+    history_items = find_elements_by_xpath(dialog_box, history_item_xpath)
+
+    for history in history_items:
+        history.click()
+
+        result = {
+            "User": get_text(
+                history, "//span[contains(@class, 'history-item-name-changed-by')]"
+            ),
+            "Date": get_text(history, "//span[contains(@class, 'history-item-date')]"),
+            "Title": get_text(
+                history, "//div[contains(@class, 'history-item-summary-text')]"
+            ),
+            "Content": get_text(
+                history, "//div[contains(@class, 'history-item-comment')]//p"
+            ),
+        }
+
+        if get_text(history, "//div[contains(@class, 'links-title history-section')]"):
+            result["Links"] = {
+                "Type": get_text(
+                    history, "//span[contains(@class, 'link-display-name')]//span"
+                ),
+                "Link to item file": get_anchor_link(
+                    history, "//span[contains(@class, 'link-text')]//a"
+                ),
+                "Title": get_text(
+                    history, "//span[contains(@class, 'link-text')]//span"
+                ),
+            }
+
+        results.append(result)
+
+    return results
+
+
+def scrape_discussions(dialog_box):
+    result = []
+
+    discussions_xpath = (
+        ".//div[contains(@class, 'initialized work-item-discussion-control')]"
+        "//div[contains(@class, 'wit-comment-item')]"
+    )
+    discussions = find_elements_by_xpath(dialog_box, discussions_xpath)
+
+    if discussions:
+        for discussion in discussions:
+            content = get_text(discussion, "//p")
+
+            if content:
+                result.append(
+                    {
+                        "Title": get_text(
+                            discussion, "//span[@class='user-display-name']"
+                        ),
+                        "Content": content,
+                    }
+                )
+    return result
 
 
 def scrape_child_work_items(driver, dialog_box):
@@ -143,10 +224,11 @@ def scrape_child_work_items(driver, dialog_box):
     work_item_control_xpath = (
         ".//div[contains(@class, 'work-item-control initialized')]"
     )
-    work_id_xpath = f".//div[contains(@class, 'work-item-form-id initialized')]//span"
-    title_xpath = f".//div[contains(@class, 'work-item-form-title initialized')]//input"
+    work_id_xpath = ".//div[contains(@class, 'work-item-form-id initialized')]//span"
+    title_xpath = ".//div[contains(@class, 'work-item-form-title initialized')]//input"
     username_xpath = (
-        ".//div[contains(@class, 'work-item-form-assignedTo initialized')]//span[contains(@class, 'text-cursor')]"
+        ".//div[contains(@class, 'work-item-form-assignedTo initialized')]"
+        "//span[contains(@class, 'text-cursor')]"
     )
     state_xpath = f"{work_item_control_xpath}//*[@aria-label='State Field']"
     area_xpath = f"{work_item_control_xpath}//*[@aria-label='Area Path']"
@@ -156,11 +238,6 @@ def scrape_child_work_items(driver, dialog_box):
     activity_xpath = f"{work_item_control_xpath}//*[@aria-label='Activity']"
     blocked_xpath = f"{work_item_control_xpath}//*[@aria-label='Blocked']"
     description = f"{work_item_control_xpath}//*[@aria-label='Description']"
-
-    discussions_xpath = (
-        ".//div[contains(@class, 'initialized work-item-discussion-control')]"
-        "//div[contains(@class, 'wit-comment-item')]"
-    )
 
     desc = find_element_by_xpath(dialog_box, description)
 
@@ -177,58 +254,22 @@ def scrape_child_work_items(driver, dialog_box):
         "Blocked": get_input_value(dialog_box, blocked_xpath),
         "description": desc.text,
     }
-    scrape_attachments(driver, dialog_box)
-    discussions = find_elements_by_xpath(dialog_box, discussions_xpath)
 
-    if discussions:
-        work_item_data["discussions"] = []
+    # scrape_attachments(driver, dialog_box)
 
-        for discussion in discussions:
-            content = get_text(discussion, "//p")
-
-            if content:
-                work_item_data["discussions"].append(
-                    {
-                        "Title": get_text(
-                            discussion, "//span[@class='user-display-name']"
-                        ),
-                        "Content": content,
-                    }
-                )
+    work_item_data["discussions"] = scrape_discussions(dialog_box)
 
     details_xpath = ".//li[@aria-label='Details']"
     history_xpath = ".//li[@aria-label='History']"
-    links_xpath = ".//li[@aria-label='Links']"
-    attachments_xpath = ".//li[@aria-label='Attachments']"
+    # links_xpath = ".//li[@aria-label='Links']"
+    # attachments_xpath = ".//li[@aria-label='Attachments']"
 
     # Navigate to history tab
     click_button_by_xpath(dialog_box, history_xpath)
 
-    # Check if there are collapsed history items
-    collapsed_xpath = ".//div[@aria-expanded='false']"
-    collapsed = find_elements_by_xpath(dialog_box, collapsed_xpath)
+    work_item_data["history"] = scrape_history(dialog_box)
 
-    if collapsed:
-        for collapse_item in collapsed:
-            collapse_item.click()
-
-    history_item_xpath = ".//div[@class='history-item-summary']"
-    history_items = find_elements_by_xpath(dialog_box, history_item_xpath)
-
-    for history in history_items:
-        summary_text_xpath = "//span[contains(@class,'history-item-summary-text')]"
-        print(get_text(history, summary_text_xpath))
-
-        history.click()
-
-        # history_item_detail_xpath = ".//div[@class='history-item-detail']"
-        # history_item_detail = find_elements_by_xpath(dialog_box, history_item_detail_xpath)
-        #
-        # field_name = ".//div[@class='field-name']//span"
-        # fields = find_elements_by_xpath(history_item_detail, field_name)
-        #
-        # for field in fields:
-        #     print(field.text)
+    print(work_item_data["history"])
 
     click_button_by_xpath(dialog_box, details_xpath)
 
@@ -260,6 +301,7 @@ def scrape_child_work_items(driver, dialog_box):
                 child_dialog_box, ".//button[contains(@class, 'ui-button')]"
             )
         work_item_data["children"] = children
+
     return work_item_data
 
 
@@ -341,7 +383,7 @@ def create_directory_hierarchy(dicts, path="data", indent=0):
 
 
 if __name__ == "__main__":
-    download_directory = f'{os.getcwd()}/data/attachments'
+    download_directory = f"{os.getcwd()}/data/attachments"
 
     chrome_options = ChromeOptions()
     # chrome_options.add_argument("--headless=new")
@@ -361,7 +403,13 @@ if __name__ == "__main__":
     chrome_driver = get_driver_by_os()
 
     with webdriver.Chrome(options=chrome_options, service=chrome_driver) as wd:
-        scraper(wd, config.BASE_URL + config.BACKLOG_ENDPOINT, config.EMAIL, config.PASSWORD, save_file)
+        scraper(
+            wd,
+            config.BASE_URL + config.BACKLOG_ENDPOINT,
+            config.EMAIL,
+            config.PASSWORD,
+            save_file,
+        )
 
     with open(save_file) as f:
         scrape_result = json.load(f)
