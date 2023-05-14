@@ -8,6 +8,7 @@ from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options as ChromeOptions
 import time
+import shutil
 import config
 import json
 import logging
@@ -187,7 +188,6 @@ def scrape_child_work_items(driver, dialog_box):
     work_item_control_xpath = (
         ".//div[contains(@class, 'work-item-control initialized')]"
     )
-
     work_id_xpath = f".//div[contains(@class, 'work-item-form-id initialized')]//span"
     title_xpath = f".//div[contains(@class, 'work-item-form-title initialized')]//input"
     username_xpath = (
@@ -241,6 +241,42 @@ def scrape_child_work_items(driver, dialog_box):
                         "Content": content,
                     }
                 )
+
+    details_xpath = ".//li[@aria-label='Details']"
+    history_xpath = ".//li[@aria-label='History']"
+    links_xpath = ".//li[@aria-label='Links']"
+    attachments_xpath = ".//li[@aria-label='Attachments']"
+
+    # # Navigate to history tab
+    # click_button_by_xpath(dialog_box, history_xpath)
+    #
+    # # Check if there are collapsed history items
+    # collapsed_xpath = ".//div[@aria-expanded='false']"
+    # collapsed = find_elements_by_xpath(dialog_box, collapsed_xpath)
+    #
+    # if collapsed:
+    #     for collapse_item in collapsed:
+    #         collapse_item.click()
+    #
+    # history_item_xpath = ".//div[@class='history-item-summary']"
+    # history_items = find_elements_by_xpath(dialog_box, history_item_xpath)
+    #
+    # for history in history_items:
+    #     summary_text_xpath = "//span[contains(@class,'history-item-summary-text')]"
+    #     print(get_text(history, summary_text_xpath))
+    #
+    #     history.click()
+    #
+    #     # history_item_detail_xpath = ".//div[@class='history-item-detail']"
+    #     # history_item_detail = find_elements_by_xpath(dialog_box, history_item_detail_xpath)
+    #     #
+    #     # field_name = ".//div[@class='field-name']//span"
+    #     # fields = find_elements_by_xpath(history_item_detail, field_name)
+    #     #
+    #     # for field in fields:
+    #     #     print(field.text)
+
+    click_button_by_xpath(dialog_box, details_xpath)
 
     child_work_items = find_elements_by_xpath(dialog_box, child_xpath)
 
@@ -321,7 +357,7 @@ def scraper(driver, url, email, password, file_path):
 
 def create_directory_hierarchy(dicts, path="data", indent=0):
     attachments_path = os.path.join(f"{path}/attachments")
-    exclude_fields = ["children", "related_work"]
+    exclude_fields = ["children", "related_work", "discussions"]
 
     for d in dicts:
         dir_name = f"{d['Task id']}_{d['Title']}"
@@ -359,7 +395,6 @@ def create_related_work_contents(scrape_results, path: Path = Path("data")):
         task_title = item.get("Title")
         folder_name = f"{task_id}_{task_title}"
         dir_path = Path(path, folder_name)
-        consolidated_related_work = []
 
         folder_path = [i for i in Path(Path.cwd() / path).resolve().rglob(folder_name)]
 
@@ -387,8 +422,6 @@ def create_related_work_contents(scrape_results, path: Path = Path("data")):
                         "updated_at": work_item_updated_at
                     })
 
-                consolidated_related_work.append(related_work_data)
-
                 file.write(f"* Type: {related_work_type}\n")
 
                 for links in related_work_data.get("links to item file"):
@@ -399,11 +432,10 @@ def create_related_work_contents(scrape_results, path: Path = Path("data")):
             create_related_work_contents(item["children"], dir_path)
 
 
-if __name__ == "__main__":
+def chrome_settings_init():
     download_directory = f'{os.getcwd()}/data/attachments'
 
     chrome_options = ChromeOptions()
-    chrome_options.binary_location = config.BINARY_PATH_LOCATION
     chrome_options.add_argument("--headless=new")
     chrome_options.add_argument("--incognito")
     chrome_options.add_experimental_option(
@@ -417,15 +449,26 @@ if __name__ == "__main__":
     )
 
     chrome_options.add_experimental_option("detach", True)
-    save_file = "data/scrape_result.json"
-    chrome_driver = get_driver_by_os()
+    chrome_settings = {"options": chrome_options}
 
-    with webdriver.Chrome(options=chrome_options) as wd:
-        scraper(wd, config.BASE_URL + config.BACKLOG_ENDPOINT, config.EMAIL, config.PASSWORD, save_file)
+    if config.BINARY_PATH_LOCATION:
+        chrome_options.binary_location = config.BINARY_PATH_LOCATION
+    else:
+        chrome_settings["service"] = get_driver_by_os()
+
+    return chrome_settings, download_directory
+
+
+if __name__ == "__main__":
+    save_file = "data/scrape_result.json"
+    chrome_config, chrome_downloads = chrome_settings_init()
 
     # Clean attachments directory
-    if os.path.isdir(download_directory):
-        os.removedirs(download_directory)
+    if os.path.isdir(chrome_downloads):
+        shutil.rmtree(chrome_downloads)
+
+    with webdriver.Chrome(**chrome_config) as wd:
+        scraper(wd, config.BASE_URL + config.BACKLOG_ENDPOINT, config.EMAIL, config.PASSWORD, save_file)
 
     with open(save_file) as f:
         scrape_result = json.load(f)
