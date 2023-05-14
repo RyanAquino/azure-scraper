@@ -357,7 +357,7 @@ def scraper(driver, url, email, password, file_path):
 
 def create_directory_hierarchy(dicts, path="data", indent=0):
     attachments_path = os.path.join(f"{path}/attachments")
-    exclude_fields = ["children", "related_work"]
+    exclude_fields = ["children", "related_work", "discussions"]
 
     for d in dicts:
         dir_name = f"{d['Task id']}_{d['Title']}"
@@ -463,12 +463,12 @@ if __name__ == "__main__":
     save_file = "data/scrape_result.json"
     chrome_config, chrome_downloads = chrome_settings_init()
 
-    with webdriver.Chrome(**chrome_config) as wd:
-        scraper(wd, config.BASE_URL + config.BACKLOG_ENDPOINT, config.EMAIL, config.PASSWORD, save_file)
-
     # Clean attachments directory
     if os.path.isdir(chrome_downloads):
         shutil.rmtree(chrome_downloads)
+
+    with webdriver.Chrome(**chrome_config) as wd:
+        scraper(wd, config.BASE_URL + config.BACKLOG_ENDPOINT, config.EMAIL, config.PASSWORD, save_file)
 
     with open(save_file) as f:
         scrape_result = json.load(f)
