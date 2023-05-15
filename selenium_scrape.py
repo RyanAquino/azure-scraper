@@ -373,13 +373,14 @@ def scrape_child_work_items(driver, dialog_box):
 
             logging.info(f"Open dialog box for '{work_item_element.text}'")
             work_item_element.click()
-            time.sleep(5)
+            time.sleep(3)
 
-            dialog_xpath = (
-                f"//span[@aria-label='ID Field' and "
-                f"contains(text(), '{child_id}')]//ancestor::div"
-            )
+            # dialog_xpath = (
+            #     f"//span[@aria-label='ID Field' and "
+            #     f"contains(text(), '{child_id}')]//ancestor::div"
+            # )
 
+            dialog_xpath = "//div[@role='dialog'][last()]"
             child_dialog_box = find_element_by_xpath(driver, dialog_xpath)
             child_data = scrape_child_work_items(driver, child_dialog_box)
             children.append(child_data)
@@ -392,6 +393,9 @@ def scrape_child_work_items(driver, dialog_box):
 
     return work_item_data
 
+
+def open_dialog_box(driver):
+    pass
 
 def scraper(driver, url, email, password, file_path):
     driver.maximize_window()
@@ -421,11 +425,14 @@ def scraper(driver, url, email, password, file_path):
         logging.info(f"Open dialog box for '{work_item_element_text}'")
         # Click
         work_item_element.click()
-        dialog_xpath = "//div[contains(@tabindex, '-1') and contains(@role, 'dialog')]"
+        # dialog_xpath = "//div[contains(@tabindex, '-1') and contains(@role, 'dialog')]"
+
+        dialog_xpath = "//div[@role='dialog'][last()]"
         dialog_box = find_element_by_xpath(work_item, dialog_xpath)
 
         # Scrape Child Items
         work_item_data = scrape_child_work_items(driver, dialog_box)
+        print(work_item_data)
         result_set.append(work_item_data)
 
         logging.info(f"Close dialog box for '{work_item_element_text}'")
@@ -562,7 +569,7 @@ def chrome_settings_init():
     download_directory = f"{os.getcwd()}/data/attachments"
 
     chrome_options = ChromeOptions()
-    chrome_options.add_argument("--headless=new")
+    # chrome_options.add_argument("--headless=new")
     chrome_options.add_argument("--incognito")
     chrome_options.add_experimental_option(
         "prefs",
@@ -584,9 +591,33 @@ def chrome_settings_init():
 
     return chrome_settings, download_directory
 
+def analyze_dir(data):
+
+    for i in data:
+
+        if history := i["history"]:
+            for history_item in history:
+                if "link" in history_item['Title']:
+
+                    print(i["Title"])
+                    print(history_item["Date"])
+                    print(history_item["Title"])
+                    print(history_item["Links"])
+
+
+        if "children" in i:
+            children = i.pop("children")
+            analyze_dir(children)
 
 if __name__ == "__main__":
     save_file = "data/scrape_result.json"
+
+
+    # with open(save_file) as f:
+    #     scrape_result = json.load(f)
+    #     analyze_dir(scrape_result)
+
+
     chrome_config, chrome_downloads = chrome_settings_init()
 
     # Clean attachments directory
@@ -602,7 +633,7 @@ if __name__ == "__main__":
             save_file,
         )
 
-    with open(save_file) as f:
-        scrape_result = json.load(f)
-        create_directory_hierarchy(scrape_result)
-        create_related_work_contents(scrape_result)
+    # with open(save_file) as f:
+    #     scrape_result = json.load(f)
+    #     create_directory_hierarchy(scrape_result)
+    #     create_related_work_contents(scrape_result)
