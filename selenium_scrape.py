@@ -146,10 +146,7 @@ def scrape_attachments(driver, dialog_box):
     details_tab_button[-1].click()
 
 
-def scrape_history(dialog_box):
-    results = []
-
-    # Check if there are collapsed history items
+def expand_collapsed_by_xpath(dialog_box):
     collapsed_xpath = ".//div[@aria-expanded='false']"
     collapsed = find_elements_by_xpath(dialog_box, collapsed_xpath)
 
@@ -157,8 +154,21 @@ def scrape_history(dialog_box):
         for collapse_item in collapsed:
             collapse_item.click()
 
-    history_item_xpath = ".//div[@class='history-item-summary']"
-    history_items = find_elements_by_xpath(dialog_box, history_item_xpath)
+
+def scrape_history(dialog_box):
+    results = []
+
+    # Check if there are collapsed history items
+    expand_collapsed_by_xpath(dialog_box)
+
+    history_container = find_element_by_xpath(
+        dialog_box,
+        "//div[contains(@class,'initialized workitem-history-control-container')]",
+    )
+
+    history_items = find_elements_by_xpath(
+        history_container, ".//div[@class='history-item-summary-details']"
+    )
 
     for history in history_items:
         history.click()
@@ -171,27 +181,57 @@ def scrape_history(dialog_box):
             "Title": get_text(
                 history, "//div[contains(@class, 'history-item-summary-text')]"
             ),
-            "Content": get_text(
-                history, "//div[contains(@class, 'history-item-comment')]//p"
-            ),
+            "Content": None,
+            "Links": [],
+            "Fields": [],
         }
 
-        if get_text(history, "//div[contains(@class, 'links-title history-section')]"):
-            result["Links"] = {
-                "Type": get_text(
-                    history, "//span[contains(@class, 'link-display-name')]//span"
-                ),
-                "Link to item file": get_anchor_link(
-                    history, "//span[contains(@class, 'link-text')]//a"
-                ),
-                "Title": get_text(
-                    history, "//span[contains(@class, 'link-text')]//span"
-                ),
-            }
+        # Get all field changes
+        if fields := find_elements_by_xpath(dialog_box, "//div[@class='field-name']"):
+            for field in fields:
+                field_name = get_text(field, ".//span")
+                field_value = find_element_by_xpath(field, "./following-sibling::div")
+                old_value = get_text(field_value, "//span[@class='field-old-value']")
+                new_value = get_text(field_value, "//span[@class='field-new-value']")
+
+                result["Fields"].append(
+                    {"name": field_name, "old_value": old_value, "new_value": new_value}
+                )
+
+        # Get comments
+        if comment := get_text(
+            history, "//div[contains(@class, 'history-item-comment')]"
+        ):
+            result["Content"] = comment
+
+        # Get Links
+        if links := find_elements_by_xpath(history, "//div[@class='history-links']"):
+            for link in links:
+                result["Links"].append(
+                    {
+                        "Type": get_text(
+                            link, "//span[contains(@class, 'link-display-name')]//span"
+                        ),
+                        "Link to item file": get_anchor_link(
+                            link, "//span[contains(@class, 'link-text')]//a"
+                        ),
+                        "Title": get_text(
+                            link, "//span[contains(@class, 'link-text')]//span"
+                        ),
+                    }
+                )
+        print(result)
+
+        results.append(result)
+
+    return results
 
 
 def scrape_related_work(action, dialog_box):
-    related_work_xpath = "(.//div[@class='links-control-container']/div[@class='la-main-component'])[last()]/div[@class='la-list']/div"
+    related_work_xpath = (
+        "(.//div[@class='links-control-container']/div[@class='la-main-component'])"
+        "[last()]/div[@class='la-list']/div"
+    )
     related_work_items = find_elements_by_xpath(dialog_box, related_work_xpath)
     results = []
 
@@ -250,7 +290,7 @@ def scrape_discussions(dialog_box):
 
     if discussions:
         for discussion in discussions:
-            content = get_text(discussion, "//p")
+            content = get_text(discussion, "comment-content")
 
             if content:
                 result.append(
@@ -303,11 +343,10 @@ def scrape_child_work_items(driver, dialog_box):
         "Blocked": get_input_value(dialog_box, blocked_xpath),
         "description": desc.text,
         "related_work": scrape_related_work(action, dialog_box),
+        "discussions": scrape_discussions(dialog_box),
     }
 
     # scrape_attachments(driver, dialog_box)
-
-    work_item_data["discussions"] = scrape_discussions(dialog_box)
 
     details_xpath = ".//li[@aria-label='Details']"
     history_xpath = ".//li[@aria-label='History']"
@@ -318,8 +357,6 @@ def scrape_child_work_items(driver, dialog_box):
     click_button_by_xpath(dialog_box, history_xpath)
 
     work_item_data["history"] = scrape_history(dialog_box)
-
-    print(work_item_data["history"])
 
     click_button_by_xpath(dialog_box, details_xpath)
 
@@ -376,7 +413,7 @@ def scraper(driver, url, email, password, file_path):
         work_item = work_items[work_items_ctr]
 
         logging.info(f"Sleeping...")
-        time.sleep(5)
+        time.sleep(3)
 
         work_item_element = find_element_by_xpath(work_item, ".//a")
         work_item_element_text = work_item_element.text
@@ -401,9 +438,44 @@ def scraper(driver, url, email, password, file_path):
         json.dump(result_set, outfile)
 
 
+def add_line_break(word, max_length):
+    if len(word) > max_length:
+        return word[:max_length] + "\n" + add_line_break(word[max_length:], max_length)
+    else:
+        return word
+
+
+def create_history_metadata(history, file):
+    for item in history:
+        file.write(f"* Date: {item['Date']}\n")
+        file.write(f"   * User: {item['User']}\n")
+        file.write(f"   * Title: {item['Title']}\n")
+
+        if item["Content"]:
+            file.write(f"   * Content: {add_line_break(item['Content'], 60)}\n")
+
+        if item["Fields"]:
+            file.write(f"   * Fields\n")
+            fields = item["Fields"]
+
+            for index in range(0, len(fields)):
+                field = fields[index]
+
+                file.write(f"       * {field['name']}\n")
+                file.write(f"           * Old Value: {field['old_value']}\n")
+                file.write(f"           * New Value: {field['new_value']}\n")
+
+        if links := item.get("Links"):
+            for link in links:
+                file.write(f"   * Links\n")
+                file.write(f"       * Type: {link['Type']}\n")
+                file.write(f"       * Link to item file: {link['Link to item file']}\n")
+                file.write(f"       * Title: {link['Title']}\n")
+
+
 def create_directory_hierarchy(dicts, path="data", indent=0):
     attachments_path = os.path.join(f"{path}/attachments")
-    exclude_fields = ["children", "related_work", "discussions"]
+    exclude_fields = ["children", "related_work", "discussions", "history"]
 
     for d in dicts:
         dir_name = f"{d['Task id']}_{d['Title']}"
@@ -413,6 +485,10 @@ def create_directory_hierarchy(dicts, path="data", indent=0):
         logging.info(f"Creating directory in {dir_path}")
         os.makedirs(dir_path, exist_ok=True)  # create directory if it doesn't exist
         os.makedirs(attachments_path, exist_ok=True)
+
+        if "history" in d and d["history"]:
+            with open(os.path.join(dir_path, "history.md"), "w") as file:
+                create_history_metadata(d.pop("history"), file)
 
         if "discussions" in d and d["discussions"]:
             with open(os.path.join(dir_path, "discussion.md"), "w") as file:
