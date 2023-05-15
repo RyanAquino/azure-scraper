@@ -161,13 +161,8 @@ def scrape_history(dialog_box):
     # Check if there are collapsed history items
     expand_collapsed_by_xpath(dialog_box)
 
-    history_container = find_element_by_xpath(
-        dialog_box,
-        "//div[contains(@class,'initialized workitem-history-control-container')]",
-    )
-
     history_items = find_elements_by_xpath(
-        history_container, ".//div[@class='history-item-summary-details']"
+        dialog_box, ".//div[@class='history-item-summary-details']"
     )
 
     for history in history_items:
@@ -175,11 +170,15 @@ def scrape_history(dialog_box):
 
         result = {
             "User": get_text(
-                history, "//span[contains(@class, 'history-item-name-changed-by')]"
+                history,
+                "(//span[contains(@class, 'history-item-name-changed-by')])[last()]",
             ),
-            "Date": get_text(history, "//span[contains(@class, 'history-item-date')]"),
+            "Date": get_text(
+                history, "(//span[contains(@class, 'history-item-date')])[last()]"
+            ),
             "Title": get_text(
-                history, "//div[contains(@class, 'history-item-summary-text')]"
+                history,
+                "(//div[contains(@class, 'history-item-summary-text')])[last()]",
             ),
             "Content": None,
             "Links": [],
@@ -187,7 +186,9 @@ def scrape_history(dialog_box):
         }
 
         # Get all field changes
-        if fields := find_elements_by_xpath(dialog_box, "//div[@class='field-name']"):
+        if fields := find_elements_by_xpath(
+            history, "//div[@class='field-name']"
+        ):
             for field in fields:
                 field_name = get_text(field, ".//span")
                 field_value = find_element_by_xpath(field, "./following-sibling::div")
@@ -205,7 +206,9 @@ def scrape_history(dialog_box):
             result["Content"] = comment
 
         # Get Links
-        if links := find_elements_by_xpath(history, "//div[@class='history-links']"):
+        if links := find_elements_by_xpath(
+            history, "//div[@class='history-links']"
+        ):
             for link in links:
                 result["Links"].append(
                     {
@@ -221,7 +224,6 @@ def scrape_history(dialog_box):
                     }
                 )
         print(result)
-
         results.append(result)
 
     return results
@@ -280,7 +282,7 @@ def scrape_related_work(action, dialog_box):
 
 
 def scrape_discussions(dialog_box):
-    result = []
+    results = []
 
     discussions_xpath = (
         ".//div[contains(@class, 'initialized work-item-discussion-control')]"
@@ -293,15 +295,13 @@ def scrape_discussions(dialog_box):
             content = get_text(discussion, "comment-content")
 
             if content:
-                result.append(
-                    {
-                        "Title": get_text(
-                            discussion, "//span[@class='user-display-name']"
-                        ),
-                        "Content": content,
-                    }
-                )
-    return result
+                result = {
+                    "Title": get_text(discussion, "//span[@class='user-display-name']"),
+                    "Content": content,
+                }
+                print(result)
+                results.append(result)
+    return results
 
 
 def scrape_child_work_items(driver, dialog_box):
