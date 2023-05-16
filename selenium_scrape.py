@@ -161,24 +161,30 @@ def scrape_history(dialog_box):
     # Check if there are collapsed history items
     expand_collapsed_by_xpath(dialog_box)
 
+        "(//div[contains(@class, 'workitem-history-control-container')])[last()]"
+    )
+
     history_items = find_elements_by_xpath(
-        dialog_box, ".//div[@class='history-item-summary-details']"
+        dialog_box,
+        f"{history_container_xpath}//div[@class='history-item-summary-details']",
     )
 
     for history in history_items:
         history.click()
 
+        details_panel_xpath = f"{history_container_xpath}//div[@class='history-details-panel']"
+
         result = {
             "User": get_text(
-                history,
-                "(//span[contains(@class, 'history-item-name-changed-by')])[last()]",
+                dialog_box,
+                f"{details_panel_xpath}//span[contains(@class, 'history-item-name-changed-by')]",
             ),
             "Date": get_text(
-                history, "(//span[contains(@class, 'history-item-date')])[last()]"
+                dialog_box, f"{details_panel_xpath}//span[contains(@class, 'history-item-date')]"
             ),
             "Title": get_text(
-                history,
-                "(//div[contains(@class, 'history-item-summary-text')])[last()]",
+                dialog_box,
+                f"{details_panel_xpath}//div[contains(@class, 'history-item-summary-text')]",
             ),
             "Content": None,
             "Links": [],
@@ -187,13 +193,13 @@ def scrape_history(dialog_box):
 
         # Get all field changes
         if fields := find_elements_by_xpath(
-            history, "//div[@class='field-name']"
+            dialog_box, f"{details_panel_xpath}//div[@class='field-name']"
         ):
             for field in fields:
                 field_name = get_text(field, ".//span")
                 field_value = find_element_by_xpath(field, "./following-sibling::div")
-                old_value = get_text(field_value, "//span[@class='field-old-value']")
-                new_value = get_text(field_value, "//span[@class='field-new-value']")
+                old_value = get_text(field_value, ".//span[@class='field-old-value']")
+                new_value = get_text(field_value, ".//span[@class='field-new-value']")
 
                 result["Fields"].append(
                     {"name": field_name, "old_value": old_value, "new_value": new_value}
@@ -201,28 +207,29 @@ def scrape_history(dialog_box):
 
         # Get comments
         if comment := get_text(
-            history, "//div[contains(@class, 'history-item-comment')]"
+            dialog_box, f"{details_panel_xpath}//div[contains(@class, 'history-item-comment')]"
         ):
             result["Content"] = comment
 
         # Get Links
         if links := find_elements_by_xpath(
-            history, "//div[@class='history-links']"
+            dialog_box, f"{details_panel_xpath}//div[@class='history-links']"
         ):
             for link in links:
                 result["Links"].append(
                     {
                         "Type": get_text(
-                            link, "//span[contains(@class, 'link-display-name')]//span"
+                            link, ".//span[contains(@class, 'link-display-name')]//span"
                         ),
                         "Link to item file": get_anchor_link(
-                            link, "//span[contains(@class, 'link-text')]//a"
+                            link, ".//span[contains(@class, 'link-text')]//a"
                         ),
                         "Title": get_text(
-                            link, "//span[contains(@class, 'link-text')]//span"
+                            link, ".//span[contains(@class, 'link-text')]//span"
                         ),
                     }
                 )
+
         print(result)
         results.append(result)
 
@@ -373,7 +380,7 @@ def scrape_child_work_items(driver, dialog_box):
 
             logging.info(f"Open dialog box for '{work_item_element.text}'")
             work_item_element.click()
-            time.sleep(3)
+            time.sleep(5)
 
             # dialog_xpath = (
             #     f"//span[@aria-label='ID Field' and "
@@ -393,9 +400,6 @@ def scrape_child_work_items(driver, dialog_box):
 
     return work_item_data
 
-
-def open_dialog_box(driver):
-    pass
 
 def scraper(driver, url, email, password, file_path):
     driver.maximize_window()
@@ -417,7 +421,7 @@ def scraper(driver, url, email, password, file_path):
         work_item = work_items[work_items_ctr]
 
         logging.info(f"Sleeping...")
-        time.sleep(3)
+        time.sleep(5)
 
         work_item_element = find_element_by_xpath(work_item, ".//a")
         work_item_element_text = work_item_element.text
@@ -427,7 +431,7 @@ def scraper(driver, url, email, password, file_path):
         work_item_element.click()
         # dialog_xpath = "//div[contains(@tabindex, '-1') and contains(@role, 'dialog')]"
 
-        dialog_xpath = "//div[@role='dialog'][last()]"
+        dialog_xpath = "(//div[@role='dialog'])[last()]"
         dialog_box = find_element_by_xpath(work_item, dialog_xpath)
 
         # Scrape Child Items
@@ -591,48 +595,58 @@ def chrome_settings_init():
 
     return chrome_settings, download_directory
 
-def analyze_dir(data):
+
+def analyze_data(data):
+    data_error = {
+        "link_error_count": 0,
+        "field_error_count": 0,
+        "comment_error_count": 0
+    }
 
     for i in data:
-
         if history := i["history"]:
             for history_item in history:
-                if "link" in history_item['Title']:
+                if "link" in history_item["Title"]:
+                    if len(history_item["Links"]) == 0:
+                        data_error["link_error_count"] += 1
 
-                    print(i["Title"])
-                    print(history_item["Date"])
-                    print(history_item["Title"])
-                    print(history_item["Links"])
+                if "Changed" in history_item["Title"]:
+                    if len(history_item["Fields"]) == 0:
+                        data_error["field_error_count"] += 1
+                        print(i["Title"], history_item["Title"])
 
+                if "comment" in history_item["Title"]:
+                    if history_item["Content"] is None:
+                        data_error["comment_error_count"] += 1
 
         if "children" in i:
             children = i.pop("children")
-            analyze_dir(children)
+            analyze_data(children)
+    return data_error
 
 if __name__ == "__main__":
     save_file = "data/scrape_result.json"
 
+    with open(save_file) as f:
+        scrape_result = json.load(f)
+        data_error = analyze_data(scrape_result)
+        print(data_error)
 
-    # with open(save_file) as f:
-    #     scrape_result = json.load(f)
-    #     analyze_dir(scrape_result)
-
-
-    chrome_config, chrome_downloads = chrome_settings_init()
-
-    # Clean attachments directory
-    if os.path.isdir(chrome_downloads):
-        shutil.rmtree(chrome_downloads)
-
-    with webdriver.Chrome(**chrome_config) as wd:
-        scraper(
-            wd,
-            config.BASE_URL + config.BACKLOG_ENDPOINT,
-            config.EMAIL,
-            config.PASSWORD,
-            save_file,
-        )
-
+    # chrome_config, chrome_downloads = chrome_settings_init()
+    #
+    # # Clean attachments directory
+    # if os.path.isdir(chrome_downloads):
+    #     shutil.rmtree(chrome_downloads)
+    #
+    # with webdriver.Chrome(**chrome_config) as wd:
+    #     scraper(
+    #         wd,
+    #         config.BASE_URL + config.BACKLOG_ENDPOINT,
+    #         config.EMAIL,
+    #         config.PASSWORD,
+    #         save_file,
+    #     )
+    #
     # with open(save_file) as f:
     #     scrape_result = json.load(f)
     #     create_directory_hierarchy(scrape_result)
