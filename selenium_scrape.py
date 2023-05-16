@@ -209,6 +209,19 @@ def scrape_history(dialog_box):
                     {"name": field_name, "old_value": old_value, "new_value": new_value}
                 )
 
+        if html_field := find_elements_by_xpath(
+            dialog_box, f"{details_panel_xpath}//div[@class='html-field-name history-section']"
+        ):
+            for field in html_field:
+                field_name = get_text(field, f"{details_panel_xpath}//div[@class='html-field-name history-section']")
+                field_value = find_element_by_xpath(field, "//parent::div/following-sibling::div")
+                old_value = get_text(field_value, "//span[@class='html-field-old-value']")
+                new_value = get_text(field_value, "//span[@class='html-field-new-value']")
+
+                result["Fields"].append(
+                    {"name": field_name, "old_value": old_value, "new_value": new_value}
+                )
+
         # Get comments
         if comment := get_text(
             dialog_box,
