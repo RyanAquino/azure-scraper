@@ -161,6 +161,7 @@ def scrape_history(dialog_box):
     # Check if there are collapsed history items
     expand_collapsed_by_xpath(dialog_box)
 
+    history_container_xpath = (
         "(//div[contains(@class, 'workitem-history-control-container')])[last()]"
     )
 
@@ -172,7 +173,9 @@ def scrape_history(dialog_box):
     for history in history_items:
         history.click()
 
-        details_panel_xpath = f"{history_container_xpath}//div[@class='history-details-panel']"
+        details_panel_xpath = (
+            f"{history_container_xpath}//div[@class='history-details-panel']"
+        )
 
         result = {
             "User": get_text(
@@ -180,7 +183,8 @@ def scrape_history(dialog_box):
                 f"{details_panel_xpath}//span[contains(@class, 'history-item-name-changed-by')]",
             ),
             "Date": get_text(
-                dialog_box, f"{details_panel_xpath}//span[contains(@class, 'history-item-date')]"
+                dialog_box,
+                f"{details_panel_xpath}//span[contains(@class, 'history-item-date')]",
             ),
             "Title": get_text(
                 dialog_box,
@@ -207,7 +211,8 @@ def scrape_history(dialog_box):
 
         # Get comments
         if comment := get_text(
-            dialog_box, f"{details_panel_xpath}//div[contains(@class, 'history-item-comment')]"
+            dialog_box,
+            f"{details_panel_xpath}//div[contains(@class, 'history-item-comment')]",
         ):
             result["Content"] = comment
 
@@ -600,7 +605,7 @@ def analyze_data(data):
     data_error = {
         "link_error_count": 0,
         "field_error_count": 0,
-        "comment_error_count": 0
+        "comment_error_count": 0,
     }
 
     for i in data:
@@ -624,30 +629,29 @@ def analyze_data(data):
             analyze_data(children)
     return data_error
 
+
 if __name__ == "__main__":
     save_file = "data/scrape_result.json"
 
+    chrome_config, chrome_downloads = chrome_settings_init()
+
+    # Clean attachments directory
+    if os.path.isdir(chrome_downloads):
+        shutil.rmtree(chrome_downloads)
+
+    with webdriver.Chrome(**chrome_config) as wd:
+        scraper(
+            wd,
+            config.BASE_URL + config.BACKLOG_ENDPOINT,
+            config.EMAIL,
+            config.PASSWORD,
+            save_file,
+        )
+
     with open(save_file) as f:
         scrape_result = json.load(f)
+        create_directory_hierarchy(scrape_result)
+        create_related_work_contents(scrape_result)
+
         data_error = analyze_data(scrape_result)
         print(data_error)
-
-    # chrome_config, chrome_downloads = chrome_settings_init()
-    #
-    # # Clean attachments directory
-    # if os.path.isdir(chrome_downloads):
-    #     shutil.rmtree(chrome_downloads)
-    #
-    # with webdriver.Chrome(**chrome_config) as wd:
-    #     scraper(
-    #         wd,
-    #         config.BASE_URL + config.BACKLOG_ENDPOINT,
-    #         config.EMAIL,
-    #         config.PASSWORD,
-    #         save_file,
-    #     )
-    #
-    # with open(save_file) as f:
-    #     scrape_result = json.load(f)
-    #     create_directory_hierarchy(scrape_result)
-    #     create_related_work_contents(scrape_result)
