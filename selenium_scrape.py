@@ -7,6 +7,7 @@ from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options as ChromeOptions
+from datetime import datetime
 import time
 import shutil
 import config
@@ -286,10 +287,7 @@ def scrape_related_work(action, dialog_box):
                 related_work, updated_at_hover_xpath
             )
             action.move_to_element(updated_at_hover).perform()
-
-            updated_at = find_element_by_xpath(
-                related_work, "//p[contains(@class, 'subText-74')]"
-            ).text
+            updated_at = get_text(related_work, "//p[contains(@class, 'subText-74')]")
             updated_at = " ".join(updated_at.split(" ")[-5:])
 
             related_work_url = related_work_link.get_attribute("href").split("/")[-1]
@@ -306,23 +304,30 @@ def scrape_related_work(action, dialog_box):
     return results
 
 
-def scrape_discussions(dialog_box):
+def scrape_discussions(driver, action):
     results = []
 
+    dialog_xpath = "//div[@role='dialog'][last()]"
+
     discussions_xpath = (
-        ".//div[contains(@class, 'initialized work-item-discussion-control')]"
+        f"{dialog_xpath}//div[contains(@class, 'initialized work-item-discussion-control')]"
         "//div[contains(@class, 'wit-comment-item')]"
     )
-    discussions = find_elements_by_xpath(dialog_box, discussions_xpath)
+    discussions = find_elements_by_xpath(driver, discussions_xpath)
 
     if discussions:
         for discussion in discussions:
-            content = get_text(discussion, "comment-content")
+            content = get_text(discussion, ".//div[@class='comment-content']")
+
+            comment_timestamp = find_element_by_xpath(discussion, ".//a[@class='comment-timestamp']")
+            action.move_to_element(comment_timestamp).perform()
+            date = get_text(discussion, "//p[contains(@class, 'subText-74')]")
 
             if content:
                 result = {
-                    "Title": get_text(discussion, "//span[@class='user-display-name']"),
+                    "User": get_text(discussion, ".//span[@class='user-display-name']"),
                     "Content": content,
+                    "Date": date
                 }
                 print(result)
                 results.append(result)
@@ -368,7 +373,7 @@ def scrape_child_work_items(driver, dialog_box):
         "Blocked": get_input_value(dialog_box, blocked_xpath),
         "description": desc.text,
         "related_work": scrape_related_work(action, dialog_box),
-        "discussions": scrape_discussions(dialog_box),
+        "discussions": scrape_discussions(driver, action),
     }
 
     # scrape_attachments(driver, dialog_box)
@@ -503,7 +508,9 @@ def create_history_metadata(history, file):
 
 
 def create_directory_hierarchy(dicts, path="data", indent=0):
-    attachments_path = os.path.join(f"{path}/attachments")
+    attachments_path = os.path.join(path, "attachments")
+    discussion_path = os.path.join(path, "discussion")
+    discussion_attachments_path = os.path.join(discussion_path, "attachments")
     exclude_fields = ["children", "related_work", "discussions", "history"]
 
     for d in dicts:
@@ -512,18 +519,24 @@ def create_directory_hierarchy(dicts, path="data", indent=0):
 
         print(" " * indent + dir_name)
         logging.info(f"Creating directory in {dir_path}")
-        os.makedirs(dir_path, exist_ok=True)  # create directory if it doesn't exist
+        os.makedirs(dir_path, exist_ok=True)  
         os.makedirs(attachments_path, exist_ok=True)
+        os.makedirs(discussion_path, exist_ok=True)
+        os.makedirs(discussion_attachments_path, exist_ok=True)
 
         if "history" in d and d["history"]:
             with open(os.path.join(dir_path, "history.md"), "w") as file:
                 create_history_metadata(d.pop("history"), file)
 
         if "discussions" in d and d["discussions"]:
-            with open(os.path.join(dir_path, "discussion.md"), "w") as file:
-                for discussion in d.pop("discussions"):
-                    file.write(discussion["Title"] + "\n")
-                    file.write(discussion["Content"] + "\n")
+            for discussion in d.pop("discussions"):
+                discussion_date = datetime.strptime(discussion['Date'], '%A, %B %d, %Y %H:%M:%S %p')
+
+                file_name = f"{discussion_date.strftime('%Y_%m_%d')}_{discussion['User']}.md"
+
+                with open(os.path.join(discussion_path, file_name), "w") as file:
+                    file.write(f"Title: <{discussion['User']} commented {discussion_date.strftime('%B %d, %Y')}>\n")
+                    file.write(f"Content: {discussion['Content']}\n")
 
         with open(os.path.join(dir_path, "description.md"), "w") as file:
             file.write(d.pop("description"))
@@ -646,25 +659,27 @@ def analyze_data(data):
 if __name__ == "__main__":
     save_file = "data/scrape_result.json"
 
-    chrome_config, chrome_downloads = chrome_settings_init()
+    # chrome_config, chrome_downloads = chrome_settings_init()
 
-    # Clean attachments directory
-    if os.path.isdir(chrome_downloads):
-        shutil.rmtree(chrome_downloads)
+    # # Clean attachments directory
+    # if os.path.isdir(chrome_downloads):
+    #     shutil.rmtree(chrome_downloads)
 
-    with webdriver.Chrome(**chrome_config) as wd:
-        scraper(
-            wd,
-            config.BASE_URL + config.BACKLOG_ENDPOINT,
-            config.EMAIL,
-            config.PASSWORD,
-            save_file,
-        )
+    # with webdriver.Chrome(**chrome_config) as wd:
+    #     scraper(
+    #         wd,
+    #         config.BASE_URL + config.BACKLOG_ENDPOINT,
+    #         config.EMAIL,
+    #         config.PASSWORD,
+    #         save_file,
+    #     )
 
     with open(save_file) as f:
         scrape_result = json.load(f)
         create_directory_hierarchy(scrape_result)
         create_related_work_contents(scrape_result)
 
+    with open(save_file) as f:
+        scrape_result = json.load(f)
         data_error = analyze_data(scrape_result)
         print(data_error)
