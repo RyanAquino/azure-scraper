@@ -1,5 +1,4 @@
 from pathlib import Path
-
 from selenium.webdriver.chrome.service import Service
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -17,6 +16,7 @@ import os
 import platform
 import urllib.parse
 from uuid import uuid4
+import urllib.request as request
 
 logging.basicConfig(
     level=logging.INFO,
@@ -321,6 +321,9 @@ def scrape_discussion_attachments(attachments):
                 "link": attachment.get_attribute("src"),
                 "file_name": attachment.get_attribute("alt")
             }
+            print(result)
+            logging.info(f"Downloading {result['link']} to /data/temp/{result['file_name']}")
+            request.urlretrieve(result["link"], os.path.join("data","temp", result["file_name"]))
             results.append(result)
     
     return results
@@ -403,7 +406,7 @@ def scrape_child_work_items(driver, dialog_box):
         "discussions": scrape_discussions(driver, action),
     }
 
-    # scrape_attachments(driver, dialog_box)
+    scrape_attachments(driver, dialog_box)
 
     details_xpath = ".//li[@aria-label='Details']"
     history_xpath = ".//li[@aria-label='History']"
@@ -541,19 +544,23 @@ def create_history_metadata(history, file):
 
 def create_directory_hierarchy(dicts, path="data", indent=0):
     attachments_path = os.path.join(path, "attachments")
-    discussion_path = os.path.join(path, "discussion")
-    discussion_attachments_path = os.path.join(discussion_path, "attachments")
+    
     exclude_fields = ["children", "related_work", "discussions", "history"]
 
     for d in dicts:
         dir_name = f"{d['Task id']}_{d['Title']}"
         dir_path = os.path.join(path, dir_name)
+        discussion_path = os.path.join(dir_path, "discussion")
+        discussion_attachments_path = os.path.join(discussion_path, "attachments")
+
 
         print(" " * indent + dir_name)
         logging.info(f"Creating directory in {dir_path}")
         os.makedirs(dir_path, exist_ok=True)
         os.makedirs(attachments_path, exist_ok=True)
+        
         os.makedirs(discussion_path, exist_ok=True)
+        shutil.rmtree(discussion_path)
         os.makedirs(discussion_attachments_path, exist_ok=True)
 
         if "history" in d and d["history"]:
@@ -562,6 +569,7 @@ def create_directory_hierarchy(dicts, path="data", indent=0):
 
         if "discussions" in d and d["discussions"]:
             for discussion in d.pop("discussions"):
+
                 discussion_date = datetime.strptime(
                     discussion["Date"], "%A, %B %d, %Y %H:%M:%S %p"
                 )
@@ -569,13 +577,12 @@ def create_directory_hierarchy(dicts, path="data", indent=0):
                 file_name = (
                     f"{discussion_date.strftime('%Y_%m_%d')}_{discussion['User']}.md"
                 )
-
-                with open(os.path.join(discussion_path, file_name), "w") as file:
+                with open(os.path.join(discussion_path, file_name), "a+") as file:
                     file.write(
-                        f"* Title: <{discussion['User']} commented {discussion_date.strftime('%B %d, %Y')}>\n"
+                        f"* Title: <{discussion['User']} commented {discussion_date.strftime('%B %d, %Y %H:%m:%S %p')}>\n"
                     )
                     file.write(
-                        f"* Content: {add_line_break(discussion['Content'], 100)}\n"
+                        f"* Content: {add_line_break(discussion['Content'], 90)}\n"
                     )
 
         with open(os.path.join(dir_path, "description.md"), "w") as file:
@@ -700,20 +707,23 @@ def analyze_data(data):
 if __name__ == "__main__":
     save_file = "data/scrape_result.json"
 
-    chrome_config, chrome_downloads = chrome_settings_init()
+    # chrome_config, chrome_downloads = chrome_settings_init()
 
-    # Clean attachments directory
-    if os.path.isdir(chrome_downloads):
-        shutil.rmtree(chrome_downloads)
+    # # Clean attachments directory
+    # if os.path.isdir(chrome_downloads):
+    #     shutil.rmtree(chrome_downloads)
 
-    with webdriver.Chrome(**chrome_config) as wd:
-        scraper(
-            wd,
-            config.BASE_URL + config.BACKLOG_ENDPOINT,
-            config.EMAIL,
-            config.PASSWORD,
-            save_file,
-        )
+    # if os.path.isdir(chrome_downloads):
+    #     shutil.rmtree(chrome_downloads)
+
+    # with webdriver.Chrome(**chrome_config) as wd:
+    #     scraper(
+    #         wd,
+    #         config.BASE_URL + config.BACKLOG_ENDPOINT,
+    #         config.EMAIL,
+    #         config.PASSWORD,
+    #         save_file,
+    #     )
 
     with open(save_file) as f:
         scrape_result = json.load(f)
