@@ -211,13 +211,23 @@ def scrape_history(dialog_box):
                 )
 
         if html_field := find_elements_by_xpath(
-            dialog_box, f"{details_panel_xpath}//div[@class='html-field-name history-section']"
+            dialog_box,
+            f"{details_panel_xpath}//div[@class='html-field-name history-section']",
         ):
             for field in html_field:
-                field_name = get_text(field, f"{details_panel_xpath}//div[@class='html-field-name history-section']")
-                field_value = find_element_by_xpath(field, "//parent::div/following-sibling::div")
-                old_value = get_text(field_value, "//span[@class='html-field-old-value']")
-                new_value = get_text(field_value, "//span[@class='html-field-new-value']")
+                field_name = get_text(
+                    field,
+                    f"{details_panel_xpath}//div[@class='html-field-name history-section']",
+                )
+                field_value = find_element_by_xpath(
+                    field, "//parent::div/following-sibling::div"
+                )
+                old_value = get_text(
+                    field_value, "//span[@class='html-field-old-value']"
+                )
+                new_value = get_text(
+                    field_value, "//span[@class='html-field-new-value']"
+                )
 
                 result["Fields"].append(
                     {"name": field_name, "old_value": old_value, "new_value": new_value}
@@ -249,7 +259,6 @@ def scrape_history(dialog_box):
                     }
                 )
 
-        print(result)
         results.append(result)
 
     return results
@@ -303,6 +312,19 @@ def scrape_related_work(action, dialog_box):
 
     return results
 
+def scrape_discussion_attachments(attachments):
+    results = []
+
+    if attachments:
+        for attachment in attachments:
+            result = {
+                "link": attachment.get_attribute("src"),
+                "file_name": attachment.get_attribute("alt")
+            }
+            results.append(result)
+    
+    return results
+
 
 def scrape_discussions(driver, action):
     results = []
@@ -317,20 +339,25 @@ def scrape_discussions(driver, action):
 
     if discussions:
         for discussion in discussions:
-            content = get_text(discussion, ".//div[@class='comment-content']")
+            content_xpath = ".//div[@class='comment-content']"
+            content = get_text(discussion, content_xpath)
 
-            comment_timestamp = find_element_by_xpath(discussion, ".//a[@class='comment-timestamp']")
+            content_attachment_xpath = f"{content_xpath}//img"
+            attachments = find_elements_by_xpath(discussion, content_attachment_xpath)
+
+            comment_timestamp = find_element_by_xpath(
+                discussion, ".//a[@class='comment-timestamp']"
+            )
             action.move_to_element(comment_timestamp).perform()
             date = get_text(discussion, "//p[contains(@class, 'subText-74')]")
 
-            if content:
-                result = {
-                    "User": get_text(discussion, ".//span[@class='user-display-name']"),
-                    "Content": content,
-                    "Date": date
-                }
-                print(result)
-                results.append(result)
+            result = {
+                "User": get_text(discussion, ".//span[@class='user-display-name']"),
+                "Content": content,
+                "Date": date,
+                "attachments": scrape_discussion_attachments(attachments),
+            }
+            results.append(result)
     return results
 
 
@@ -391,6 +418,8 @@ def scrape_child_work_items(driver, dialog_box):
     click_button_by_xpath(dialog_box, details_xpath)
 
     child_work_items = find_elements_by_xpath(dialog_box, child_xpath)
+
+    print(work_item_data)
 
     if child_work_items:
         children = []
@@ -459,7 +488,6 @@ def scraper(driver, url, email, password, file_path):
 
         # Scrape Child Items
         work_item_data = scrape_child_work_items(driver, dialog_box)
-        print(work_item_data)
         result_set.append(work_item_data)
 
         logging.info(f"Close dialog box for '{work_item_element_text}'")
@@ -474,7 +502,11 @@ def scraper(driver, url, email, password, file_path):
 
 def add_line_break(word, max_length):
     if len(word) > max_length:
-        return word[:max_length] + "\n" + add_line_break(word[max_length:], max_length)
+        return (
+            word[:max_length]
+            + "\n           "
+            + add_line_break(word[max_length:], max_length)
+        )
     else:
         return word
 
@@ -519,7 +551,7 @@ def create_directory_hierarchy(dicts, path="data", indent=0):
 
         print(" " * indent + dir_name)
         logging.info(f"Creating directory in {dir_path}")
-        os.makedirs(dir_path, exist_ok=True)  
+        os.makedirs(dir_path, exist_ok=True)
         os.makedirs(attachments_path, exist_ok=True)
         os.makedirs(discussion_path, exist_ok=True)
         os.makedirs(discussion_attachments_path, exist_ok=True)
@@ -530,13 +562,21 @@ def create_directory_hierarchy(dicts, path="data", indent=0):
 
         if "discussions" in d and d["discussions"]:
             for discussion in d.pop("discussions"):
-                discussion_date = datetime.strptime(discussion['Date'], '%A, %B %d, %Y %H:%M:%S %p')
+                discussion_date = datetime.strptime(
+                    discussion["Date"], "%A, %B %d, %Y %H:%M:%S %p"
+                )
 
-                file_name = f"{discussion_date.strftime('%Y_%m_%d')}_{discussion['User']}.md"
+                file_name = (
+                    f"{discussion_date.strftime('%Y_%m_%d')}_{discussion['User']}.md"
+                )
 
                 with open(os.path.join(discussion_path, file_name), "w") as file:
-                    file.write(f"Title: <{discussion['User']} commented {discussion_date.strftime('%B %d, %Y')}>\n")
-                    file.write(f"Content: {discussion['Content']}\n")
+                    file.write(
+                        f"* Title: <{discussion['User']} commented {discussion_date.strftime('%B %d, %Y')}>\n"
+                    )
+                    file.write(
+                        f"* Content: {add_line_break(discussion['Content'], 100)}\n"
+                    )
 
         with open(os.path.join(dir_path, "description.md"), "w") as file:
             file.write(d.pop("description"))
@@ -604,7 +644,7 @@ def chrome_settings_init():
     download_directory = f"{os.getcwd()}/data/attachments"
 
     chrome_options = ChromeOptions()
-    # chrome_options.add_argument("--headless=new")
+    chrome_options.add_argument("--headless=new")
     chrome_options.add_argument("--incognito")
     chrome_options.add_experimental_option(
         "prefs",
@@ -649,7 +689,8 @@ def analyze_data(data):
                 if "comment" in history_item["Title"]:
                     if history_item["Content"] is None:
                         data_error["comment_error_count"] += 1
-
+        if discussions := i["discussions"]:
+            print( i["Title"] ,len(discussions))
         if "children" in i:
             children = i.pop("children")
             analyze_data(children)
@@ -659,27 +700,27 @@ def analyze_data(data):
 if __name__ == "__main__":
     save_file = "data/scrape_result.json"
 
-    # chrome_config, chrome_downloads = chrome_settings_init()
+    chrome_config, chrome_downloads = chrome_settings_init()
 
-    # # Clean attachments directory
-    # if os.path.isdir(chrome_downloads):
-    #     shutil.rmtree(chrome_downloads)
+    # Clean attachments directory
+    if os.path.isdir(chrome_downloads):
+        shutil.rmtree(chrome_downloads)
 
-    # with webdriver.Chrome(**chrome_config) as wd:
-    #     scraper(
-    #         wd,
-    #         config.BASE_URL + config.BACKLOG_ENDPOINT,
-    #         config.EMAIL,
-    #         config.PASSWORD,
-    #         save_file,
-    #     )
+    with webdriver.Chrome(**chrome_config) as wd:
+        scraper(
+            wd,
+            config.BASE_URL + config.BACKLOG_ENDPOINT,
+            config.EMAIL,
+            config.PASSWORD,
+            save_file,
+        )
 
     with open(save_file) as f:
         scrape_result = json.load(f)
         create_directory_hierarchy(scrape_result)
         create_related_work_contents(scrape_result)
 
-    with open(save_file) as f:
-        scrape_result = json.load(f)
-        data_error = analyze_data(scrape_result)
-        print(data_error)
+    # with open(save_file) as f:
+    #     scrape_result = json.load(f)
+    #     data_error = analyze_data(scrape_result)
+    #     print(data_error)
