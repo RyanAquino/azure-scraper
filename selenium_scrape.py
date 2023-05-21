@@ -135,11 +135,11 @@ def scrape_attachments(driver, dialog_box):
         attachment_url = attachment.get_attribute("href")
         parsed_url = urllib.parse.urlparse(attachment_url)
         query_params = urllib.parse.parse_qs(parsed_url.query)
-        query_params["download"] = "True"
         query_params["fileName"] = [f"{uuid4()}_{query_params.get('fileName')[0]}"]
         updated_url = urllib.parse.urlunparse(
             parsed_url._replace(query=urllib.parse.urlencode(query_params, doseq=True))
         )
+        logging.info(f"Downloading attachments from {updated_url}")
         driver.get(updated_url)
 
     # Navigate back to details
@@ -321,9 +321,11 @@ def scrape_discussion_attachments(driver, attachments):
             parsed_url = urllib.parse.urlparse(attachment.get_attribute("src"))
             query_params = urllib.parse.parse_qs(parsed_url.query)
             query_params["fileName"] = [f"{uuid4()}_{query_params.get('fileName')[0]}"]
+            query_params["download"] = "True"
             updated_url = urllib.parse.urlunparse(
                 parsed_url._replace(query=urllib.parse.urlencode(query_params, doseq=True))
             )
+            logging.info(f"Downloading attachments from {updated_url}")
             driver.get(updated_url)
             results.append(query_params["fileName"][0])
     
@@ -653,7 +655,7 @@ def chrome_settings_init():
             "download.default_directory": download_directory,
             "download.prompt_for_download": False,
             "download.directory_upgrade": True,
-            "safebrowsing.enabled": True,
+            # "safebrowsing.enabled": True,
         },
     )
 
@@ -706,9 +708,7 @@ if __name__ == "__main__":
     # Clean attachments directory
     if os.path.isdir(chrome_downloads):
         shutil.rmtree(chrome_downloads)
-
-    if os.path.isdir(chrome_downloads):
-        shutil.rmtree(chrome_downloads)
+        os.makedirs(chrome_downloads)
 
     with webdriver.Chrome(**chrome_config) as wd:
         scraper(
