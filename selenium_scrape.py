@@ -135,6 +135,7 @@ def scrape_attachments(driver, dialog_box):
         attachment_url = attachment.get_attribute("href")
         parsed_url = urllib.parse.urlparse(attachment_url)
         query_params = urllib.parse.parse_qs(parsed_url.query)
+        query_params["download"] = "True"
         query_params["fileName"] = [f"{uuid4()}_{query_params.get('fileName')[0]}"]
         updated_url = urllib.parse.urlunparse(
             parsed_url._replace(query=urllib.parse.urlencode(query_params, doseq=True))
@@ -312,19 +313,19 @@ def scrape_related_work(action, dialog_box):
 
     return results
 
-def scrape_discussion_attachments(attachments):
+def scrape_discussion_attachments(driver, attachments):
     results = []
 
     if attachments:
         for attachment in attachments:
-            result = {
-                "link": attachment.get_attribute("src"),
-                "file_name": attachment.get_attribute("alt")
-            }
-            print(result)
-            logging.info(f"Downloading {result['link']} to /data/temp/{result['file_name']}")
-            request.urlretrieve(result["link"], os.path.join("data","temp", result["file_name"]))
-            results.append(result)
+            parsed_url = urllib.parse.urlparse(attachment.get_attribute("src"))
+            query_params = urllib.parse.parse_qs(parsed_url.query)
+            query_params["fileName"] = [f"{uuid4()}_{query_params.get('fileName')[0]}"]
+            updated_url = urllib.parse.urlunparse(
+                parsed_url._replace(query=urllib.parse.urlencode(query_params, doseq=True))
+            )
+            driver.get(updated_url)
+            results.append(query_params["fileName"][0])
     
     return results
 
@@ -358,7 +359,7 @@ def scrape_discussions(driver, action):
                 "User": get_text(discussion, ".//span[@class='user-display-name']"),
                 "Content": content,
                 "Date": date,
-                "attachments": scrape_discussion_attachments(attachments),
+                "attachments": scrape_discussion_attachments(driver, attachments),
             }
             results.append(result)
     return results
@@ -410,14 +411,13 @@ def scrape_child_work_items(driver, dialog_box):
 
     details_xpath = ".//li[@aria-label='Details']"
     history_xpath = ".//li[@aria-label='History']"
-    # links_xpath = ".//li[@aria-label='Links']"
-    # attachments_xpath = ".//li[@aria-label='Attachments']"
 
     # Navigate to history tab
     click_button_by_xpath(dialog_box, history_xpath)
 
     work_item_data["history"] = scrape_history(dialog_box)
 
+    # Navigate back to details tab
     click_button_by_xpath(dialog_box, details_xpath)
 
     child_work_items = find_elements_by_xpath(dialog_box, child_xpath)
@@ -428,7 +428,6 @@ def scrape_child_work_items(driver, dialog_box):
         children = []
         for work_item in child_work_items:
             work_item_element = find_element_by_xpath(work_item, ".//a")
-            child_id = work_item_element.get_attribute("href").split("/")[-1]
 
             # Reposition movement to clear space / description
             action.move_to_element(desc).perform()
@@ -436,11 +435,6 @@ def scrape_child_work_items(driver, dialog_box):
             logging.info(f"Open dialog box for '{work_item_element.text}'")
             work_item_element.click()
             time.sleep(5)
-
-            # dialog_xpath = (
-            #     f"//span[@aria-label='ID Field' and "
-            #     f"contains(text(), '{child_id}')]//ancestor::div"
-            # )
 
             dialog_xpath = "//div[@role='dialog'][last()]"
             child_dialog_box = find_element_by_xpath(driver, dialog_xpath)
@@ -707,23 +701,23 @@ def analyze_data(data):
 if __name__ == "__main__":
     save_file = "data/scrape_result.json"
 
-    # chrome_config, chrome_downloads = chrome_settings_init()
+    chrome_config, chrome_downloads = chrome_settings_init()
 
-    # # Clean attachments directory
-    # if os.path.isdir(chrome_downloads):
-    #     shutil.rmtree(chrome_downloads)
+    # Clean attachments directory
+    if os.path.isdir(chrome_downloads):
+        shutil.rmtree(chrome_downloads)
 
-    # if os.path.isdir(chrome_downloads):
-    #     shutil.rmtree(chrome_downloads)
+    if os.path.isdir(chrome_downloads):
+        shutil.rmtree(chrome_downloads)
 
-    # with webdriver.Chrome(**chrome_config) as wd:
-    #     scraper(
-    #         wd,
-    #         config.BASE_URL + config.BACKLOG_ENDPOINT,
-    #         config.EMAIL,
-    #         config.PASSWORD,
-    #         save_file,
-    #     )
+    with webdriver.Chrome(**chrome_config) as wd:
+        scraper(
+            wd,
+            config.BASE_URL + config.BACKLOG_ENDPOINT,
+            config.EMAIL,
+            config.PASSWORD,
+            save_file,
+        )
 
     with open(save_file) as f:
         scrape_result = json.load(f)
