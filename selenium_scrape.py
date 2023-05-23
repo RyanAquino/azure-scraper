@@ -107,7 +107,7 @@ def get_anchor_link(driver, xpath):
 
 def get_text(driver, xpath):
     if element := find_element_by_xpath(driver, xpath):
-        return element.text
+        return element.text 
 
 
 def scrape_attachments(driver, dialog_box):
@@ -313,24 +313,25 @@ def scrape_related_work(action, dialog_box):
 
     return results
 
-def scrape_discussion_attachments(driver, attachments):
-    results = []
 
-    if attachments:
-        for attachment in attachments:
-            parsed_url = urllib.parse.urlparse(attachment.get_attribute("src"))
-            query_params = urllib.parse.parse_qs(parsed_url.query)
-            query_params["fileName"] = [f"{uuid4()}_{query_params.get('fileName')[0]}"]
-            query_params["download"] = "True"
-            updated_url = urllib.parse.urlunparse(
-                parsed_url._replace(query=urllib.parse.urlencode(query_params, doseq=True))
-            )
-            logging.info(f"Downloading attachments from {updated_url}")
-            driver.get(updated_url)
-            results.append(query_params["fileName"][0])
+def scrape_discussion_attachments(driver, attachment):
+    parsed_url = urllib.parse.urlparse(attachment.get_attribute("src"))
+    query_params = urllib.parse.parse_qs(parsed_url.query)
+    query_params["fileName"] = [f"{uuid4()}_{query_params.get('fileName')[0]}"]
     
-    return results
+    if "download" not in query_params:
+        query_params["download"] = "True"
 
+    updated_url = urllib.parse.urlunparse(
+        parsed_url._replace(query=urllib.parse.urlencode(query_params, doseq=True))
+    )
+    driver.get(updated_url)
+
+    return {
+        "url": updated_url,
+        "filename": query_params["fileName"][0]
+    }
+    
 
 def scrape_discussions(driver, action):
     results = []
@@ -350,7 +351,6 @@ def scrape_discussions(driver, action):
 
             content_attachment_xpath = f"{content_xpath}//img"
             attachments = find_elements_by_xpath(discussion, content_attachment_xpath)
-
             comment_timestamp = find_element_by_xpath(
                 discussion, ".//a[@class='comment-timestamp']"
             )
@@ -361,11 +361,10 @@ def scrape_discussions(driver, action):
                 "User": get_text(discussion, ".//span[@class='user-display-name']"),
                 "Content": content,
                 "Date": date,
-                "attachments": scrape_discussion_attachments(driver, attachments),
+                "attachments": [scrape_discussion_attachments(driver, attachment) for attachment in (attachments or [])],
             }
             results.append(result)
     return results
-
 
 def scrape_child_work_items(driver, dialog_box):
     action = ActionChains(driver)
@@ -411,6 +410,7 @@ def scrape_child_work_items(driver, dialog_box):
 
     scrape_attachments(driver, dialog_box)
 
+
     details_xpath = ".//li[@aria-label='Details']"
     history_xpath = ".//li[@aria-label='History']"
 
@@ -423,8 +423,6 @@ def scrape_child_work_items(driver, dialog_box):
     click_button_by_xpath(dialog_box, details_xpath)
 
     child_work_items = find_elements_by_xpath(dialog_box, child_xpath)
-
-    print(work_item_data)
 
     if child_work_items:
         children = []
@@ -480,7 +478,6 @@ def scraper(driver, url, email, password, file_path):
         logging.info(f"Open dialog box for '{work_item_element_text}'")
         # Click
         work_item_element.click()
-        # dialog_xpath = "//div[contains(@tabindex, '-1') and contains(@role, 'dialog')]"
 
         dialog_xpath = "(//div[@role='dialog'])[last()]"
         dialog_box = find_element_by_xpath(work_item, dialog_xpath)
@@ -493,6 +490,9 @@ def scraper(driver, url, email, password, file_path):
         # Close dialog box
         click_button_by_xpath(dialog_box, ".//button[contains(@class, 'ui-button')]")
         work_items_ctr += 1
+
+
+
 
     logging.info(f"Saving result to {file_path}")
     with open(file_path, "w") as outfile:
@@ -580,6 +580,16 @@ def create_directory_hierarchy(dicts, path="data", indent=0):
                     file.write(
                         f"* Content: {add_line_break(discussion['Content'], 90)}\n"
                     )
+                
+                if discussion["attachments"]:
+                    for attachment in discussion["attachments"]:
+                        source = os.path.join(attachments_path, attachment["filename"])
+                        destination = os.path.join(discussion_attachments_path, attachment["filename"] )
+
+                        if os.path.exists(file):
+                            shutil.move(source, destination)
+
+
 
         with open(os.path.join(dir_path, "description.md"), "w") as file:
             file.write(d.pop("description"))
@@ -644,15 +654,15 @@ def create_related_work_contents(scrape_results, path: Path = Path("data")):
 
 
 def chrome_settings_init():
-    download_directory = f"{os.getcwd()}/data/attachments"
+    download_directory = Path(f"{os.getcwd()}/data/attachments")
 
     chrome_options = ChromeOptions()
-    chrome_options.add_argument("--headless=new")
+    # chrome_options.add_argument("--headless=new")
     chrome_options.add_argument("--incognito")
     chrome_options.add_experimental_option(
         "prefs",
         {
-            "download.default_directory": download_directory,
+            "download.default_directory": str(download_directory),
             "download.prompt_for_download": False,
             "download.directory_upgrade": True,
             # "safebrowsing.enabled": True,
