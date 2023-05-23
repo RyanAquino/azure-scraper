@@ -548,8 +548,7 @@ def create_directory_hierarchy(dicts, path = os.path.join(os.getcwd(), "data"), 
         discussion_path = os.path.join(dir_path, "discussion")
         discussion_attachments_path = os.path.join(discussion_path, "attachments")
 
-
-        # print(" " * indent + dir_name)
+        print(" " * indent + dir_name)
         logging.info(f"Creating directory in {dir_path}")
         os.makedirs(dir_path, exist_ok=True)
         os.makedirs(attachments_path, exist_ok=True)
@@ -654,7 +653,7 @@ def chrome_settings_init():
     download_directory = Path(f"{os.getcwd()}/data/attachments")
 
     chrome_options = ChromeOptions()
-    # chrome_options.add_argument("--headless=new")
+    chrome_options.add_argument("--headless=new")
     chrome_options.add_argument("--incognito")
     chrome_options.add_experimental_option(
         "prefs",
@@ -710,28 +709,28 @@ def analyze_data(data):
 if __name__ == "__main__":
     save_file = "data/scrape_result.json"
 
-    # chrome_config, chrome_downloads = chrome_settings_init()
+    chrome_config, chrome_downloads = chrome_settings_init()
 
-    # # Clean attachments directory
-    # if os.path.isdir(chrome_downloads):
-    #     shutil.rmtree(chrome_downloads)
-    #     os.makedirs(chrome_downloads)
+    # Clean attachments directory
+    if os.path.isdir(chrome_downloads):
+        shutil.rmtree(chrome_downloads)
+        os.makedirs(chrome_downloads)
 
-    # with webdriver.Chrome(**chrome_config) as wd:
-    #     scraper(
-    #         wd,
-    #         config.BASE_URL + config.BACKLOG_ENDPOINT,
-    #         config.EMAIL,
-    #         config.PASSWORD,
-    #         save_file,
-    #     )
+    with webdriver.Chrome(**chrome_config) as wd:
+        scraper(
+            wd,
+            config.BASE_URL + config.BACKLOG_ENDPOINT,
+            config.EMAIL,
+            config.PASSWORD,
+            save_file,
+        )
 
     with open(save_file) as f:
         scrape_result = json.load(f)
         create_directory_hierarchy(scrape_result)
         create_related_work_contents(scrape_result)
 
-    # with open(save_file) as f:
-    #     scrape_result = json.load(f)
-    #     data_error = analyze_data(scrape_result)
-    #     print(data_error)
+    with open(save_file) as f:
+        scrape_result = json.load(f)
+        data_error = analyze_data(scrape_result)
+        print(data_error)
