@@ -107,7 +107,7 @@ def get_anchor_link(driver, xpath):
 
 def get_text(driver, xpath):
     if element := find_element_by_xpath(driver, xpath):
-        return element.text 
+        return element.text
 
 
 def scrape_attachments(driver, dialog_box):
@@ -318,7 +318,7 @@ def scrape_discussion_attachments(driver, attachment):
     parsed_url = urllib.parse.urlparse(attachment.get_attribute("src"))
     query_params = urllib.parse.parse_qs(parsed_url.query)
     query_params["fileName"] = [f"{uuid4()}_{query_params.get('fileName')[0]}"]
-    
+
     if "download" not in query_params:
         query_params["download"] = "True"
 
@@ -327,11 +327,8 @@ def scrape_discussion_attachments(driver, attachment):
     )
     driver.get(updated_url)
 
-    return {
-        "url": updated_url,
-        "filename": query_params["fileName"][0]
-    }
-    
+    return {"url": updated_url, "filename": query_params["fileName"][0]}
+
 
 def scrape_discussions(driver, action):
     results = []
@@ -361,10 +358,14 @@ def scrape_discussions(driver, action):
                 "User": get_text(discussion, ".//span[@class='user-display-name']"),
                 "Content": content,
                 "Date": date,
-                "attachments": [scrape_discussion_attachments(driver, attachment) for attachment in (attachments or [])],
+                "attachments": [
+                    scrape_discussion_attachments(driver, attachment)
+                    for attachment in (attachments or [])
+                ],
             }
             results.append(result)
     return results
+
 
 def scrape_child_work_items(driver, dialog_box):
     action = ActionChains(driver)
@@ -409,7 +410,6 @@ def scrape_child_work_items(driver, dialog_box):
     }
 
     scrape_attachments(driver, dialog_box)
-
 
     details_xpath = ".//li[@aria-label='Details']"
     history_xpath = ".//li[@aria-label='History']"
@@ -491,9 +491,6 @@ def scraper(driver, url, email, password, file_path):
         click_button_by_xpath(dialog_box, ".//button[contains(@class, 'ui-button')]")
         work_items_ctr += 1
 
-
-
-
     logging.info(f"Saving result to {file_path}")
     with open(file_path, "w") as outfile:
         json.dump(result_set, outfile)
@@ -538,7 +535,7 @@ def create_history_metadata(history, file):
                 file.write(f"       * Title: {link['Title']}\n")
 
 
-def create_directory_hierarchy(dicts, path = os.path.join(os.getcwd(), "data"), indent=0):
+def create_directory_hierarchy(dicts, path=os.path.join(os.getcwd(), "data"), indent=0):
     attachments_path = os.path.join(path, "attachments")
     exclude_fields = ["children", "related_work", "discussions", "history"]
 
@@ -551,8 +548,6 @@ def create_directory_hierarchy(dicts, path = os.path.join(os.getcwd(), "data"), 
         print(" " * indent + dir_name)
         logging.info(f"Creating directory in {dir_path}")
         os.makedirs(dir_path, exist_ok=True)
-        os.makedirs(attachments_path, exist_ok=True)
-        
         os.makedirs(discussion_path, exist_ok=True)
         shutil.rmtree(discussion_path)
         os.makedirs(discussion_attachments_path, exist_ok=True)
@@ -563,7 +558,6 @@ def create_directory_hierarchy(dicts, path = os.path.join(os.getcwd(), "data"), 
 
         if "discussions" in d and d["discussions"]:
             for discussion in d.pop("discussions"):
-
                 discussion_date = datetime.strptime(
                     discussion["Date"], "%A, %B %d, %Y %H:%M:%S %p"
                 )
@@ -578,11 +572,13 @@ def create_directory_hierarchy(dicts, path = os.path.join(os.getcwd(), "data"), 
                     file.write(
                         f"* Content: {add_line_break(discussion['Content'], 90)}\n"
                     )
-                
+
                 if discussion["attachments"]:
                     for attachment in discussion["attachments"]:
                         source = os.path.join(attachments_path, attachment["filename"])
-                        destination = os.path.join(discussion_attachments_path, attachment["filename"])
+                        destination = os.path.join(
+                            discussion_attachments_path, attachment["filename"]
+                        )
 
                         if os.path.exists(source):
                             shutil.move(source, destination)
@@ -676,36 +672,6 @@ def chrome_settings_init():
     return chrome_settings, download_directory
 
 
-def analyze_data(data):
-    data_error = {
-        "link_error_count": 0,
-        "field_error_count": 0,
-        "comment_error_count": 0,
-    }
-
-    for i in data:
-        if history := i["history"]:
-            for history_item in history:
-                if "link" in history_item["Title"]:
-                    if len(history_item["Links"]) == 0:
-                        data_error["link_error_count"] += 1
-
-                if "Changed" in history_item["Title"]:
-                    if len(history_item["Fields"]) == 0:
-                        data_error["field_error_count"] += 1
-                        print(i["Title"], history_item["Title"])
-
-                if "comment" in history_item["Title"]:
-                    if history_item["Content"] is None:
-                        data_error["comment_error_count"] += 1
-        if discussions := i["discussions"]:
-            print( i["Title"] ,len(discussions))
-        if "children" in i:
-            children = i.pop("children")
-            analyze_data(children)
-    return data_error
-
-
 if __name__ == "__main__":
     save_file = "data/scrape_result.json"
 
@@ -729,8 +695,3 @@ if __name__ == "__main__":
         scrape_result = json.load(f)
         create_directory_hierarchy(scrape_result)
         create_related_work_contents(scrape_result)
-
-    with open(save_file) as f:
-        scrape_result = json.load(f)
-        data_error = analyze_data(scrape_result)
-        print(data_error)
