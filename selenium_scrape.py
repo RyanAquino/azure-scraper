@@ -538,9 +538,8 @@ def create_history_metadata(history, file):
                 file.write(f"       * Title: {link['Title']}\n")
 
 
-def create_directory_hierarchy(dicts, path="data", indent=0):
+def create_directory_hierarchy(dicts, path = os.path.join(os.getcwd(), "data"), indent=0):
     attachments_path = os.path.join(path, "attachments")
-    
     exclude_fields = ["children", "related_work", "discussions", "history"]
 
     for d in dicts:
@@ -550,7 +549,7 @@ def create_directory_hierarchy(dicts, path="data", indent=0):
         discussion_attachments_path = os.path.join(discussion_path, "attachments")
 
 
-        print(" " * indent + dir_name)
+        # print(" " * indent + dir_name)
         logging.info(f"Creating directory in {dir_path}")
         os.makedirs(dir_path, exist_ok=True)
         os.makedirs(attachments_path, exist_ok=True)
@@ -584,12 +583,10 @@ def create_directory_hierarchy(dicts, path="data", indent=0):
                 if discussion["attachments"]:
                     for attachment in discussion["attachments"]:
                         source = os.path.join(attachments_path, attachment["filename"])
-                        destination = os.path.join(discussion_attachments_path, attachment["filename"] )
+                        destination = os.path.join(discussion_attachments_path, attachment["filename"])
 
-                        if os.path.exists(file):
+                        if os.path.exists(source):
                             shutil.move(source, destination)
-
-
 
         with open(os.path.join(dir_path, "description.md"), "w") as file:
             file.write(d.pop("description"))
@@ -713,21 +710,21 @@ def analyze_data(data):
 if __name__ == "__main__":
     save_file = "data/scrape_result.json"
 
-    chrome_config, chrome_downloads = chrome_settings_init()
+    # chrome_config, chrome_downloads = chrome_settings_init()
 
-    # Clean attachments directory
-    if os.path.isdir(chrome_downloads):
-        shutil.rmtree(chrome_downloads)
-        os.makedirs(chrome_downloads)
+    # # Clean attachments directory
+    # if os.path.isdir(chrome_downloads):
+    #     shutil.rmtree(chrome_downloads)
+    #     os.makedirs(chrome_downloads)
 
-    with webdriver.Chrome(**chrome_config) as wd:
-        scraper(
-            wd,
-            config.BASE_URL + config.BACKLOG_ENDPOINT,
-            config.EMAIL,
-            config.PASSWORD,
-            save_file,
-        )
+    # with webdriver.Chrome(**chrome_config) as wd:
+    #     scraper(
+    #         wd,
+    #         config.BASE_URL + config.BACKLOG_ENDPOINT,
+    #         config.EMAIL,
+    #         config.PASSWORD,
+    #         save_file,
+    #     )
 
     with open(save_file) as f:
         scrape_result = json.load(f)
