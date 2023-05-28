@@ -68,7 +68,7 @@ def send_keys_by_name(driver, name, keys):
 def find_elements_by_xpath(driver, xpath):
     try:
         e = WebDriverWait(driver, 10).until(
-            EC.visibility_of_all_elements_located((By.XPATH, xpath))
+            EC.presence_of_all_elements_located((By.XPATH, xpath))
         )
     except Exception as e:
         return None
@@ -367,6 +367,62 @@ def scrape_discussions(driver, action):
     return results
 
 
+def scrape_changesets(driver):
+
+    results = []
+
+    files_changed = find_elements_by_xpath(driver, "//tr[@role='treeitem']")
+
+    for file in files_changed:
+        file.click()
+
+        header_xpath = "//span[@role='heading']"
+
+        result = {
+            "File Name": get_text(driver, header_xpath),
+            "Path": get_text(
+                driver, f"{header_xpath}/parent::span/following-sibling::span"
+            ),
+            "content": []
+        }
+
+        if lines := find_elements_by_xpath(driver, "//div[@class='view-line']"):
+            result["content"] = [line.text for line in lines]
+
+        results.append(result)
+    return results
+
+
+    
+def scrape_development(driver):
+
+    results = []
+
+    development_links = find_elements_by_xpath(
+        driver,
+        f"//div[@role='dialog'][last()]//span[@aria-label='Development section.']/ancestor::div[@class='grid-group']//a",
+    )
+
+    original_window = driver.current_window_handle
+
+    if development_links:
+        for development_link in development_links:
+            development_link.click()
+
+            WebDriverWait(driver, 10).until(EC.number_of_windows_to_be(2))
+
+            driver.switch_to.window(driver.window_handles[-1])
+            result = {
+                "ID": driver.current_url.split("/")[-1],
+                "Title": driver.title,
+                "change_sets": scrape_changesets(driver)
+            }
+            results.append(result)
+
+            driver.close()
+            driver.switch_to.window(original_window)
+    return results          
+
 def scrape_child_work_items(driver, dialog_box):
     action = ActionChains(driver)
     child_xpath = (
@@ -376,51 +432,54 @@ def scrape_child_work_items(driver, dialog_box):
     work_item_control_xpath = (
         ".//div[contains(@class, 'work-item-control initialized')]"
     )
-    work_id_xpath = ".//div[contains(@class, 'work-item-form-id initialized')]//span"
-    title_xpath = ".//div[contains(@class, 'work-item-form-title initialized')]//input"
-    username_xpath = (
-        ".//div[contains(@class, 'work-item-form-assignedTo initialized')]"
-        "//span[contains(@class, 'text-cursor')]"
-    )
-    state_xpath = f"{work_item_control_xpath}//*[@aria-label='State Field']"
-    area_xpath = f"{work_item_control_xpath}//*[@aria-label='Area Path']"
-    iteration_xpath = f"{work_item_control_xpath}//*[@aria-label='Iteration Path']"
-    priority_xpath = f"{work_item_control_xpath}//*[@aria-label='Priority']"
-    remaining_xpath = f"{work_item_control_xpath}//*[@aria-label='Remaining Work']"
-    activity_xpath = f"{work_item_control_xpath}//*[@aria-label='Activity']"
-    blocked_xpath = f"{work_item_control_xpath}//*[@aria-label='Blocked']"
+    # work_id_xpath = ".//div[contains(@class, 'work-item-form-id initialized')]//span"
+    # title_xpath = ".//div[contains(@class, 'work-item-form-title initialized')]//input"
+    # username_xpath = (
+    #     ".//div[contains(@class, 'work-item-form-assignedTo initialized')]"
+    #     "//span[contains(@class, 'text-cursor')]"
+    # )
+    # state_xpath = f"{work_item_control_xpath}//*[@aria-label='State Field']"
+    # area_xpath = f"{work_item_control_xpath}//*[@aria-label='Area Path']"
+    # iteration_xpath = f"{work_item_control_xpath}//*[@aria-label='Iteration Path']"
+    # priority_xpath = f"{work_item_control_xpath}//*[@aria-label='Priority']"
+    # remaining_xpath = f"{work_item_control_xpath}//*[@aria-label='Remaining Work']"
+    # activity_xpath = f"{work_item_control_xpath}//*[@aria-label='Activity']"
+    # blocked_xpath = f"{work_item_control_xpath}//*[@aria-label='Blocked']"
     description = f"{work_item_control_xpath}//*[@aria-label='Description']"
 
     desc = find_element_by_xpath(dialog_box, description)
+    work_item_data = {}
+    # work_item_data = {
+    #     "Task id": find_element_by_xpath(dialog_box, work_id_xpath).text,
+    #     "Title": get_input_value(dialog_box, title_xpath),
+    #     "User Name": find_element_by_xpath(dialog_box, username_xpath).text,
+    #     "State": get_input_value(dialog_box, state_xpath),
+    #     "Area": get_input_value(dialog_box, area_xpath),
+    #     "Iteration": get_input_value(dialog_box, iteration_xpath),
+    #     "Priority": get_input_value(dialog_box, priority_xpath),
+    #     "Remaining Work": get_input_value(dialog_box, remaining_xpath),
+    #     "Activity": get_input_value(dialog_box, activity_xpath),
+    #     "Blocked": get_input_value(dialog_box, blocked_xpath),
+    #     "description": desc.text,
+    # "related_work": scrape_related_work(action, dialog_box),
+    # "discussions": scrape_discussions(driver, action),
+    # }
 
-    work_item_data = {
-        "Task id": find_element_by_xpath(dialog_box, work_id_xpath).text,
-        "Title": get_input_value(dialog_box, title_xpath),
-        "User Name": find_element_by_xpath(dialog_box, username_xpath).text,
-        "State": get_input_value(dialog_box, state_xpath),
-        "Area": get_input_value(dialog_box, area_xpath),
-        "Iteration": get_input_value(dialog_box, iteration_xpath),
-        "Priority": get_input_value(dialog_box, priority_xpath),
-        "Remaining Work": get_input_value(dialog_box, remaining_xpath),
-        "Activity": get_input_value(dialog_box, activity_xpath),
-        "Blocked": get_input_value(dialog_box, blocked_xpath),
-        "description": desc.text,
-        "related_work": scrape_related_work(action, dialog_box),
-        "discussions": scrape_discussions(driver, action),
-    }
+    # scrape_attachments(driver, dialog_box)
 
-    scrape_attachments(driver, dialog_box)
-
-    details_xpath = ".//li[@aria-label='Details']"
-    history_xpath = ".//li[@aria-label='History']"
+    # details_xpath = ".//li[@aria-label='Details']"
+    # history_xpath = ".//li[@aria-label='History']"
 
     # Navigate to history tab
-    click_button_by_xpath(dialog_box, history_xpath)
+    # click_button_by_xpath(dialog_box, history_xpath)
 
-    work_item_data["history"] = scrape_history(dialog_box)
+    # work_item_data["history"] = scrape_history(dialog_box)
 
     # Navigate back to details tab
-    click_button_by_xpath(dialog_box, details_xpath)
+    # click_button_by_xpath(dialog_box, details_xpath)
+
+    work_item_data["development"] = scrape_development(driver)
+    print(work_item_data["development"])
 
     child_work_items = find_elements_by_xpath(dialog_box, child_xpath)
 
@@ -434,8 +493,6 @@ def scrape_child_work_items(driver, dialog_box):
 
             logging.info(f"Open dialog box for '{work_item_element.text}'")
             work_item_element.click()
-            time.sleep(5)
-
             dialog_xpath = "//div[@role='dialog'][last()]"
             child_dialog_box = find_element_by_xpath(driver, dialog_xpath)
             child_data = scrape_child_work_items(driver, child_dialog_box)
@@ -649,7 +706,7 @@ def chrome_settings_init():
     download_directory = Path(f"{os.getcwd()}/data/attachments")
 
     chrome_options = ChromeOptions()
-    chrome_options.add_argument("--headless=new")
+    # chrome_options.add_argument("--headless=new")
     chrome_options.add_argument("--incognito")
     chrome_options.add_experimental_option(
         "prefs",
@@ -678,9 +735,9 @@ if __name__ == "__main__":
     chrome_config, chrome_downloads = chrome_settings_init()
 
     # Clean attachments directory
-    if os.path.isdir(chrome_downloads):
-        shutil.rmtree(chrome_downloads)
-        os.makedirs(chrome_downloads)
+    # if os.path.isdir(chrome_downloads):
+    #     shutil.rmtree(chrome_downloads)
+    #     os.makedirs(chrome_downloads)
 
     with webdriver.Chrome(**chrome_config) as wd:
         scraper(
@@ -691,7 +748,7 @@ if __name__ == "__main__":
             save_file,
         )
 
-    with open(save_file) as f:
-        scrape_result = json.load(f)
-        create_directory_hierarchy(scrape_result)
-        create_related_work_contents(scrape_result)
+    # with open(save_file) as f:
+    #     scrape_result = json.load(f)
+    #     create_directory_hierarchy(scrape_result)
+    #     create_related_work_contents(scrape_result)
