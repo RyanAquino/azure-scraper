@@ -368,7 +368,6 @@ def scrape_discussions(driver, action):
 
 
 def scrape_changesets(driver):
-
     results = []
 
     files_changed = find_elements_by_xpath(driver, "//tr[@role='treeitem']")
@@ -383,19 +382,17 @@ def scrape_changesets(driver):
             "Path": get_text(
                 driver, f"{header_xpath}/parent::span/following-sibling::span"
             ),
-            "content": []
+            "content": get_text(
+                driver,
+                "(//div[contains(@class,'lines-content')])[last()]",
+            ),
         }
-
-        if lines := find_elements_by_xpath(driver, "//div[@class='view-line']"):
-            result["content"] = [line.text for line in lines]
 
         results.append(result)
     return results
 
 
-    
 def scrape_development(driver):
-
     results = []
 
     development_links = find_elements_by_xpath(
@@ -415,13 +412,14 @@ def scrape_development(driver):
             result = {
                 "ID": driver.current_url.split("/")[-1],
                 "Title": driver.title,
-                "change_sets": scrape_changesets(driver)
+                "change_sets": scrape_changesets(driver),
             }
             results.append(result)
 
             driver.close()
             driver.switch_to.window(original_window)
-    return results          
+    return results
+
 
 def scrape_child_work_items(driver, dialog_box):
     action = ActionChains(driver)
@@ -432,38 +430,38 @@ def scrape_child_work_items(driver, dialog_box):
     work_item_control_xpath = (
         ".//div[contains(@class, 'work-item-control initialized')]"
     )
-    # work_id_xpath = ".//div[contains(@class, 'work-item-form-id initialized')]//span"
-    # title_xpath = ".//div[contains(@class, 'work-item-form-title initialized')]//input"
-    # username_xpath = (
-    #     ".//div[contains(@class, 'work-item-form-assignedTo initialized')]"
-    #     "//span[contains(@class, 'text-cursor')]"
-    # )
-    # state_xpath = f"{work_item_control_xpath}//*[@aria-label='State Field']"
-    # area_xpath = f"{work_item_control_xpath}//*[@aria-label='Area Path']"
-    # iteration_xpath = f"{work_item_control_xpath}//*[@aria-label='Iteration Path']"
-    # priority_xpath = f"{work_item_control_xpath}//*[@aria-label='Priority']"
-    # remaining_xpath = f"{work_item_control_xpath}//*[@aria-label='Remaining Work']"
-    # activity_xpath = f"{work_item_control_xpath}//*[@aria-label='Activity']"
-    # blocked_xpath = f"{work_item_control_xpath}//*[@aria-label='Blocked']"
+    work_id_xpath = ".//div[contains(@class, 'work-item-form-id initialized')]//span"
+    title_xpath = ".//div[contains(@class, 'work-item-form-title initialized')]//input"
+    username_xpath = (
+        ".//div[contains(@class, 'work-item-form-assignedTo initialized')]"
+        "//span[contains(@class, 'text-cursor')]"
+    )
+    state_xpath = f"{work_item_control_xpath}//*[@aria-label='State Field']"
+    area_xpath = f"{work_item_control_xpath}//*[@aria-label='Area Path']"
+    iteration_xpath = f"{work_item_control_xpath}//*[@aria-label='Iteration Path']"
+    priority_xpath = f"{work_item_control_xpath}//*[@aria-label='Priority']"
+    remaining_xpath = f"{work_item_control_xpath}//*[@aria-label='Remaining Work']"
+    activity_xpath = f"{work_item_control_xpath}//*[@aria-label='Activity']"
+    blocked_xpath = f"{work_item_control_xpath}//*[@aria-label='Blocked']"
     description = f"{work_item_control_xpath}//*[@aria-label='Description']"
 
     desc = find_element_by_xpath(dialog_box, description)
     work_item_data = {}
-    # work_item_data = {
-    #     "Task id": find_element_by_xpath(dialog_box, work_id_xpath).text,
-    #     "Title": get_input_value(dialog_box, title_xpath),
-    #     "User Name": find_element_by_xpath(dialog_box, username_xpath).text,
-    #     "State": get_input_value(dialog_box, state_xpath),
-    #     "Area": get_input_value(dialog_box, area_xpath),
-    #     "Iteration": get_input_value(dialog_box, iteration_xpath),
-    #     "Priority": get_input_value(dialog_box, priority_xpath),
-    #     "Remaining Work": get_input_value(dialog_box, remaining_xpath),
-    #     "Activity": get_input_value(dialog_box, activity_xpath),
-    #     "Blocked": get_input_value(dialog_box, blocked_xpath),
-    #     "description": desc.text,
-    # "related_work": scrape_related_work(action, dialog_box),
-    # "discussions": scrape_discussions(driver, action),
-    # }
+    work_item_data = {
+        "Task id": find_element_by_xpath(dialog_box, work_id_xpath).text,
+        "Title": get_input_value(dialog_box, title_xpath),
+        "User Name": find_element_by_xpath(dialog_box, username_xpath).text,
+        "State": get_input_value(dialog_box, state_xpath),
+        "Area": get_input_value(dialog_box, area_xpath),
+        "Iteration": get_input_value(dialog_box, iteration_xpath),
+        "Priority": get_input_value(dialog_box, priority_xpath),
+        "Remaining Work": get_input_value(dialog_box, remaining_xpath),
+        "Activity": get_input_value(dialog_box, activity_xpath),
+        "Blocked": get_input_value(dialog_box, blocked_xpath),
+        "description": get_text(dialog_box, description),
+        # "related_work": scrape_related_work(action, dialog_box),
+        # "discussions": scrape_discussions(driver, action),
+    }
 
     # scrape_attachments(driver, dialog_box)
 
@@ -479,8 +477,6 @@ def scrape_child_work_items(driver, dialog_box):
     # click_button_by_xpath(dialog_box, details_xpath)
 
     work_item_data["development"] = scrape_development(driver)
-    print(work_item_data["development"])
-
     child_work_items = find_elements_by_xpath(dialog_box, child_xpath)
 
     if child_work_items:
@@ -600,6 +596,7 @@ def create_directory_hierarchy(dicts, path=os.path.join(os.getcwd(), "data"), in
         dir_name = f"{d['Task id']}_{d['Title']}"
         dir_path = os.path.join(path, dir_name)
         discussion_path = os.path.join(dir_path, "discussion")
+        development_path = os.path.join(dir_path, "development")
         discussion_attachments_path = os.path.join(discussion_path, "attachments")
 
         print(" " * indent + dir_name)
@@ -608,6 +605,8 @@ def create_directory_hierarchy(dicts, path=os.path.join(os.getcwd(), "data"), in
         os.makedirs(discussion_path, exist_ok=True)
         shutil.rmtree(discussion_path)
         os.makedirs(discussion_attachments_path, exist_ok=True)
+        os.makedirs(development_path, exist_ok=True)
+
 
         if "history" in d and d["history"]:
             with open(os.path.join(dir_path, "history.md"), "w") as file:
@@ -641,7 +640,8 @@ def create_directory_hierarchy(dicts, path=os.path.join(os.getcwd(), "data"), in
                             shutil.move(source, destination)
 
         with open(os.path.join(dir_path, "description.md"), "w") as file:
-            file.write(d.pop("description"))
+            if d["description"]:
+                file.write(d.pop("description"))
 
         with open(os.path.join(dir_path, "metadata.md"), "w") as file:
             for key, value in d.items():
@@ -651,8 +651,20 @@ def create_directory_hierarchy(dicts, path=os.path.join(os.getcwd(), "data"), in
         with open(os.path.join(dir_path, "origin.md"), "w") as file:
             file.write(config.BASE_URL + config.WORK_ITEM_ENDPOINT + d["Task id"])
 
+        for development in d.pop("development"):
+            with open(os.path.join(development_path, f"changeset_{development['ID']}.md"), "w") as file:
+                if change_sets := development["change_sets"]:
+                    for change_set in change_sets:
+                        file.write(f"* 'File Name': {change_set['File Name']}\n")
+                        file.write(f"* 'Path': {change_set['Path']}\n")
+                        file.write(f"* 'Content': {change_set['content']}\n")
+        
         if "children" in d:
             create_directory_hierarchy(d["children"], dir_path, indent + 2)
+        
+        
+
+
 
 
 def create_related_work_contents(scrape_results, path: Path = Path("data")):
@@ -748,7 +760,7 @@ if __name__ == "__main__":
             save_file,
         )
 
-    # with open(save_file) as f:
-    #     scrape_result = json.load(f)
-    #     create_directory_hierarchy(scrape_result)
-    #     create_related_work_contents(scrape_result)
+    with open(save_file) as f:
+        scrape_result = json.load(f)
+        create_directory_hierarchy(scrape_result)
+        # create_related_work_contents(scrape_result)
