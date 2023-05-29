@@ -1,22 +1,21 @@
-from pathlib import Path
-from selenium.webdriver.chrome.service import Service
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.common.action_chains import ActionChains
-from selenium.webdriver.support.wait import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options as ChromeOptions
+from selenium.webdriver.common.action_chains import ActionChains
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.wait import WebDriverWait
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.common.by import By
+from selenium import webdriver
 from datetime import datetime
-import time
+from pathlib import Path
+from uuid import uuid4
+import urllib.parse
+import platform
+import logging
 import shutil
 import config
+import time
 import json
-import logging
 import os
-import platform
-import urllib.parse
-from uuid import uuid4
-import urllib.request as request
 
 logging.basicConfig(
     level=logging.INFO,
@@ -459,22 +458,22 @@ def scrape_child_work_items(driver, dialog_box):
         "Activity": get_input_value(dialog_box, activity_xpath),
         "Blocked": get_input_value(dialog_box, blocked_xpath),
         "description": get_text(dialog_box, description),
-        # "related_work": scrape_related_work(action, dialog_box),
-        # "discussions": scrape_discussions(driver, action),
+        "related_work": scrape_related_work(action, dialog_box),
+        "discussions": scrape_discussions(driver, action),
     }
 
-    # scrape_attachments(driver, dialog_box)
+    scrape_attachments(driver, dialog_box)
 
-    # details_xpath = ".//li[@aria-label='Details']"
-    # history_xpath = ".//li[@aria-label='History']"
+    details_xpath = ".//li[@aria-label='Details']"
+    history_xpath = ".//li[@aria-label='History']"
 
     # Navigate to history tab
-    # click_button_by_xpath(dialog_box, history_xpath)
+    click_button_by_xpath(dialog_box, history_xpath)
 
-    # work_item_data["history"] = scrape_history(dialog_box)
+    work_item_data["history"] = scrape_history(dialog_box)
 
     # Navigate back to details tab
-    # click_button_by_xpath(dialog_box, details_xpath)
+    click_button_by_xpath(dialog_box, details_xpath)
 
     work_item_data["development"] = scrape_development(driver)
     child_work_items = find_elements_by_xpath(dialog_box, child_xpath)
@@ -607,7 +606,6 @@ def create_directory_hierarchy(dicts, path=os.path.join(os.getcwd(), "data"), in
         os.makedirs(discussion_attachments_path, exist_ok=True)
         os.makedirs(development_path, exist_ok=True)
 
-
         if "history" in d and d["history"]:
             with open(os.path.join(dir_path, "history.md"), "w") as file:
                 create_history_metadata(d.pop("history"), file)
@@ -652,19 +650,17 @@ def create_directory_hierarchy(dicts, path=os.path.join(os.getcwd(), "data"), in
             file.write(config.BASE_URL + config.WORK_ITEM_ENDPOINT + d["Task id"])
 
         for development in d.pop("development"):
-            with open(os.path.join(development_path, f"changeset_{development['ID']}.md"), "w") as file:
+            with open(
+                os.path.join(development_path, f"changeset_{development['ID']}.md"), "w"
+            ) as file:
                 if change_sets := development["change_sets"]:
                     for change_set in change_sets:
                         file.write(f"* 'File Name': {change_set['File Name']}\n")
                         file.write(f"* 'Path': {change_set['Path']}\n")
                         file.write(f"* 'Content': {change_set['content']}\n")
-        
+
         if "children" in d:
             create_directory_hierarchy(d["children"], dir_path, indent + 2)
-        
-        
-
-
 
 
 def create_related_work_contents(scrape_results, path: Path = Path("data")):
@@ -718,7 +714,7 @@ def chrome_settings_init():
     download_directory = Path(f"{os.getcwd()}/data/attachments")
 
     chrome_options = ChromeOptions()
-    # chrome_options.add_argument("--headless=new")
+    chrome_options.add_argument("--headless=new")
     chrome_options.add_argument("--incognito")
     chrome_options.add_experimental_option(
         "prefs",
@@ -726,7 +722,6 @@ def chrome_settings_init():
             "download.default_directory": str(download_directory),
             "download.prompt_for_download": False,
             "download.directory_upgrade": True,
-            # "safebrowsing.enabled": True,
         },
     )
 
@@ -747,9 +742,9 @@ if __name__ == "__main__":
     chrome_config, chrome_downloads = chrome_settings_init()
 
     # Clean attachments directory
-    # if os.path.isdir(chrome_downloads):
-    #     shutil.rmtree(chrome_downloads)
-    #     os.makedirs(chrome_downloads)
+    if os.path.isdir(chrome_downloads):
+        shutil.rmtree(chrome_downloads)
+        os.makedirs(chrome_downloads)
 
     with webdriver.Chrome(**chrome_config) as wd:
         scraper(
@@ -763,4 +758,4 @@ if __name__ == "__main__":
     with open(save_file) as f:
         scrape_result = json.load(f)
         create_directory_hierarchy(scrape_result)
-        # create_related_work_contents(scrape_result)
+        create_related_work_contents(scrape_result)
