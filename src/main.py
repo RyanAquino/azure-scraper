@@ -1,22 +1,21 @@
-from pathlib import Path
-from selenium.webdriver.chrome.service import Service
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.common.action_chains import ActionChains
-from selenium.webdriver.support.wait import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options as ChromeOptions
+from selenium.webdriver.common.action_chains import ActionChains
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.wait import WebDriverWait
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.common.by import By
+from selenium import webdriver
 from datetime import datetime
-import time
+from pathlib import Path
+from uuid import uuid4
+import urllib.parse
+import platform
+import logging
 import shutil
 import config
+import time
 import json
-import logging
 import os
-import platform
-import urllib.parse
-from uuid import uuid4
-import urllib.request as request
 
 logging.basicConfig(
     level=logging.INFO,
@@ -68,7 +67,7 @@ def send_keys_by_name(driver, name, keys):
 def find_elements_by_xpath(driver, xpath):
     try:
         e = WebDriverWait(driver, 10).until(
-            EC.visibility_of_all_elements_located((By.XPATH, xpath))
+            EC.presence_of_all_elements_located((By.XPATH, xpath))
         )
     except Exception as e:
         return None
@@ -273,6 +272,9 @@ def scrape_related_work(action, dialog_box):
     related_work_items = find_elements_by_xpath(dialog_box, related_work_xpath)
     results = []
 
+    if not related_work_items:
+        return results
+
     for related_work_item in related_work_items:
         related_work_type_xpath = "div[@class='la-group-title']"
         related_work_type = find_element_by_xpath(
@@ -367,6 +369,60 @@ def scrape_discussions(driver, action):
     return results
 
 
+def scrape_changesets(driver):
+    results = []
+
+    files_changed = find_elements_by_xpath(driver, "//tr[@role='treeitem']")
+
+    for file in files_changed:
+        file.click()
+
+        header_xpath = "//span[@role='heading']"
+
+        result = {
+            "File Name": get_text(driver, header_xpath),
+            "Path": get_text(
+                driver, f"{header_xpath}/parent::span/following-sibling::span"
+            ),
+            "content": get_text(
+                driver,
+                "(//div[contains(@class,'lines-content')])[last()]",
+            ),
+        }
+
+        results.append(result)
+    return results
+
+
+def scrape_development(driver):
+    results = []
+
+    development_links = find_elements_by_xpath(
+        driver,
+        f"//div[@role='dialog'][last()]//span[@aria-label='Development section.']/ancestor::div[@class='grid-group']//a",
+    )
+
+    original_window = driver.current_window_handle
+
+    if development_links:
+        for development_link in development_links:
+            development_link.click()
+
+            WebDriverWait(driver, 10).until(EC.number_of_windows_to_be(2))
+
+            driver.switch_to.window(driver.window_handles[-1])
+            result = {
+                "ID": driver.current_url.split("/")[-1],
+                "Title": driver.title,
+                "change_sets": scrape_changesets(driver),
+            }
+            results.append(result)
+
+            driver.close()
+            driver.switch_to.window(original_window)
+    return results
+
+
 def scrape_child_work_items(driver, dialog_box):
     action = ActionChains(driver)
     child_xpath = (
@@ -392,7 +448,7 @@ def scrape_child_work_items(driver, dialog_box):
     description = f"{work_item_control_xpath}//*[@aria-label='Description']"
 
     desc = find_element_by_xpath(dialog_box, description)
-
+    work_item_data = {}
     work_item_data = {
         "Task id": find_element_by_xpath(dialog_box, work_id_xpath).text,
         "Title": get_input_value(dialog_box, title_xpath),
@@ -404,7 +460,7 @@ def scrape_child_work_items(driver, dialog_box):
         "Remaining Work": get_input_value(dialog_box, remaining_xpath),
         "Activity": get_input_value(dialog_box, activity_xpath),
         "Blocked": get_input_value(dialog_box, blocked_xpath),
-        "description": desc.text,
+        "description": get_text(dialog_box, description),
         "related_work": scrape_related_work(action, dialog_box),
         "discussions": scrape_discussions(driver, action),
     }
@@ -422,6 +478,7 @@ def scrape_child_work_items(driver, dialog_box):
     # Navigate back to details tab
     click_button_by_xpath(dialog_box, details_xpath)
 
+    work_item_data["development"] = scrape_development(driver)
     child_work_items = find_elements_by_xpath(dialog_box, child_xpath)
 
     if child_work_items:
@@ -434,8 +491,6 @@ def scrape_child_work_items(driver, dialog_box):
 
             logging.info(f"Open dialog box for '{work_item_element.text}'")
             work_item_element.click()
-            time.sleep(5)
-
             dialog_xpath = "//div[@role='dialog'][last()]"
             child_dialog_box = find_element_by_xpath(driver, dialog_xpath)
             child_data = scrape_child_work_items(driver, child_dialog_box)
@@ -484,7 +539,6 @@ def scraper(driver, url, email, password, file_path):
 
         # Scrape Child Items
         work_item_data = scrape_child_work_items(driver, dialog_box)
-        print(work_item_data)
         result_set.append(work_item_data)
 
         logging.info(f"Close dialog box for '{work_item_element_text}'")
@@ -544,6 +598,7 @@ def create_directory_hierarchy(dicts, path=os.path.join(os.getcwd(), "data"), in
         dir_name = f"{d['Task id']}_{d['Title']}"
         dir_path = os.path.join(path, dir_name)
         discussion_path = os.path.join(dir_path, "discussion")
+        development_path = os.path.join(dir_path, "development")
         discussion_attachments_path = os.path.join(discussion_path, "attachments")
 
         print(" " * indent + dir_name)
@@ -552,6 +607,7 @@ def create_directory_hierarchy(dicts, path=os.path.join(os.getcwd(), "data"), in
         os.makedirs(discussion_path, exist_ok=True)
         shutil.rmtree(discussion_path)
         os.makedirs(discussion_attachments_path, exist_ok=True)
+        os.makedirs(development_path, exist_ok=True)
 
         if "history" in d and d["history"]:
             with open(os.path.join(dir_path, "history.md"), "w") as file:
@@ -585,7 +641,8 @@ def create_directory_hierarchy(dicts, path=os.path.join(os.getcwd(), "data"), in
                             shutil.move(source, destination)
 
         with open(os.path.join(dir_path, "description.md"), "w") as file:
-            file.write(d.pop("description"))
+            if d["description"]:
+                file.write(d.pop("description"))
 
         with open(os.path.join(dir_path, "metadata.md"), "w") as file:
             for key, value in d.items():
@@ -594,6 +651,16 @@ def create_directory_hierarchy(dicts, path=os.path.join(os.getcwd(), "data"), in
 
         with open(os.path.join(dir_path, "origin.md"), "w") as file:
             file.write(config.BASE_URL + config.WORK_ITEM_ENDPOINT + d["Task id"])
+
+        for development in d.pop("development"):
+            with open(
+                os.path.join(development_path, f"changeset_{development['ID']}.md"), "w"
+            ) as file:
+                if change_sets := development["change_sets"]:
+                    for change_set in change_sets:
+                        file.write(f"* 'File Name': {change_set['File Name']}\n")
+                        file.write(f"* 'Path': {change_set['Path']}\n")
+                        file.write(f"* 'Content': {change_set['content']}\n")
 
         if "children" in d:
             create_directory_hierarchy(d["children"], dir_path, indent + 2)
@@ -650,7 +717,7 @@ def chrome_settings_init():
     download_directory = Path(f"{os.getcwd()}/data/attachments")
 
     chrome_options = ChromeOptions()
-    chrome_options.add_argument("--headless=new")
+    # chrome_options.add_argument("--headless=new")
     chrome_options.add_argument("--incognito")
     chrome_options.add_experimental_option(
         "prefs",
