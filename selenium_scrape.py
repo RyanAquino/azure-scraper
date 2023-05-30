@@ -272,6 +272,9 @@ def scrape_related_work(action, dialog_box):
     related_work_items = find_elements_by_xpath(dialog_box, related_work_xpath)
     results = []
 
+    if not related_work_items:
+        return results
+
     for related_work_item in related_work_items:
         related_work_type_xpath = "div[@class='la-group-title']"
         related_work_type = find_element_by_xpath(
