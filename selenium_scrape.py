@@ -67,7 +67,7 @@ def send_keys_by_name(driver, name, keys):
 def find_elements_by_xpath(driver, xpath):
     try:
         e = WebDriverWait(driver, 10).until(
-            EC.presence_of_all_elements_located((By.XPATH, xpath))
+            EC.visibility_of_all_elements_located((By.XPATH, xpath))
         )
     except Exception as e:
         return None
