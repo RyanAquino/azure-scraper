@@ -52,3 +52,5 @@ python main.py
 > Retry. This is due to internet connection speed on loading the page
 * Selecting sub elements using xpath might sometimes result to None
 > Target the element in a more specific xpath hierarchy
+* Hover not finding any value
+> Implement retry every 5 sec until max retry or value has been found
