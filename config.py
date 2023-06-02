@@ -7,3 +7,5 @@ EMAIL = ""
 PASSWORD = ""
 BINARY_PATH_LOCATION = "/Applications/Chromium.app/Contents/MacOS/Chromium"
 WORK_ITEM_ENDPOINT = "scrum/_workitems/edit/"
+MAX_RETRIES = 200
+MAX_WAIT_TIME = 5

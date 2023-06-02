@@ -44,21 +44,21 @@ def get_driver_by_os():
 
 
 def click_button_by_id(driver, element_id):
-    element = WebDriverWait(driver, 10).until(
+    element = WebDriverWait(driver, config.MAX_WAIT_TIME).until(
         EC.element_to_be_clickable((By.ID, element_id))
     )
     element.click()
 
 
 def click_button_by_xpath(driver, xpath):
-    element = WebDriverWait(driver, 10).until(
+    element = WebDriverWait(driver, config.MAX_WAIT_TIME).until(
         EC.element_to_be_clickable((By.XPATH, xpath))
     )
     element.click()
 
 
 def send_keys_by_name(driver, name, keys):
-    element = WebDriverWait(driver, 10).until(
+    element = WebDriverWait(driver, config.MAX_WAIT_TIME).until(
         EC.element_to_be_clickable((By.NAME, name))
     )
     element.send_keys(keys)
@@ -66,7 +66,7 @@ def send_keys_by_name(driver, name, keys):
 
 def find_elements_by_xpath(driver, xpath):
     try:
-        e = WebDriverWait(driver, 10).until(
+        e = WebDriverWait(driver, config.MAX_WAIT_TIME).until(
             EC.visibility_of_all_elements_located((By.XPATH, xpath))
         )
     except Exception as e:
@@ -77,7 +77,7 @@ def find_elements_by_xpath(driver, xpath):
 
 def find_element_by_xpath(driver, xpath):
     try:
-        e = WebDriverWait(driver, 10).until(
+        e = WebDriverWait(driver, config.MAX_WAIT_TIME).until(
             EC.element_to_be_clickable((By.XPATH, xpath))
         )
     except Exception as e:
@@ -298,8 +298,16 @@ def scrape_related_work(action, dialog_box):
             updated_at_hover = find_element_by_xpath(
                 related_work, updated_at_hover_xpath
             )
-            action.move_to_element(updated_at_hover).perform()
-            updated_at = get_text(related_work, "//p[contains(@class, 'subText-74')]")
+            updated_at = None
+            retry_count = 0
+
+            while updated_at is None and retry_count < config.MAX_RETRIES:
+                action.move_to_element(updated_at_hover).perform()
+                updated_at = get_text(related_work, "//p[contains(@class, 'ms-Tooltip-subtext')]")
+                retry_count += 1
+                print(f"Retrying hover on work related date ... {retry_count}/{config.MAX_RETRIES}")
+                time.sleep(3)
+
             updated_at = " ".join(updated_at.split(" ")[-5:])
 
             related_work_url = related_work_link.get_attribute("href").split("/")[-1]
@@ -353,8 +361,15 @@ def scrape_discussions(driver, action):
             comment_timestamp = find_element_by_xpath(
                 discussion, ".//a[@class='comment-timestamp']"
             )
-            action.move_to_element(comment_timestamp).perform()
-            date = get_text(discussion, "//p[contains(@class, 'subText-74')]")
+            date = None
+            retry_count = 0
+
+            while date is None and retry_count < config.MAX_RETRIES:
+                action.move_to_element(comment_timestamp).perform()
+                date = get_text(discussion, "//p[contains(@class, 'ms-Tooltip-subtext')]")
+                retry_count += 1
+                print(f"Retrying hover on discussion date ... {retry_count}/{config.MAX_RETRIES}")
+                time.sleep(3)
 
             result = {
                 "User": get_text(discussion, ".//span[@class='user-display-name']"),
@@ -408,7 +423,7 @@ def scrape_development(driver):
         for development_link in development_links:
             development_link.click()
 
-            WebDriverWait(driver, 10).until(EC.number_of_windows_to_be(2))
+            WebDriverWait(driver, config.MAX_WAIT_TIME).until(EC.number_of_windows_to_be(2))
 
             driver.switch_to.window(driver.window_handles[-1])
             result = {
@@ -448,7 +463,6 @@ def scrape_child_work_items(driver, dialog_box):
     description = f"{work_item_control_xpath}//*[@aria-label='Description']"
 
     desc = find_element_by_xpath(dialog_box, description)
-    work_item_data = {}
     work_item_data = {
         "Task id": find_element_by_xpath(dialog_box, work_id_xpath).text,
         "Title": get_input_value(dialog_box, title_xpath),
@@ -480,6 +494,8 @@ def scrape_child_work_items(driver, dialog_box):
 
     work_item_data["development"] = scrape_development(driver)
     child_work_items = find_elements_by_xpath(dialog_box, child_xpath)
+
+    print(work_item_data)
 
     if child_work_items:
         children = []
