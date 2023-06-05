@@ -631,9 +631,7 @@ def create_directory_hierarchy(dicts, path=os.path.join(os.getcwd(), "data"), in
 
         if "discussions" in d and d["discussions"]:
             for discussion in d.pop("discussions"):
-                discussion_date = datetime.strptime(
-                    discussion["Date"], "%A, %B %d, %Y %H:%M:%S %p"
-                )
+                discussion_date = parse_date(discussion["Date"])
 
                 file_name = (
                     f"{discussion_date.strftime('%Y_%m_%d')}_{discussion['User']}.md"
@@ -727,6 +725,22 @@ def create_related_work_contents(scrape_results, path: Path = Path("data")):
 
         if "children" in item:
             create_related_work_contents(item["children"], dir_path)
+
+
+def parse_date(date_string):
+    formats = [
+        "%d %B %Y %H:%M:%S",
+        "%A, %B %d, %Y %H:%M:%S %p"
+    ]
+
+    for fmt in formats:
+        try:
+            date = datetime.strptime(date_string, fmt)
+            return date
+        except ValueError:
+            pass
+
+    raise ValueError("Invalid date format: " + date_string)
 
 
 def chrome_settings_init():
