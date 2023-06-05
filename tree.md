@@ -3,13 +3,15 @@
 ## Folder
 
 * Epic name convention for all sub folder (<id>_<title>)
+    Replace white spaces with underscore " "=>"_" 
+    for each file and folder whenever tile contains white space.
     * Feature
         * Backlog
             * Task
 
 ## Data
 
-* Work item: Epic/Feature/Backlog/Task
+* Work item: Epic/Feature/Backlog/Task (<id>_<title>)
     * metadata.md:
         * Task id: 2222
         * User name:
@@ -34,18 +36,20 @@
             * File name:
             * Path:
             * Content:
-    * related_work.md (linked):
-        * Type:
-            * Link to item file:
-            * Last update:
-    * history.md:
-        * User
-        * Title:
-        * Content:
-        * Links:
-            * Type:
-            * Link to item file:
-            * Title:
+    * related (folder)
+       * <id>_<title>.md (linked as symlink):
+           * Type:
+               * Link to item file:
+               * Last update:
+    * history (folder)
+       * <yyyy_mm_dd>_<username>_<title>.md:
+           * User
+           * Title:
+           * Content:
+           * Links:
+               * Type:
+               * Link to item file:
+               * Title:
     * attachments (store attached files in this folder):
     * origin.md (Origin URL link to work item)
 
