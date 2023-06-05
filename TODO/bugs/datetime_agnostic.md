@@ -6,5 +6,5 @@
 ## should
 * should read locale agnostic, there are projects with different locale configuration
 * naming convention for files and folders extracted data format 
-    should follow yyyy-MM-ddTHH-mm-ss example: 2023-06-05T09-22-12
+    should follow yyyy_MM_ddTHH_mm_ss example: 2023_06_05T09_22_12
 * date and time format for within scrapped data should fallow locale specific for given project configuration

@@ -37,7 +37,7 @@
             * Path:
             * Content:
     * related (folder)
-       * <id>_<title>.md (linked as symlink):
+       * <id>_<title>_update_<yyyy_MM_ddThh_mm_ss>.md (linked as symlink):
            * Type:
                * Link to item file:
                * Last update:
