@@ -308,7 +308,7 @@ def scrape_related_work(action, dialog_box):
                 print(f"Retrying hover on work related date ... {retry_count}/{config.MAX_RETRIES}")
                 time.sleep(3)
 
-            updated_at = " ".join(updated_at.split(" ")[-5:])
+            updated_at = " ".join(updated_at.split(" ")[-4:])
 
             related_work_url = related_work_link.get_attribute("href").split("/")[-1]
             related_work_title = related_work_link.text
