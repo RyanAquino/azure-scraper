@@ -129,22 +129,29 @@ def scrape_attachments(driver, dialog_box):
     )
     a_href_xpath = ".//div[contains(@class, 'attachments-grid-file-name')]//a"
     attachments = find_elements_by_xpath(dialog_box, a_href_xpath)
+    attachments_data = []
 
     for attachment in attachments[-int(attachment_count) :]:
         attachment_url = attachment.get_attribute("href")
         parsed_url = urllib.parse.urlparse(attachment_url)
         query_params = urllib.parse.parse_qs(parsed_url.query)
-        query_params["fileName"] = [f"{uuid4()}_{query_params.get('fileName')[0]}"]
+        file_name = f"{uuid4()}_{query_params.get('fileName')[0]}"
+        query_params["fileName"] = [file_name]
         updated_url = urllib.parse.urlunparse(
             parsed_url._replace(query=urllib.parse.urlencode(query_params, doseq=True))
         )
-        logging.info(f"Downloading attachments from {updated_url}")
+        attachments_data.append({
+            "url": updated_url,
+            "filename": file_name
+        })
         driver.get(updated_url)
 
     # Navigate back to details
     details_tab_xpath = "//li[@aria-label='Details']"
     details_tab_button = find_elements_by_xpath(dialog_box, details_tab_xpath)
     details_tab_button[-1].click()
+
+    return attachments_data
 
 
 def expand_collapsed_by_xpath(dialog_box):
@@ -477,9 +484,8 @@ def scrape_child_work_items(driver, dialog_box):
         "description": get_text(dialog_box, description),
         "related_work": scrape_related_work(action, dialog_box),
         "discussions": scrape_discussions(driver, action),
+        "attachments": scrape_attachments(driver, dialog_box)
     }
-
-    scrape_attachments(driver, dialog_box)
 
     details_xpath = ".//li[@aria-label='Details']"
     history_xpath = ".//li[@aria-label='History']"
@@ -606,15 +612,15 @@ def create_history_metadata(history, file):
                 file.write(f"       * Title: {link['Title']}\n")
 
 
-def create_directory_hierarchy(dicts, path=os.path.join(os.getcwd(), "data"), indent=0):
-    attachments_path = os.path.join(path, "attachments")
-    exclude_fields = ["children", "related_work", "discussions", "history"]
+def create_directory_hierarchy(dicts, path=os.path.join(os.getcwd(), "data"), attachments_path=(Path.cwd() / "data" / "attachments"), indent=0):
+    exclude_fields = ["children", "related_work", "discussions", "history", "attachments"]
 
     for d in dicts:
         dir_name = f"{d['Task id']}_{d['Title']}"
         dir_path = os.path.join(path, dir_name)
         discussion_path = os.path.join(dir_path, "discussion")
         development_path = os.path.join(dir_path, "development")
+        work_item_attachments_path = os.path.join(dir_path, "attachments")
         discussion_attachments_path = os.path.join(discussion_path, "attachments")
 
         print(" " * indent + dir_name)
@@ -624,6 +630,7 @@ def create_directory_hierarchy(dicts, path=os.path.join(os.getcwd(), "data"), in
         shutil.rmtree(discussion_path)
         os.makedirs(discussion_attachments_path, exist_ok=True)
         os.makedirs(development_path, exist_ok=True)
+        os.makedirs(work_item_attachments_path, exist_ok=True)
 
         if "history" in d and d["history"]:
             with open(os.path.join(dir_path, "history.md"), "w") as file:
@@ -631,7 +638,7 @@ def create_directory_hierarchy(dicts, path=os.path.join(os.getcwd(), "data"), in
 
         if "discussions" in d and d["discussions"]:
             for discussion in d.pop("discussions"):
-                discussion_date = parse_date(discussion["Date"])
+                discussion_date = datetime.strptime(discussion["Date"], "%d %B %Y %H:%M:%S")
 
                 file_name = (
                     f"{discussion_date.strftime('%Y_%m_%d')}_{discussion['User']}.md"
@@ -653,6 +660,16 @@ def create_directory_hierarchy(dicts, path=os.path.join(os.getcwd(), "data"), in
 
                         if os.path.exists(source):
                             shutil.move(source, destination)
+
+        if d.get("attachments"):
+            for attachment in d["attachments"]:
+                source = os.path.join(attachments_path, attachment["filename"])
+                destination = os.path.join(
+                    work_item_attachments_path, attachment["filename"]
+                )
+
+                if os.path.exists(source):
+                    shutil.move(source, destination)
 
         with open(os.path.join(dir_path, "description.md"), "w") as file:
             if d["description"]:
@@ -677,7 +694,7 @@ def create_directory_hierarchy(dicts, path=os.path.join(os.getcwd(), "data"), in
                         file.write(f"* 'Content': {change_set['content']}\n")
 
         if "children" in d:
-            create_directory_hierarchy(d["children"], dir_path, indent + 2)
+            create_directory_hierarchy(d["children"], dir_path, indent=indent + 2)
 
 
 def create_related_work_contents(scrape_results, path: Path = Path("data")):
@@ -727,27 +744,12 @@ def create_related_work_contents(scrape_results, path: Path = Path("data")):
             create_related_work_contents(item["children"], dir_path)
 
 
-def parse_date(date_string):
-    formats = [
-        "%d %B %Y %H:%M:%S",
-        "%A, %B %d, %Y %H:%M:%S %p"
-    ]
-
-    for fmt in formats:
-        try:
-            date = datetime.strptime(date_string, fmt)
-            return date
-        except ValueError:
-            pass
-
-    raise ValueError("Invalid date format: " + date_string)
-
-
 def chrome_settings_init():
     download_directory = Path(f"{os.getcwd()}/data/attachments")
+    language_code = "en-GB"
 
     chrome_options = ChromeOptions()
-    chrome_options.add_argument("--headless=new")
+    # chrome_options.add_argument("--headless=new")
     chrome_options.add_argument("--incognito")
     chrome_options.add_experimental_option(
         "prefs",
@@ -755,6 +757,7 @@ def chrome_settings_init():
             "download.default_directory": str(download_directory),
             "download.prompt_for_download": False,
             "download.directory_upgrade": True,
+            "intl.accept_languages": language_code
         },
     )
 
@@ -791,4 +794,5 @@ if __name__ == "__main__":
     with open(save_file) as f:
         scrape_result = json.load(f)
         create_directory_hierarchy(scrape_result)
+        shutil.rmtree(chrome_downloads)
         create_related_work_contents(scrape_result)
