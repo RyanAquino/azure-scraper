@@ -16,6 +16,7 @@ import config
 import time
 import json
 import os
+import re
 
 logging.basicConfig(
     level=logging.INFO,
@@ -140,10 +141,7 @@ def scrape_attachments(driver, dialog_box):
         updated_url = urllib.parse.urlunparse(
             parsed_url._replace(query=urllib.parse.urlencode(query_params, doseq=True))
         )
-        attachments_data.append({
-            "url": updated_url,
-            "filename": file_name
-        })
+        attachments_data.append({"url": updated_url, "filename": file_name})
         driver.get(updated_url)
 
     # Navigate back to details
@@ -310,9 +308,13 @@ def scrape_related_work(action, dialog_box):
 
             while updated_at is None and retry_count < config.MAX_RETRIES:
                 action.move_to_element(updated_at_hover).perform()
-                updated_at = get_text(related_work, "//p[contains(@class, 'ms-Tooltip-subtext')]")
+                updated_at = get_text(
+                    related_work, "//p[contains(@class, 'ms-Tooltip-subtext')]"
+                )
                 retry_count += 1
-                print(f"Retrying hover on work related date ... {retry_count}/{config.MAX_RETRIES}")
+                print(
+                    f"Retrying hover on work related date ... {retry_count}/{config.MAX_RETRIES}"
+                )
                 time.sleep(3)
 
             updated_at = " ".join(updated_at.split(" ")[-4:])
@@ -373,9 +375,13 @@ def scrape_discussions(driver, action):
 
             while date is None and retry_count < config.MAX_RETRIES:
                 action.move_to_element(comment_timestamp).perform()
-                date = get_text(discussion, "//p[contains(@class, 'ms-Tooltip-subtext')]")
+                date = get_text(
+                    discussion, "//p[contains(@class, 'ms-Tooltip-subtext')]"
+                )
                 retry_count += 1
-                print(f"Retrying hover on discussion date ... {retry_count}/{config.MAX_RETRIES}")
+                print(
+                    f"Retrying hover on discussion date ... {retry_count}/{config.MAX_RETRIES}"
+                )
                 time.sleep(3)
 
             result = {
@@ -430,7 +436,9 @@ def scrape_development(driver):
         for development_link in development_links:
             development_link.click()
 
-            WebDriverWait(driver, config.MAX_WAIT_TIME).until(EC.number_of_windows_to_be(2))
+            WebDriverWait(driver, config.MAX_WAIT_TIME).until(
+                EC.number_of_windows_to_be(2)
+            )
 
             driver.switch_to.window(driver.window_handles[-1])
             result = {
@@ -443,6 +451,24 @@ def scrape_development(driver):
             driver.close()
             driver.switch_to.window(original_window)
     return results
+
+
+def scrape_description(element):
+    formatted_text = ""
+    html = element.get_attribute("innerHTML")
+    parsed_div = html.replace("</div>", "\n").replace("<div>", "")
+    parsed_div = parsed_div.replace("&nbsp;", " ")
+
+    # Extract anchor tags using regex
+    pattern = r'<a\s+href="([^"]+)">([^<]+)</a>'
+    matches = re.findall(pattern, parsed_div)
+
+    for href, text in matches:
+        formatted_text = parsed_div.replace(
+            f'<a href="{href}">{text}</a>', f"[{text}]({href})"
+        )
+
+    return formatted_text
 
 
 def scrape_child_work_items(driver, dialog_box):
@@ -470,6 +496,7 @@ def scrape_child_work_items(driver, dialog_box):
     description = f"{work_item_control_xpath}//*[@aria-label='Description']"
 
     desc = find_element_by_xpath(dialog_box, description)
+
     work_item_data = {
         "Task id": find_element_by_xpath(dialog_box, work_id_xpath).text,
         "Title": get_input_value(dialog_box, title_xpath),
@@ -481,11 +508,11 @@ def scrape_child_work_items(driver, dialog_box):
         "Remaining Work": get_input_value(dialog_box, remaining_xpath),
         "Activity": get_input_value(dialog_box, activity_xpath),
         "Blocked": get_input_value(dialog_box, blocked_xpath),
-        "description": get_text(dialog_box, description),
         "related_work": scrape_related_work(action, dialog_box),
         "discussions": scrape_discussions(driver, action),
-        "attachments": scrape_attachments(driver, dialog_box)
+        "attachments": scrape_attachments(driver, dialog_box),
     }
+    work_item_data["description"] = scrape_description(desc)
 
     details_xpath = ".//li[@aria-label='Details']"
     history_xpath = ".//li[@aria-label='History']"
@@ -539,7 +566,7 @@ def scraper(driver, url, email, password, file_path):
     # Find each work item
     work_items = find_elements_by_xpath(driver, '//div[@aria-level="1"]')
     work_items_count = len(work_items)
-    work_items_ctr = 0
+    work_items_ctr = 3
 
     result_set = []
     while work_items_ctr < work_items_count:
@@ -552,7 +579,8 @@ def scraper(driver, url, email, password, file_path):
         work_item_element = find_element_by_xpath(work_item, ".//a")
         work_item_element_text = work_item_element.text
 
-        logging.info(f"Open dialog box for '{work_item_element_text}'")
+        # logging.info(f"Open dialog box for '{work_item_element_text}'")
+        print(f"Open dialog box for '{work_item_element_text}'")
         # Click
         work_item_element.click()
 
@@ -612,8 +640,19 @@ def create_history_metadata(history, file):
                 file.write(f"       * Title: {link['Title']}\n")
 
 
-def create_directory_hierarchy(dicts, path=os.path.join(os.getcwd(), "data"), attachments_path=(Path.cwd() / "data" / "attachments"), indent=0):
-    exclude_fields = ["children", "related_work", "discussions", "history", "attachments"]
+def create_directory_hierarchy(
+    dicts,
+    path=os.path.join(os.getcwd(), "data"),
+    attachments_path=(Path.cwd() / "data" / "attachments"),
+    indent=0,
+):
+    exclude_fields = [
+        "children",
+        "related_work",
+        "discussions",
+        "history",
+        "attachments",
+    ]
 
     for d in dicts:
         dir_name = f"{d['Task id']}_{d['Title']}"
@@ -638,7 +677,9 @@ def create_directory_hierarchy(dicts, path=os.path.join(os.getcwd(), "data"), at
 
         if "discussions" in d and d["discussions"]:
             for discussion in d.pop("discussions"):
-                discussion_date = datetime.strptime(discussion["Date"], "%d %B %Y %H:%M:%S")
+                discussion_date = datetime.strptime(
+                    discussion["Date"], "%d %B %Y %H:%M:%S"
+                )
 
                 file_name = (
                     f"{discussion_date.strftime('%Y_%m_%d')}_{discussion['User']}.md"
@@ -757,7 +798,7 @@ def chrome_settings_init():
             "download.default_directory": str(download_directory),
             "download.prompt_for_download": False,
             "download.directory_upgrade": True,
-            "intl.accept_languages": language_code
+            "intl.accept_languages": language_code,
         },
     )
 
@@ -766,7 +807,6 @@ def chrome_settings_init():
 
     if config.BINARY_PATH_LOCATION:
         chrome_options.binary_location = config.BINARY_PATH_LOCATION
-    else:
         chrome_settings["service"] = get_driver_by_os()
 
     return chrome_settings, download_directory
