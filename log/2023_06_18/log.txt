@@ -1,0 +1,64 @@
+Traceback (most recent call last):
+  File "/home/paul/Downloads/src/main.py", line 184, in <module>
+    main()
+  File "/home/paul/Downloads/src/main.py", line 172, in main
+    scraper(
+  File "/home/paul/Downloads/src/main.py", line 154, in scraper
+    work_item_data = scrape_child_work_items(driver, dialog_box)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/paul/Downloads/src/main.py", line 108, in scrape_child_work_items
+    child_data = scrape_child_work_items(driver, child_dialog_box)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/paul/Downloads/src/main.py", line 108, in scrape_child_work_items
+    child_data = scrape_child_work_items(driver, child_dialog_box)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/paul/Downloads/src/main.py", line 108, in scrape_child_work_items
+    child_data = scrape_child_work_items(driver, child_dialog_box)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/paul/Downloads/src/main.py", line 86, in scrape_child_work_items
+    work_item_data["history"] = scrape_history(dialog_box)
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/paul/Downloads/src/scrape_utils.py", line 77, in scrape_history
+    history.click()
+  File "/home/paul/miniconda3/envs/tfs/lib/python3.11/site-packages/selenium/webdriver/remote/webelement.py", line 94, in click
+    self._execute(Command.CLICK_ELEMENT)
+  File "/home/paul/miniconda3/envs/tfs/lib/python3.11/site-packages/selenium/webdriver/remote/webelement.py", line 403, in _execute
+    return self._parent.execute(command, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/paul/miniconda3/envs/tfs/lib/python3.11/site-packages/selenium/webdriver/remote/webdriver.py", line 440, in execute
+    self.error_handler.check_response(response)
+  File "/home/paul/miniconda3/envs/tfs/lib/python3.11/site-packages/selenium/webdriver/remote/errorhandler.py", line 245, in check_response
+    raise exception_class(message, screen, stacktrace)
+selenium.common.exceptions.StaleElementReferenceException: Message: stale element reference: element is not attached to the page document
+  (Session info: chrome=112.0.5615.165)
+Stacktrace:
+#0 0x560b964f3ab3 <unknown>
+#1 0x560b953fe969 <unknown>
+#2 0x560b954030ff <unknown>
+#3 0x560b95402d83 <unknown>
+#4 0x560b95403184 <unknown>
+#5 0x560b9544196c <unknown>
+#6 0x560b9544941d <unknown>
+#7 0x560b9544699e <unknown>
+#8 0x560b9544382c <unknown>
+#9 0x560b9544256c <unknown>
+#10 0x560b95433d18 <unknown>
+#11 0x560b954683c2 <unknown>
+#12 0x560b9543346a <unknown>
+#13 0x560b9546854e <unknown>
+#14 0x560b95480e5a <unknown>
+#15 0x560b95468183 <unknown>
+#16 0x560b9543187c <unknown>
+#17 0x560b95432cb2 <unknown>
+#18 0x560b964a7fe0 <unknown>
+#19 0x560b964aad52 <unknown>
+#20 0x560b964aa710 <unknown>
+#21 0x560b964ab4b5 <unknown>
+#22 0x560b964b2fa6 <unknown>
+#23 0x560b964ab853 <unknown>
+#24 0x560b96469224 <unknown>
+#25 0x560b964cfa75 <unknown>
+#26 0x560b964cfc2e <unknown>
+#27 0x560b964e8c5f <unknown>
+#28 0x7fda7c462b43 <unknown>
+
