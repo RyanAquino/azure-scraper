@@ -9,6 +9,7 @@
 # linux command sample for symlink creation
 ln -s source_file symbolic_link
 ```
+* for each symlik file there should be associated with the same name but .md extension file with metadata
 * please find details about folder structure and naming convention in the tree.md file
-* there are inter project linked related items, in that case create symlink 
+* there are cross project linked related items, in that case create symlink 
     however there is no need to validate it since there is no access to another project
