@@ -182,9 +182,17 @@ def create_related_work_contents(scrape_results, path: Path = Path("data")):
             create_related_work_contents(item["children"], dir_path)
 
 
+def cleanup_existing_folders(directory: Path):
+    for item in directory.iterdir():
+        item_path = directory / item
+        if item.is_dir() and item.name != 'attachments':
+            shutil.rmtree(item_path)
+
+
 def post_process_results(save_file, downloads_directory):
     with open(save_file) as f:
         scrape_result = json.load(f)
+        cleanup_existing_folders((Path.cwd() / "data"))
         create_directory_hierarchy(scrape_result)
         create_related_work_contents(scrape_result)
 

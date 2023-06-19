@@ -74,6 +74,7 @@ def scrape_history(dialog_box):
     )
 
     for history in history_items:
+        time.sleep(3)
         history.click()
 
         details_panel_xpath = (
