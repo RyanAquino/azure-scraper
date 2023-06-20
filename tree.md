@@ -30,7 +30,7 @@
         * <yyyy_MM_ddThh_mm_ss>_<username>.md:
             * Title: <Joe commented Jan 11, 2016>
             * Content:
-            * relative link to attachment/s
+            * absolute link to attachment/s
     * definition_of_done.md (Definition of Done please ignore this filed):
     * development (folder): (each change set as file )
         * changeset_<ID>.md

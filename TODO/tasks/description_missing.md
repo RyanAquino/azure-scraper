@@ -12,7 +12,7 @@
     * for indented text with bullet point use "*"
     * for indented numbered or lettered preserve numbers or letters
     * web links should fallow format [highlighted word](https://somewebsite.local) 
-    * text with link to work item [highlighted word](<relative path>)
-        * in case it is link to work item from different project [highlighted word](<relative path>),
+    * text with link to work item [highlighted word](<absolute path>)
+        * in case it is link to work item from different project [highlighted word](<absolute path>),
             no need for validating path it is for reference only
 
