@@ -71,7 +71,7 @@ def scrape_child_work_items(driver, dialog_box):
         "Remaining Work": get_input_value(dialog_box, remaining_xpath),
         "Activity": get_input_value(dialog_box, activity_xpath),
         "Blocked": get_input_value(dialog_box, blocked_xpath),
-        "related_work": scrape_related_work(action, dialog_box),
+        "related_work": scrape_related_work(driver, dialog_box),
         "discussions": scrape_discussions(driver, action),
         "attachments": scrape_attachments(driver, dialog_box),
         "description": scrape_description(desc),
@@ -130,6 +130,7 @@ def scraper(driver, url, email, password, file_path):
     work_items = find_elements_by_xpath(driver, '//div[@aria-level="1"]')
     work_items_count = len(work_items)
     work_items_ctr = 0
+    is_fullscreen = False
 
     result_set = []
     while work_items_ctr < work_items_count:
@@ -146,6 +147,11 @@ def scraper(driver, url, email, password, file_path):
         print(f"Open dialog box for '{work_item_element_text}'")
         # Click
         work_item_element.click()
+
+        if not is_fullscreen:
+            full_screen = find_element_by_xpath(driver, "//div[contains(@class, 'full-screen-button')][last()]")
+            full_screen.click()
+            is_fullscreen = True
 
         dialog_xpath = "(//div[@role='dialog'])[last()]"
         dialog_box = find_element_by_xpath(work_item, dialog_xpath)

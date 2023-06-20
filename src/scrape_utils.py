@@ -74,7 +74,6 @@ def scrape_history(dialog_box):
     )
 
     for history in history_items:
-        time.sleep(3)
         history.click()
 
         details_panel_xpath = (
@@ -167,7 +166,7 @@ def scrape_history(dialog_box):
     return results
 
 
-def scrape_related_work(action, dialog_box):
+def scrape_related_work(driver, dialog_box):
     related_work_xpath = (
         "(.//div[@class='links-control-container']/div[@class='la-main-component'])"
         "[last()]/div[@class='la-list']/div"
@@ -205,7 +204,10 @@ def scrape_related_work(action, dialog_box):
             retry_count = 0
 
             while updated_at is None and retry_count < config.MAX_RETRIES:
-                action.move_to_element(updated_at_hover).perform()
+                driver.execute_script(
+                    "arguments[0].dispatchEvent(new MouseEvent('mouseover', {'bubbles': true}));",
+                    updated_at_hover
+                )
                 updated_at = get_text(
                     related_work, "//p[contains(@class, 'ms-Tooltip-subtext')]"
                 )
@@ -285,7 +287,7 @@ def scrape_discussions(driver, action):
             result = {
                 "User": get_text(discussion, ".//span[@class='user-display-name']"),
                 "Content": content,
-                "Date": date,
+                "Date": " ".join(date.split(" ")[-4:]),
                 "attachments": [
                     scrape_discussion_attachments(driver, attachment)
                     for attachment in (attachments or [])
