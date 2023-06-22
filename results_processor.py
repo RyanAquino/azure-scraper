@@ -61,6 +61,7 @@ def create_directory_hierarchy(
         development_path = os.path.join(dir_path, "development")
         work_item_attachments_path = os.path.join(dir_path, "attachments")
         discussion_attachments_path = os.path.join(discussion_path, "attachments")
+        related_works_path = os.path.join(dir_path, "related")
 
         print(" " * indent + dir_name)
         logging.info(f"Creating directory in {dir_path}")
@@ -70,6 +71,7 @@ def create_directory_hierarchy(
         os.makedirs(discussion_attachments_path, exist_ok=True)
         os.makedirs(development_path, exist_ok=True)
         os.makedirs(work_item_attachments_path, exist_ok=True)
+        os.makedirs(related_works_path, exist_ok=True)
 
         if "history" in d and d["history"]:
             with open(os.path.join(dir_path, "history.md"), "w") as file:
@@ -146,40 +148,34 @@ def create_related_work_contents(scrape_results, path: Path = Path("data")):
         dir_path = Path(path, folder_name)
 
         folder_path = [i for i in Path(Path.cwd() / path).resolve().rglob(folder_name)]
+        related_dir = Path(folder_path[0] / "related")
 
-        with open(os.path.join(folder_path[0], "related_work.md"), "w") as file:
-            for related_work in item.get("related_work"):
-                related_work_type = related_work.get("type")
-                related_work_data = {
-                    "type": related_work_type,
-                    "links to item file": [],
-                }
+        for related_work in item.get("related_work"):
+            related_work_type = related_work.get("type")
 
-                for work_items in related_work.get("related_work_items", []):
-                    work_item_folder_name = work_items.get("link")
-                    work_item_updated_at = work_items.get("updated_at")
+            for work_items in related_work.get("related_work_items", []):
+                work_item_folder_name = work_items.get("link")
+                work_item_updated_at = work_items.get("updated_at")
 
-                    work_item_path = [
-                        i
-                        for i in Path(Path.cwd() / "data")
-                        .resolve()
-                        .rglob(work_item_folder_name)
-                    ]
+                work_item_path = [
+                    i
+                    for i in Path(Path.cwd() / "data")
+                    .resolve()
+                    .rglob(work_item_folder_name)
+                ]
 
-                    if not work_item_path:
-                        logging.error(work_items)
-                        continue
+                if not work_item_path:
+                    logging.error(work_items)
+                    continue
 
-                    work_item_path = work_item_path[0]
-                    related_work_data["links to item file"].append(
-                        {"link": work_item_path, "updated_at": work_item_updated_at}
-                    )
+                work_item_path = work_item_path[0]
+                link_work_item_file_name = f"{work_item_folder_name}_update_{work_item_updated_at}_{related_work_type}"
+                os.symlink(work_item_path, Path(related_dir / link_work_item_file_name))
 
-                file.write(f"* Type: {related_work_type}\n")
-
-                for links in related_work_data.get("links to item file"):
-                    file.write(f"    * Link to item file: `{links.get('link')}`\n")
-                    file.write(f"    * Last update: {links.get('updated_at')}\n\n")
+                with open(Path(related_dir / f"{link_work_item_file_name}.md"), "w") as file:
+                    file.write(f"* Type: {related_work_type}\n")
+                    file.write(f"    * Link to item file: `{work_item_path}`\n")
+                    file.write(f"    * Last update: {work_item_updated_at}\n\n")
 
         if "children" in item:
             create_related_work_contents(item["children"], dir_path)
@@ -188,6 +184,10 @@ def create_related_work_contents(scrape_results, path: Path = Path("data")):
 def cleanup_existing_folders(directory: Path):
     for item in directory.iterdir():
         item_path = directory / item
+
+        if os.path.islink(item_path):
+            os.unlink(item_path)
+
         if item.is_dir() and item.name != 'attachments':
             shutil.rmtree(item_path)
 
@@ -200,4 +200,5 @@ def post_process_results(save_file, downloads_directory):
         create_related_work_contents(scrape_result)
 
         # Clean downloads directory after post process
-        shutil.rmtree(downloads_directory)
+        if downloads_directory.exists() and downloads_directory.is_dir():
+            shutil.rmtree(downloads_directory)
