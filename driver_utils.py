@@ -7,8 +7,10 @@ from sys import platform
 from selenium.webdriver.chrome.options import Options as ChromeOptions
 from selenium.webdriver.chrome.service import Service
 
-import config
+from config import Config
 from logger import logging
+
+config = Config()
 
 
 def get_driver_by_os():

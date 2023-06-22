@@ -12,13 +12,13 @@ Navigate to source directory
 ```bash
 cd src
 ```
-
-Set Azure login credentials and replace Chromium binary path on `config.py`
+Rename the file sample.env to .env, then set Azure login credentials and replace Chromium binary path on `config.py`
 ```
 EMAIL = ""
 PASSWORD = ""
 BINARY_PATH_LOCATION = ""
 ```
+
 
 Install dependencies
 ```bash

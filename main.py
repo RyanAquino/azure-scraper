@@ -4,7 +4,8 @@ import time
 from selenium import webdriver
 from selenium.webdriver.common.action_chains import ActionChains
 
-import config
+from config import Config
+
 from action_utils import (
     click_button_by_id,
     click_button_by_xpath,
@@ -24,6 +25,8 @@ from scrape_utils import (
     scrape_history,
     scrape_related_work,
 )
+
+config = Config()
 
 
 def login(driver, email, password):

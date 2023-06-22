@@ -6,7 +6,8 @@ from uuid import uuid4
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
 
-import config
+from config import Config
+
 from action_utils import (
     expand_collapsed_by_xpath,
     find_element_by_xpath,
@@ -14,6 +15,8 @@ from action_utils import (
     get_anchor_link,
     get_text,
 )
+
+config = Config()
 
 
 def scrape_attachments(driver, dialog_box):
@@ -206,7 +209,7 @@ def scrape_related_work(driver, dialog_box):
             while updated_at is None and retry_count < config.MAX_RETRIES:
                 driver.execute_script(
                     "arguments[0].dispatchEvent(new MouseEvent('mouseover', {'bubbles': true}));",
-                    updated_at_hover
+                    updated_at_hover,
                 )
                 updated_at = get_text(
                     related_work, "//p[contains(@class, 'ms-Tooltip-subtext')]"

@@ -4,9 +4,12 @@ import shutil
 from datetime import datetime
 from pathlib import Path
 
-import config
+from config import Config
+
 from action_utils import add_line_break
 from logger import logging
+
+config = Config()
 
 
 def create_history_metadata(history, file):

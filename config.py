@@ -1,11 +1,9 @@
-"""
-Set scrape configurations
-"""
-BASE_URL = "https://dev.azure.com/nvtmsovybqhxqzgyzf/"
-BACKLOG_ENDPOINT = "scrum/_backlogs/backlog/scrum%20Team/Epics/"
-EMAIL = ""
-PASSWORD = ""
-BINARY_PATH_LOCATION = "/Applications/Chromium.app/Contents/MacOS/Chromium"
-WORK_ITEM_ENDPOINT = "scrum/_workitems/edit/"
-MAX_RETRIES = 100
-MAX_WAIT_TIME = 10
+from dotenv import dotenv_values
+
+
+class Config:
+    def __init__(self, config_file=".env"):
+        self.config = dotenv_values(config_file)
+
+    def __getattr__(self, item):
+        return self.config.get(item)

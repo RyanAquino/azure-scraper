@@ -2,7 +2,9 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
 
-import config
+from config import Config
+
+config = Config()
 
 
 def click_button_by_id(driver, element_id):
