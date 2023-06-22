@@ -62,10 +62,10 @@ def scrape_child_work_items(driver, dialog_box):
     description = f"{work_item_control_xpath}//*[@aria-label='Description']"
 
     desc = find_element_by_xpath(dialog_box, description)
-
+    task_id = find_element_by_xpath(dialog_box, work_id_xpath).text
+    title = get_input_value(dialog_box, title_xpath).replace(" ", "_")
     work_item_data = {
-        "Task id": find_element_by_xpath(dialog_box, work_id_xpath).text,
-        "Title": get_input_value(dialog_box, title_xpath),
+        "Task id": f"{task_id}_{title}",
         "User Name": find_element_by_xpath(dialog_box, username_xpath).text,
         "State": get_input_value(dialog_box, state_xpath),
         "Area": get_input_value(dialog_box, area_xpath),
@@ -132,7 +132,7 @@ def scraper(driver, url, email, password, file_path):
     # Find each work item
     work_items = find_elements_by_xpath(driver, '//div[@aria-level="1"]')
     work_items_count = len(work_items)
-    work_items_ctr = 0
+    work_items_ctr = 2
 
     result_set = []
     while work_items_ctr < work_items_count:

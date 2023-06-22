@@ -55,15 +55,14 @@ def create_directory_hierarchy(
     ]
 
     for d in dicts:
-        dir_name = f"{d['Task id']}_{d['Title']}"
-        dir_path = os.path.join(path, dir_name)
+        dir_path = os.path.join(path, d["Task id"])
         discussion_path = os.path.join(dir_path, "discussion")
         development_path = os.path.join(dir_path, "development")
         work_item_attachments_path = os.path.join(dir_path, "attachments")
         discussion_attachments_path = os.path.join(discussion_path, "attachments")
         related_works_path = os.path.join(dir_path, "related")
 
-        print(" " * indent + dir_name)
+        print(" " * indent + d["Task id"])
         logging.info(f"Creating directory in {dir_path}")
         os.makedirs(dir_path, exist_ok=True)
         os.makedirs(discussion_path, exist_ok=True)
@@ -172,7 +171,9 @@ def create_related_work_contents(scrape_results, path: Path = Path("data")):
                 link_work_item_file_name = f"{work_item_folder_name}_update_{work_item_updated_at}_{related_work_type}"
                 os.symlink(work_item_path, Path(related_dir / link_work_item_file_name))
 
-                with open(Path(related_dir / f"{link_work_item_file_name}.md"), "w") as file:
+                with open(
+                    Path(related_dir / f"{link_work_item_file_name}.md"), "w"
+                ) as file:
                     file.write(f"* Type: {related_work_type}\n")
                     file.write(f"    * Link to item file: `{work_item_path}`\n")
                     file.write(f"    * Last update: {work_item_updated_at}\n\n")
@@ -188,7 +189,7 @@ def cleanup_existing_folders(directory: Path):
         if os.path.islink(item_path):
             os.unlink(item_path)
 
-        if item.is_dir() and item.name != 'attachments':
+        if item.is_dir() and item.name != "attachments":
             shutil.rmtree(item_path)
 
 
