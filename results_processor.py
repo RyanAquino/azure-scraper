@@ -1,12 +1,11 @@
 import json
 import os
 import shutil
-from datetime import datetime
 from pathlib import Path
 
 from config import Config
 
-from action_utils import add_line_break
+from action_utils import add_line_break, convert_date
 from logger import logging
 
 config = Config()
@@ -78,16 +77,12 @@ def create_directory_hierarchy(
 
         if "discussions" in d and d["discussions"]:
             for discussion in d.pop("discussions"):
-                discussion_date = datetime.strptime(
-                    discussion["Date"], "%d %B %Y %H:%M:%S"
-                )
-
-                file_name = (
-                    f"{discussion_date.strftime('%Y_%m_%d')}_{discussion['User']}.md"
-                )
+                # TODO: Move to scrape logic
+                discussion_date = convert_date(discussion["Date"])
+                file_name = f"{discussion_date}_{discussion['User']}.md"
                 with open(os.path.join(discussion_path, file_name), "a+") as file:
                     file.write(
-                        f"* Title: <{discussion['User']} commented {discussion_date.strftime('%B %d, %Y %H:%m:%S %p')}>\n"
+                        f"* Title: <{discussion['User']} commented {convert_date(discussion['Date'], '%B %d, %Y %H:%m:%S %p')}>\n"
                     )
                     file.write(
                         f"* Content: {add_line_break(discussion['Content'], 90)}\n"
@@ -153,8 +148,8 @@ def create_related_work_contents(scrape_results, path: Path = Path("data")):
 
             for work_items in related_work.get("related_work_items", []):
                 work_item_folder_name = work_items.get("link")
-                work_item_updated_at = work_items.get("updated_at")
-
+                # TODO: Move to line 230 of scrape_utils.py
+                work_item_updated_at = convert_date(work_items.get("updated_at"))
                 work_item_path = [
                     i
                     for i in Path(Path.cwd() / "data")
