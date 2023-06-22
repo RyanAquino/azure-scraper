@@ -6,4 +6,7 @@ class Config:
         self.config = dotenv_values(config_file)
 
     def __getattr__(self, item):
-        return self.config.get(item)
+        value = self.config.get(item)
+        if value.isdigit():
+            value = int(value)
+        return value
