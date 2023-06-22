@@ -132,7 +132,7 @@ def scraper(driver, url, email, password, file_path):
     # Find each work item
     work_items = find_elements_by_xpath(driver, '//div[@aria-level="1"]')
     work_items_count = len(work_items)
-    work_items_ctr = 2
+    work_items_ctr = 0
 
     result_set = []
     while work_items_ctr < work_items_count:

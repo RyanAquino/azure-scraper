@@ -141,12 +141,11 @@ def create_directory_hierarchy(
 
 def create_related_work_contents(scrape_results, path: Path = Path("data")):
     for item in scrape_results:
-        task_id = item.get("Task id")
-        task_title = item.get("Title")
-        folder_name = f"{task_id}_{task_title}"
-        dir_path = Path(path, folder_name)
+        dir_path = Path(path, item.get("Task id"))
 
-        folder_path = [i for i in Path(Path.cwd() / path).resolve().rglob(folder_name)]
+        folder_path = [
+            i for i in Path(Path.cwd() / path).resolve().rglob(item.get("Task id"))
+        ]
         related_dir = Path(folder_path[0] / "related")
 
         for related_work in item.get("related_work"):
@@ -170,7 +169,6 @@ def create_related_work_contents(scrape_results, path: Path = Path("data")):
                 work_item_path = work_item_path[0]
                 link_work_item_file_name = f"{work_item_folder_name}_update_{work_item_updated_at}_{related_work_type}"
                 os.symlink(work_item_path, Path(related_dir / link_work_item_file_name))
-
                 with open(
                     Path(related_dir / f"{link_work_item_file_name}.md"), "w"
                 ) as file:
