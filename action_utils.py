@@ -88,8 +88,9 @@ def expand_collapsed_by_xpath(dialog_box):
             collapse_item.click()
 
 
-def convert_date(date_string, new_format="%Y_%m_%dT%H_%M_%S"):
-    date_format = "%d %B %Y %H:%M:%S"
+def convert_date(
+    date_string, date_format="%d %B %Y %H:%M:%S", new_format="%Y_%m_%dT%H_%M_%S"
+):
     date_obj = datetime.strptime(date_string, date_format)
 
     return date_obj.strftime(new_format)
