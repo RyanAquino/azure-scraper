@@ -5,7 +5,7 @@ from pathlib import Path
 
 from config import Config
 
-from action_utils import add_line_break, convert_date
+from action_utils import add_line_break, convert_date, create_symlink
 from logger import logging
 
 config = Config()
@@ -165,7 +165,9 @@ def create_related_work_contents(scrape_results, path: Path = Path("data")):
 
                 work_item_path = work_item_path[0]
                 link_work_item_file_name = f"{work_item_folder_name}_update_{work_item_updated_at}_{related_work_type}"
-                os.symlink(work_item_path, Path(related_dir / link_work_item_file_name))
+                target_path = Path(related_dir / link_work_item_file_name)
+                create_symlink(work_item_path, target_path)
+
                 with open(
                     Path(related_dir / f"{link_work_item_file_name}.md"), "w"
                 ) as file:

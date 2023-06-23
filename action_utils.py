@@ -4,6 +4,9 @@ from selenium.webdriver.support.wait import WebDriverWait
 from datetime import datetime
 from config import Config
 
+import os
+import platform
+
 config = Config()
 
 
@@ -90,3 +93,11 @@ def convert_date(date_string, new_format="%Y_%m_%dT%H_%M_%S"):
     date_obj = datetime.strptime(date_string, date_format)
 
     return date_obj.strftime(new_format)
+
+
+def create_symlink(source, target):
+    if platform.system() == "Windows":
+        command = 'mklink /J "{}" "{}"'.format(target, source)
+        os.system(command)
+    else:
+        os.symlink(source, target)
