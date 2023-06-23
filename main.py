@@ -170,14 +170,14 @@ def main():
     save_file = "data/scrape_result.json"
     chrome_config, chrome_downloads = chrome_settings_init()
 
-    # with webdriver.Chrome(**chrome_config) as wd:
-    #     scraper(
-    #         wd,
-    #         config.BASE_URL + config.BACKLOG_ENDPOINT,
-    #         config.EMAIL,
-    #         config.PASSWORD,
-    #         save_file,
-    #     )
+    with webdriver.Chrome(**chrome_config) as wd:
+        scraper(
+            wd,
+            config.BASE_URL + config.BACKLOG_ENDPOINT,
+            config.EMAIL,
+            config.PASSWORD,
+            save_file,
+        )
 
     post_process_results(save_file, chrome_downloads)
 

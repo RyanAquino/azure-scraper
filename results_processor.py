@@ -205,7 +205,7 @@ def post_process_results(save_file, downloads_directory):
         scrape_result = json.load(f)
         cleanup_existing_folders((Path.cwd() / "data"))
         create_directory_hierarchy(scrape_result)
-        # create_related_work_contents(scrape_result)
+        create_related_work_contents(scrape_result)
 
         # Clean downloads directory after post process
         if downloads_directory.exists() and downloads_directory.is_dir():
