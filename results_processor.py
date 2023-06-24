@@ -93,7 +93,6 @@ def create_directory_hierarchy(
                     for attachment in discussion["attachments"]:
                         source = os.path.join(attachments_path, attachment["filename"])
 
-                        # <yyyy_MM_ddThh_mm_ss>_<username>_<id>.<relevant file extension>
                         new_filename = f"{discussion_date}_{discussion['User']}_{attachment['filename']}"
                         destination = os.path.join(
                             discussion_attachments_path, new_filename

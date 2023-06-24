@@ -226,7 +226,7 @@ def scrape_related_work(driver, dialog_box):
             related_work_title = related_work_link.text
             result["related_work_items"].append(
                 {
-                    "link": f"{related_work_url}_{related_work_title}",
+                    "link": f'{related_work_url}_{related_work_title.replace(" ", "_")}',
                     "updated_at": updated_at,
                 }
             )
