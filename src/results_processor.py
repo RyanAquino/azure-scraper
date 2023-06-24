@@ -5,7 +5,7 @@ from datetime import datetime
 from pathlib import Path
 
 import config
-from action_utils import add_line_break
+from action_utils import add_line_break, convert_date
 from logger import logging
 
 
@@ -52,7 +52,7 @@ def create_directory_hierarchy(
     ]
 
     for d in dicts:
-        dir_name = f"{d['Task id']}_{d['Title']}"
+        dir_name = f"{d['Task id']}_{d['Title'].replace(' ','_')}"
         dir_path = os.path.join(path, dir_name)
         discussion_path = os.path.join(dir_path, "discussion")
         development_path = os.path.join(dir_path, "development")
@@ -138,7 +138,7 @@ def create_directory_hierarchy(
 def create_related_work_contents(scrape_results, path: Path = Path("data")):
     for item in scrape_results:
         task_id = item.get("Task id")
-        task_title = item.get("Title")
+        task_title = item.get("Title").replace(" ", "_")
         folder_name = f"{task_id}_{task_title}"
         dir_path = Path(path, folder_name)
 
@@ -154,7 +154,7 @@ def create_related_work_contents(scrape_results, path: Path = Path("data")):
 
                 for work_items in related_work.get("related_work_items", []):
                     work_item_folder_name = work_items.get("link")
-                    work_item_updated_at = work_items.get("updated_at")
+                    work_item_updated_at = convert_date(work_items.get("updated_at"))
 
                     work_item_path = [
                         i
@@ -197,4 +197,5 @@ def post_process_results(save_file, downloads_directory):
         create_related_work_contents(scrape_result)
 
         # Clean downloads directory after post process
-        shutil.rmtree(downloads_directory)
+        if downloads_directory.exists() and downloads_directory.is_dir():
+            shutil.rmtree(downloads_directory)
