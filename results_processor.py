@@ -89,17 +89,22 @@ def create_directory_hierarchy(
                         f"* Content: {add_line_break(discussion['Content'], 90)}\n"
                     )
 
-                if discussion["attachments"]:
-                    for attachment in discussion["attachments"]:
-                        source = os.path.join(attachments_path, attachment["filename"])
+                    file.write("* Absolute link to attachment/s\n")
 
-                        new_filename = f"{discussion_date}_{discussion['User']}_{attachment['filename']}"
-                        destination = os.path.join(
-                            discussion_attachments_path, new_filename
-                        )
+                    if discussion["attachments"]:
+                        for attachment in discussion["attachments"]:
+                            source = os.path.join(
+                                attachments_path, attachment["filename"]
+                            )
 
-                        if os.path.exists(source):
-                            shutil.move(source, destination)
+                            new_filename = f"{discussion_date}_{discussion['User']}_{attachment['filename']}"
+                            destination = Path(
+                                discussion_attachments_path, new_filename
+                            )
+                            file.write(f"  * [{new_filename}]({destination})\n")
+
+                            if os.path.exists(source):
+                                shutil.move(source, destination)
 
         if d.get("attachments"):
             for attachment in d["attachments"]:
