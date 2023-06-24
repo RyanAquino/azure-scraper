@@ -206,7 +206,7 @@ def scrape_related_work(driver, dialog_box):
             while updated_at is None and retry_count < config.MAX_RETRIES:
                 driver.execute_script(
                     "arguments[0].dispatchEvent(new MouseEvent('mouseover', {'bubbles': true}));",
-                    updated_at_hover
+                     updated_at_hover,
                 )
                 updated_at = get_text(
                     related_work, "//p[contains(@class, 'ms-Tooltip-subtext')]"
@@ -223,7 +223,7 @@ def scrape_related_work(driver, dialog_box):
             related_work_title = related_work_link.text
             result["related_work_items"].append(
                 {
-                    "link": f"{related_work_url}_{related_work_title}",
+                    "link": f'{related_work_url}_{related_work_title.replace(" ", "_")}',
                     "updated_at": updated_at,
                 }
             )
