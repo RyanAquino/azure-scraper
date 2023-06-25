@@ -85,17 +85,22 @@ def create_directory_hierarchy(
                         f"* Content: {add_line_break(discussion['Content'], 90)}\n"
                     )
 
-                if discussion["attachments"]:
-                    for attachment in discussion["attachments"]:
-                        source = os.path.join(attachments_path, attachment["filename"])
+                    file.write("* Absolute link to attachment/s\n")
 
-                        new_filename = f"{discussion_date}_{discussion['User']}_{attachment['filename']}"
-                        destination = os.path.join(
-                            discussion_attachments_path, new_filename
-                        )
+                    if discussion["attachments"]:
+                        for attachment in discussion["attachments"]:
+                            source = os.path.join(
+                                attachments_path, attachment["filename"]
+                            )
 
-                        if os.path.exists(source):
-                            shutil.move(source, destination)
+                            new_filename = f"{discussion_date}_{discussion['User']}_{attachment['filename']}"
+                            destination = Path(
+                                discussion_attachments_path, new_filename
+                            )
+                            file.write(f"  * [{new_filename}]({destination})\n")
+
+                            if os.path.exists(source):
+                                shutil.move(source, destination)
 
         if d.get("attachments"):
             for attachment in d["attachments"]:
@@ -169,7 +174,7 @@ def create_related_work_contents(scrape_results, path: Path = Path("data")):
                     Path(related_dir / f"{link_work_item_file_name}.md"), "w"
                 ) as file:
                     file.write(f"* Type: {related_work_type}\n")
-                    file.write(f"    * Link to item file: `{work_item_path}`\n")
+                    file.write(f"    * Link to item file: [{work_item_folder_name}]({work_item_path})\n")
                     file.write(f"    * Last update: {work_item_updated_at}\n\n")
 
         if "children" in item:
