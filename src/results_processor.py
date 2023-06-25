@@ -160,6 +160,9 @@ def create_related_work_contents(scrape_results, path: Path = Path("data")):
             for work_items in related_work.get("related_work_items", []):
                 work_item_folder_name = work_items.get("link")
                 work_item_updated_at = convert_date(work_items.get("updated_at"))
+                link_work_item_file_name = f"{work_item_folder_name}_update_{work_item_updated_at}_{related_work_type}"
+                target_path = Path(related_dir / link_work_item_file_name)
+
                 work_item_path = [
                     i
                     for i in Path(Path.cwd() / "data")
@@ -168,12 +171,10 @@ def create_related_work_contents(scrape_results, path: Path = Path("data")):
                 ]
 
                 if not work_item_path:
-                    logging.error(work_items)
+                    create_symlink("/non-existent/another-project-source", target_path)
                     continue
 
                 work_item_path = work_item_path[0]
-                link_work_item_file_name = f"{work_item_folder_name}_update_{work_item_updated_at}_{related_work_type}"
-                target_path = Path(related_dir / link_work_item_file_name)
                 create_symlink(work_item_path, target_path)
 
                 with open(
