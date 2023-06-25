@@ -8,32 +8,37 @@ from action_utils import add_line_break, convert_date, create_symlink
 from logger import logging
 
 
-def create_history_metadata(history, file):
+def create_history_metadata(history, history_path):
     for item in history:
-        file.write(f"* Date: {item['Date']}\n")
-        file.write(f"   * User: {item['User']}\n")
-        file.write(f"   * Title: {item['Title']}\n")
+        formatted_date = convert_date(item["Date"], date_format="%a %d/%m/%Y %H:%M")
+        title = item["Title"].replace(" ", "_")
+        filename = f"{formatted_date}_{item['User']}_{title}.md"
+        path = Path(history_path, filename)
+        with open(path, "w", encoding="utf-8") as file:
+            file.write(f"* Date: {item['Date']}\n")
+            file.write(f"   * User: {item['User']}\n")
+            file.write(f"   * Title: {item['Title']}\n")
 
-        if item["Content"]:
-            file.write(f"   * Content: {add_line_break(item['Content'], 60)}\n")
+            if item["Content"]:
+                file.write(f"   * Content: {add_line_break(item['Content'], 60)}\n")
 
-        if item["Fields"]:
-            file.write(f"   * Fields\n")
-            fields = item["Fields"]
+            if item["Fields"]:
+                file.write("   * Fields\n")
+                fields = item["Fields"]
 
-            for index in range(0, len(fields)):
-                field = fields[index]
+                for field in fields:
+                    file.write(f"       * {field['name']}\n")
+                    file.write(f"           * Old Value: {field['old_value']}\n")
+                    file.write(f"           * New Value: {field['new_value']}\n")
 
-                file.write(f"       * {field['name']}\n")
-                file.write(f"           * Old Value: {field['old_value']}\n")
-                file.write(f"           * New Value: {field['new_value']}\n")
-
-        if links := item.get("Links"):
-            for link in links:
-                file.write(f"   * Links\n")
-                file.write(f"       * Type: {link['Type']}\n")
-                file.write(f"       * Link to item file: {link['Link to item file']}\n")
-                file.write(f"       * Title: {link['Title']}\n")
+            if links := item.get("Links"):
+                for link in links:
+                    file.write("   * Links\n")
+                    file.write(f"       * Type: {link['Type']}\n")
+                    file.write(
+                        f"       * Link to item file: {link['Link to item file']}\n"
+                    )
+                    file.write(f"       * Title: {link['Title']}\n")
 
 
 def create_directory_hierarchy(
@@ -53,6 +58,7 @@ def create_directory_hierarchy(
     for d in dicts:
         dir_name = f"{d['Task id']}_{d['Title'].replace(' ','_')}"
         dir_path = os.path.join(path, dir_name)
+        history_path = os.path.join(dir_path, "history")
         discussion_path = os.path.join(dir_path, "discussion")
         development_path = os.path.join(dir_path, "development")
         work_item_attachments_path = os.path.join(dir_path, "attachments")
@@ -62,6 +68,7 @@ def create_directory_hierarchy(
         print(" " * indent + dir_name)
         logging.info(f"Creating directory in {dir_path}")
         os.makedirs(dir_path, exist_ok=True)
+        os.makedirs(history_path, exist_ok=True)
         os.makedirs(discussion_path, exist_ok=True)
         shutil.rmtree(discussion_path)
         os.makedirs(discussion_attachments_path, exist_ok=True)
@@ -70,8 +77,7 @@ def create_directory_hierarchy(
         os.makedirs(related_works_path, exist_ok=True)
 
         if "history" in d and d["history"]:
-            with open(os.path.join(dir_path, "history.md"), "w") as file:
-                create_history_metadata(d.pop("history"), file)
+            create_history_metadata(d.pop("history"), history_path)
 
         if "discussions" in d and d["discussions"]:
             for discussion in d.pop("discussions"):
@@ -79,7 +85,7 @@ def create_directory_hierarchy(
                 file_name = f"{discussion_date}_{discussion['User']}.md"
                 with open(os.path.join(discussion_path, file_name), "a+") as file:
                     file.write(
-                        f"* Title: <{discussion['User']} commented {convert_date(discussion['Date'], '%B %d, %Y %H:%m:%S %p')}>\n"
+                        f"* Title: <{discussion['User']} commented {convert_date(discussion['Date'], new_format='%B %d, %Y %H:%m:%S %p')}>\n"
                     )
                     file.write(
                         f"* Content: {add_line_break(discussion['Content'], 90)}\n"
