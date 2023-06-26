@@ -100,9 +100,11 @@ def create_directory_hierarchy(
                                 attachments_path, attachment["filename"]
                             )
                             destination = Path(
-                                discussion_attachments_path, attachment['filename']
+                                discussion_attachments_path, attachment["filename"]
                             )
-                            file.write(f"  * [{attachment['filename']}]({destination})\n")
+                            file.write(
+                                f"  * [{attachment['filename']}]({destination})\n"
+                            )
 
                             if os.path.exists(source):
                                 shutil.move(source, destination)
@@ -177,9 +179,7 @@ def create_related_work_contents(scrape_results, path: Path = Path("data")):
                 work_item_path = work_item_path[0]
                 create_symlink(work_item_path, target_path)
 
-                with open(
-                    Path(related_dir / f"{work_item_target}.md"), "w"
-                ) as file:
+                with open(Path(related_dir / f"{work_item_target}.md"), "w") as file:
                     file.write(f"* Type: {related_work_type}\n")
                     file.write(f"    * Link to item file: `{work_item_path}`\n")
                     file.write(f"    * Last update: {work_item_updated_at}\n\n")

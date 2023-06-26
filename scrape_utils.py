@@ -34,7 +34,9 @@ def scrape_attachments(driver, dialog_box):
     # Retrieve attachment links
     attachments_data = []
 
-    attachments_area = find_element_by_xpath(dialog_box, "(.//div[@class='grid-content-spacer'])[last()]/parent::div")
+    attachments_area = find_element_by_xpath(
+        dialog_box, "(.//div[@class='grid-content-spacer'])[last()]/parent::div"
+    )
     attachment_rows_xpath = ".//div[@role='row']"
     attachment_rows = find_elements_by_xpath(attachments_area, attachment_rows_xpath)
 
@@ -50,7 +52,7 @@ def scrape_attachments(driver, dialog_box):
         query_params = urllib.parse.parse_qs(parsed_url.query)
 
         updated_at = convert_date(date_attached.text, date_format="%d/%m/%Y %H:%M")
-        file_name, file_extension = query_params.get('fileName')[0].split(".")
+        file_name, file_extension = query_params.get("fileName")[0].split(".")
         resource_id = parsed_url.path.split("/")[-1]
         new_file_name = f"{updated_at}_{file_name}_{resource_id}.{file_extension}"
         query_params["fileName"] = [new_file_name]
@@ -229,12 +231,14 @@ def scrape_related_work(driver, dialog_box):
 
             updated_at = " ".join(updated_at.split(" ")[-4:])
 
-            related_work_item_id = related_work_link.get_attribute("href").split("/")[-1]
+            related_work_item_id = related_work_link.get_attribute("href").split("/")[
+                -1
+            ]
             related_work_title = related_work_link.text.replace(" ", "_")
             result["related_work_items"].append(
                 {
-                    "filename_source": f'{related_work_item_id}_{related_work_title}',
-                    "link_target": f'{related_work_item_id}_{related_work_title}_update_{convert_date(updated_at)}_{related_work_type}',
+                    "filename_source": f"{related_work_item_id}_{related_work_title}",
+                    "link_target": f"{related_work_item_id}_{related_work_title}_update_{convert_date(updated_at)}_{related_work_type}",
                     "updated_at": updated_at,
                 }
             )
@@ -248,10 +252,12 @@ def scrape_discussion_attachments(driver, attachment, discussion_date):
     parsed_url = urllib.parse.urlparse(attachment.get_attribute("src"))
     query_params = urllib.parse.parse_qs(parsed_url.query)
 
-    file_name, file_extension = query_params.get('fileName')[0].split(".")
+    file_name, file_extension = query_params.get("fileName")[0].split(".")
     resource_id = parsed_url.path.split("/")[-1]
     discussion_date = convert_date(discussion_date)
-    query_params["fileName"] = [f"{discussion_date}_{file_name}_{resource_id}.{file_extension}"]
+    query_params["fileName"] = [
+        f"{discussion_date}_{file_name}_{resource_id}.{file_extension}"
+    ]
 
     if "download" not in query_params:
         query_params["download"] = "True"
