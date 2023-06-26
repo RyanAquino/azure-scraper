@@ -242,10 +242,14 @@ def scrape_related_work(driver, dialog_box):
     return results
 
 
-def scrape_discussion_attachments(driver, attachment):
+def scrape_discussion_attachments(driver, attachment, discussion_date):
     parsed_url = urllib.parse.urlparse(attachment.get_attribute("src"))
     query_params = urllib.parse.parse_qs(parsed_url.query)
-    query_params["fileName"] = [f"{uuid4()}_{query_params.get('fileName')[0]}"]
+
+    file_name, file_extension = query_params.get('fileName')[0].split(".")
+    resource_id = parsed_url.path.split("/")[-1]
+    discussion_date = convert_date(discussion_date)
+    query_params["fileName"] = [f"{discussion_date}_{file_name}_{resource_id}.{file_extension}"]
 
     if "download" not in query_params:
         query_params["download"] = "True"
@@ -293,12 +297,14 @@ def scrape_discussions(driver, action):
                 )
                 time.sleep(3)
 
+            discussion_date = " ".join(date.split(" ")[-4:])
+
             result = {
                 "User": get_text(discussion, ".//span[@class='user-display-name']"),
                 "Content": content,
-                "Date": " ".join(date.split(" ")[-4:]),
+                "Date": discussion_date,
                 "attachments": [
-                    scrape_discussion_attachments(driver, attachment)
+                    scrape_discussion_attachments(driver, attachment, discussion_date)
                     for attachment in (attachments or [])
                 ],
             }
