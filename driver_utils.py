@@ -2,14 +2,11 @@ import os
 from platform import system
 import shutil
 from pathlib import Path
-from sys import platform
 
 from selenium.webdriver.chrome.options import Options as ChromeOptions
 from selenium.webdriver.chrome.service import Service
 
-from config import Config
-
-config = Config()
+import config
 
 
 def chrome_settings_init():

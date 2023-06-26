@@ -6,7 +6,7 @@ from uuid import uuid4
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
 
-from config import Config
+import config
 
 from action_utils import (
     expand_collapsed_by_xpath,
@@ -14,9 +14,8 @@ from action_utils import (
     find_elements_by_xpath,
     get_anchor_link,
     get_text,
+    convert_date,
 )
-
-config = Config()
 
 
 def scrape_attachments(driver, dialog_box):
@@ -33,24 +32,31 @@ def scrape_attachments(driver, dialog_box):
     attachment_button[-1].click()
 
     # Retrieve attachment links
-    attachment_count = attachment_count.text
-    attachment_count = "".join(
-        [char for char in attachment_count.strip() if char.isdigit()]
-    )
-    a_href_xpath = ".//div[contains(@class, 'attachments-grid-file-name')]//a"
-    attachments = find_elements_by_xpath(dialog_box, a_href_xpath)
     attachments_data = []
 
-    for attachment in attachments[-int(attachment_count) :]:
-        attachment_url = attachment.get_attribute("href")
+    attachments_area = find_element_by_xpath(dialog_box, "(.//div[@class='grid-content-spacer'])[last()]/parent::div")
+    attachment_rows_xpath = ".//div[@role='row']"
+    attachment_rows = find_elements_by_xpath(attachments_area, attachment_rows_xpath)
+
+    for attachment in attachment_rows:
+        a_href_xpath = "//div[contains(@class, 'attachments-grid-file-name')]//a"
+        attachment_href = find_element_by_xpath(attachment, a_href_xpath)
+
+        date_attached_xpath = ".//div[3]"
+        date_attached = find_element_by_xpath(attachment, date_attached_xpath)
+
+        attachment_url = attachment_href.get_attribute("href")
         parsed_url = urllib.parse.urlparse(attachment_url)
         query_params = urllib.parse.parse_qs(parsed_url.query)
-        file_name = f"{uuid4()}_{query_params.get('fileName')[0]}"
-        query_params["fileName"] = [file_name]
+
+        updated_at = convert_date(date_attached.text, date_format="%d/%m/%Y %H:%M")
+        file_name, file_extension = query_params.get('fileName')[0].split(".")
+        resource_id = parsed_url.path.split("/")[-1]
+        query_params["fileName"] = [f"{updated_at}_{file_name}_{resource_id}.{file_extension}"]
         updated_url = urllib.parse.urlunparse(
             parsed_url._replace(query=urllib.parse.urlencode(query_params, doseq=True))
         )
-        attachments_data.append({"url": updated_url, "filename": file_name})
+        attachments_data.append({"url": updated_url, "filename": query_params["fileName"]})
         driver.get(updated_url)
 
     # Navigate back to details

@@ -3,17 +3,14 @@ import os
 import shutil
 from pathlib import Path
 
-from config import Config
+import config
 
 from action_utils import add_line_break, convert_date, create_symlink
 from logger import logging
 
-config = Config()
-
 
 def create_history_metadata(history, history_path):
     for item in history:
-        # <yyyy_MM_ddThh_mm_ss>_<username>_<title>.md
         formatted_date = convert_date(item["Date"], date_format="%a %d/%m/%Y %H:%M")
         title = item["Title"].replace(" ", "_")
         filename = f"{formatted_date}_{item['User']}_{title}.md"
