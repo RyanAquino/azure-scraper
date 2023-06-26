@@ -1,7 +1,6 @@
 import re
 import time
 import urllib.parse
-from uuid import uuid4
 
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
@@ -41,13 +40,13 @@ def scrape_attachments(driver, dialog_box):
     attachment_rows = find_elements_by_xpath(attachments_area, attachment_rows_xpath)
 
     for attachment in attachment_rows:
-        a_href_xpath = "//div[contains(@class, 'attachments-grid-file-name')]//a"
-        attachment_href = find_element_by_xpath(attachment, a_href_xpath)
-
+        a_href_xpath = ".//div[contains(@class, 'attachments-grid-file-name')]//a"
         date_attached_xpath = ".//div[3]"
+
+        attachment_href = find_element_by_xpath(attachment, a_href_xpath)
+        attachment_url = attachment_href.get_attribute("href")
         date_attached = find_element_by_xpath(attachment, date_attached_xpath)
 
-        attachment_url = attachment_href.get_attribute("href")
         parsed_url = urllib.parse.urlparse(attachment_url)
         query_params = urllib.parse.parse_qs(parsed_url.query)
 
