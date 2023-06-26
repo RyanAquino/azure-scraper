@@ -52,11 +52,12 @@ def scrape_attachments(driver, dialog_box):
         updated_at = convert_date(date_attached.text, date_format="%d/%m/%Y %H:%M")
         file_name, file_extension = query_params.get('fileName')[0].split(".")
         resource_id = parsed_url.path.split("/")[-1]
-        query_params["fileName"] = [f"{updated_at}_{file_name}_{resource_id}.{file_extension}"]
+        new_file_name = f"{updated_at}_{file_name}_{resource_id}.{file_extension}"
+        query_params["fileName"] = [new_file_name]
         updated_url = urllib.parse.urlunparse(
             parsed_url._replace(query=urllib.parse.urlencode(query_params, doseq=True))
         )
-        attachments_data.append({"url": updated_url, "filename": query_params["fileName"]})
+        attachments_data.append({"url": updated_url, "filename": new_file_name})
         driver.get(updated_url)
 
     # Navigate back to details
@@ -228,11 +229,12 @@ def scrape_related_work(driver, dialog_box):
 
             updated_at = " ".join(updated_at.split(" ")[-4:])
 
-            related_work_url = related_work_link.get_attribute("href").split("/")[-1]
-            related_work_title = related_work_link.text
+            related_work_item_id = related_work_link.get_attribute("href").split("/")[-1]
+            related_work_title = related_work_link.text.replace(" ", "_")
             result["related_work_items"].append(
                 {
-                    "link": f'{related_work_url}_{related_work_title.replace(" ", "_")}',
+                    "filename_source": f'{related_work_item_id}_{related_work_title}',
+                    "link_target": f'{related_work_item_id}_{related_work_title}_update_{convert_date(updated_at)}_{related_work_type}',
                     "updated_at": updated_at,
                 }
             )
