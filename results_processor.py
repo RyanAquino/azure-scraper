@@ -121,7 +121,9 @@ def create_directory_hierarchy(
 
         with open(os.path.join(dir_path, "description.md"), "w") as file:
             if d["description"]:
-                file.write(d.pop("description"))
+                description = d.pop("description").rstrip("\n")
+                description = description.replace("\n", "\\\n")
+                file.write(description)
 
         with open(os.path.join(dir_path, "metadata.md"), "w") as file:
             for key, value in d.items():
