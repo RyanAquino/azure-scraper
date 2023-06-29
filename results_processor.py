@@ -5,7 +5,12 @@ from pathlib import Path
 
 import config
 
-from action_utils import add_line_break, convert_date, create_symlink
+from action_utils import (
+    add_line_break,
+    convert_date,
+    create_symlink,
+    convert_to_markdown,
+)
 from logger import logging
 
 
@@ -44,8 +49,8 @@ def create_history_metadata(history, history_path):
 
 def create_directory_hierarchy(
     dicts,
-    path=os.path.join(os.getcwd(), "data"),
-    attachments_path=(Path.cwd() / "data" / "attachments"),
+    path=Path(Path.cwd(), "data"),
+    attachments_path=(Path(Path.cwd(), "data", "attachments")),
     indent=0,
 ):
     exclude_fields = [
@@ -58,13 +63,13 @@ def create_directory_hierarchy(
 
     for d in dicts:
         dir_name = f"{d['Task id']}_{d['Title'].replace(' ','_')}"
-        dir_path = os.path.join(path, dir_name)
-        history_path = os.path.join(dir_path, "history")
-        discussion_path = os.path.join(dir_path, "discussion")
-        development_path = os.path.join(dir_path, "development")
-        work_item_attachments_path = os.path.join(dir_path, "attachments")
-        discussion_attachments_path = os.path.join(discussion_path, "attachments")
-        related_works_path = os.path.join(dir_path, "related")
+        dir_path = Path(path, dir_name)
+        history_path = Path(dir_path, "history")
+        discussion_path = Path(dir_path, "discussion")
+        development_path = Path(dir_path, "development")
+        work_item_attachments_path = Path(dir_path, "attachments")
+        discussion_attachments_path = Path(discussion_path, "attachments")
+        related_works_path = Path(dir_path, "related")
 
         print(" " * indent + dir_name)
         logging.info(f"Creating directory in {dir_path}")
@@ -84,7 +89,7 @@ def create_directory_hierarchy(
             for discussion in d.pop("discussions"):
                 discussion_date = convert_date(discussion["Date"])
                 file_name = f"{discussion_date}_{discussion['User']}.md"
-                with open(os.path.join(discussion_path, file_name), "a+") as file:
+                with open(Path(discussion_path, file_name), "a+") as file:
                     file.write(
                         f"* Title: <{discussion['User']} commented {convert_date(discussion['Date'], new_format='%B %d, %Y %H:%m:%S %p')}>\n"
                     )
@@ -96,9 +101,7 @@ def create_directory_hierarchy(
 
                     if discussion["attachments"]:
                         for attachment in discussion["attachments"]:
-                            source = os.path.join(
-                                attachments_path, attachment["filename"]
-                            )
+                            source = Path(attachments_path, attachment["filename"])
                             destination = Path(
                                 discussion_attachments_path, attachment["filename"]
                             )
@@ -111,32 +114,30 @@ def create_directory_hierarchy(
 
         if d.get("attachments"):
             for attachment in d["attachments"]:
-                source = os.path.join(attachments_path, attachment["filename"])
-                destination = os.path.join(
-                    work_item_attachments_path, attachment["filename"]
-                )
+                source = Path(attachments_path, attachment["filename"])
+                destination = Path(work_item_attachments_path, attachment["filename"])
 
                 if os.path.exists(source):
                     shutil.move(source, destination)
 
-        with open(os.path.join(dir_path, "description.md"), "w") as file:
+        with open(Path(dir_path, "description.md"), "w", encoding="utf-8") as file:
             if d["description"]:
-                description = d.pop("description").rstrip("\n")
-                description = description.replace("\n", "\\\n")
-                file.write(description)
+                description = convert_to_markdown(d.pop("description"))
+                file.write(str(description))
 
-        with open(os.path.join(dir_path, "metadata.md"), "w") as file:
+        with open(Path(dir_path, "metadata.md"), "w") as file:
             for key, value in d.items():
                 if key not in exclude_fields:
                     file.write(f"* {key}: {value}\n")
 
-        with open(os.path.join(dir_path, "origin.md"), "w") as file:
+        with open(Path(dir_path, "origin.md"), "w") as file:
             file.write(config.BASE_URL + config.WORK_ITEM_ENDPOINT + d["Task id"])
 
         for development in d.pop("development"):
-            with open(
-                os.path.join(development_path, f"changeset_{development['ID']}.md"), "w"
-            ) as file:
+            change_filename = Path(
+                development_path, f"changeset_{development['ID']}.md"
+            )
+            with open(change_filename, "w") as file:
                 if change_sets := development["change_sets"]:
                     for change_set in change_sets:
                         file.write(f"* 'File Name': {change_set['File Name']}\n")
@@ -154,8 +155,8 @@ def create_related_work_contents(scrape_results, path: Path = Path("data")):
         folder_name = f"{task_id}_{task_title}"
         dir_path = Path(path, folder_name)
 
-        folder_path = [i for i in Path(Path.cwd() / path).resolve().rglob(folder_name)]
-        related_dir = Path(folder_path[0] / "related")
+        folder_path = [i for i in Path(Path.cwd(), path).resolve().rglob(folder_name)]
+        related_dir = Path(folder_path[0], "related")
 
         for related_work in item.get("related_work"):
             related_work_type = related_work.get("type")
@@ -165,11 +166,11 @@ def create_related_work_contents(scrape_results, path: Path = Path("data")):
                 work_item_file_name = work_items.get("filename_source")
                 work_item_updated_at = convert_date(work_items.get("updated_at"))
 
-                target_path = Path(related_dir / work_item_target)
+                target_path = Path(related_dir, work_item_target)
 
                 work_item_path = [
                     i
-                    for i in Path(Path.cwd() / "data")
+                    for i in Path(Path.cwd(), "data")
                     .resolve()
                     .rglob(work_item_file_name)
                 ]
@@ -181,7 +182,8 @@ def create_related_work_contents(scrape_results, path: Path = Path("data")):
                 work_item_path = work_item_path[0]
                 create_symlink(work_item_path, target_path)
 
-                with open(Path(related_dir / f"{work_item_target}.md"), "w") as file:
+                related_md_filename = Path(related_dir, f"{work_item_target}.md")
+                with open(related_md_filename, "w") as file:
                     file.write(f"* Type: {related_work_type}\n")
                     file.write(f"    * Link to item file: `{work_item_path}`\n")
                     file.write(f"    * Last update: {work_item_updated_at}\n\n")
@@ -204,7 +206,7 @@ def cleanup_existing_folders(directory: Path):
 def post_process_results(save_file, downloads_directory):
     with open(save_file) as f:
         scrape_result = json.load(f)
-        cleanup_existing_folders((Path.cwd() / "data"))
+        cleanup_existing_folders(Path(Path.cwd(), "data"))
         create_directory_hierarchy(scrape_result)
         create_related_work_contents(scrape_result)
 
