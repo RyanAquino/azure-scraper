@@ -376,18 +376,5 @@ def scrape_development(driver):
 
 
 def scrape_description(element):
-    formatted_text = ""
     html = element.get_attribute("innerHTML")
-    parsed_div = html.replace("</div>", "\n").replace("<div>", "")
-    parsed_div = parsed_div.replace("&nbsp;", " ")
-
-    # Extract anchor tags using regex
-    pattern = r'<a\s+href="([^"]+)">([^<]+)</a>'
-    matches = re.findall(pattern, parsed_div)
-
-    for href, text in matches:
-        formatted_text = parsed_div.replace(
-            f'<a href="{href}">{text}</a>', f"[{text}]({href})"
-        )
-
-    return formatted_text
+    return html
