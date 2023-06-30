@@ -13,7 +13,7 @@ Navigate to source directory
 cd src
 ```
 
-Set Azure login credentials and replace Chromium binary path on `config.py`
+Set Azure login credentials and replace Chromium binary path on `.env`
 ```
 EMAIL = ""
 PASSWORD = ""
