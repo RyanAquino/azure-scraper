@@ -30,7 +30,7 @@ def get_driver_by_os():
 
 
 def chrome_settings_init():
-    download_directory = Path(f"{os.getcwd()}/data/attachments")
+    download_directory = Path(os.getcwd(), "data", "attachments")
     language_code = "en-GB"
 
     chrome_options = ChromeOptions()
