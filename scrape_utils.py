@@ -1,4 +1,3 @@
-import re
 import time
 import urllib.parse
 
@@ -6,14 +5,13 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
 
 import config
-
 from action_utils import (
+    convert_date,
     expand_collapsed_by_xpath,
     find_element_by_xpath,
     find_elements_by_xpath,
     get_anchor_link,
     get_text,
-    convert_date,
 )
 
 

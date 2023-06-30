@@ -1,7 +1,7 @@
 import os
-from platform import system
 import shutil
 from pathlib import Path
+from platform import system
 
 from selenium.webdriver.chrome.options import Options as ChromeOptions
 from selenium.webdriver.chrome.service import Service

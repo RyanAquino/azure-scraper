@@ -5,7 +5,6 @@ from selenium import webdriver
 from selenium.webdriver.common.action_chains import ActionChains
 
 import config
-
 from action_utils import (
     click_button_by_id,
     click_button_by_xpath,
