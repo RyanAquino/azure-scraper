@@ -59,7 +59,6 @@ def scrape_child_work_items(driver, dialog_box):
     description = f"{work_item_control_xpath}//*[@aria-label='Description']"
 
     desc = find_element_by_xpath(dialog_box, description)
-
     work_item_data = {
         "Task id": find_element_by_xpath(dialog_box, work_id_xpath).text,
         "Title": get_input_value(dialog_box, title_xpath).replace(" ", "_"),

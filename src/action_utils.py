@@ -4,7 +4,6 @@ import string
 from datetime import datetime
 
 from bs4 import BeautifulSoup
-
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
@@ -38,7 +37,7 @@ def find_elements_by_xpath(driver, xpath):
         e = WebDriverWait(driver, config.MAX_WAIT_TIME).until(
             EC.visibility_of_all_elements_located((By.XPATH, xpath))
         )
-    except Exception as e:
+    except Exception:
         return None
 
     return e
@@ -49,7 +48,7 @@ def find_element_by_xpath(driver, xpath):
         e = WebDriverWait(driver, config.MAX_WAIT_TIME).until(
             EC.element_to_be_clickable((By.XPATH, xpath))
         )
-    except Exception as e:
+    except Exception:
         return None
 
     return e

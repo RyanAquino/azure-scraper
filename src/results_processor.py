@@ -7,8 +7,8 @@ import config
 from action_utils import (
     add_line_break,
     convert_date,
-    create_symlink,
     convert_to_markdown,
+    create_symlink,
 )
 from logger import logging
 
@@ -101,12 +101,12 @@ def create_directory_hierarchy(
                     if discussion["attachments"]:
                         for attachment in discussion["attachments"]:
                             source = Path(attachments_path, attachment["filename"])
-
-                            new_filename = f"{discussion_date}_{discussion['User']}_{attachment['filename']}"
                             destination = Path(
-                                discussion_attachments_path, new_filename
+                                discussion_attachments_path, attachment["filename"]
                             )
-                            file.write(f"  * [{new_filename}]({destination})\n")
+                            file.write(
+                                f"  * [{attachment['filename']}]({destination})\n"
+                            )
 
                             if os.path.exists(source):
                                 shutil.move(source, destination)
@@ -161,16 +161,17 @@ def create_related_work_contents(scrape_results, path: Path = Path("data")):
             related_work_type = related_work.get("type")
 
             for work_items in related_work.get("related_work_items", []):
-                work_item_folder_name = work_items.get("link")
+                work_item_target = work_items.get("link_target")
+                work_item_file_name = work_items.get("filename_source")
                 work_item_updated_at = convert_date(work_items.get("updated_at"))
-                link_work_item_file_name = f"{work_item_folder_name}_update_{work_item_updated_at}_{related_work_type}"
-                target_path = Path(related_dir, link_work_item_file_name)
+
+                target_path = Path(related_dir, work_item_target)
 
                 work_item_path = [
                     i
                     for i in Path(Path.cwd(), "data")
                     .resolve()
-                    .rglob(work_item_folder_name)
+                    .rglob(work_item_file_name)
                 ]
 
                 if not work_item_path:
@@ -180,11 +181,10 @@ def create_related_work_contents(scrape_results, path: Path = Path("data")):
                 work_item_path = work_item_path[0]
                 create_symlink(work_item_path, target_path)
 
-                with open(
-                    Path(related_dir, f"{link_work_item_file_name}.md"), "w"
-                ) as file:
+                related_md_filename = Path(related_dir, f"{work_item_target}.md")
+                with open(related_md_filename, "w") as file:
                     file.write(f"* Type: {related_work_type}\n")
-                    file.write(f"    * Link to item file: [{work_item_folder_name}]({work_item_path})\n")
+                    file.write(f"    * Link to item file: `{work_item_path}`\n")
                     file.write(f"    * Last update: {work_item_updated_at}\n\n")
 
         if "children" in item:
