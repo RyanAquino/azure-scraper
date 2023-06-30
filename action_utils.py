@@ -1,16 +1,14 @@
+import os
+import platform
+import string
+from datetime import datetime
+
+from bs4 import BeautifulSoup
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
 
-from datetime import datetime
-
-from bs4 import BeautifulSoup
-
 import config
-
-import os
-import platform
-import string
 
 
 def click_button_by_id(driver, element_id):

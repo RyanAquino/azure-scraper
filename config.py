@@ -1,9 +1,9 @@
 """
 Set scrape configurations
 """
-from dotenv import load_dotenv
 import os
 
+from dotenv import load_dotenv
 
 load_dotenv()
 BASE_URL = os.getenv("base_url")
