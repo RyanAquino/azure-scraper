@@ -140,6 +140,9 @@ def convert_to_markdown(soup, markdown=None):
     if markdown is None:
         soup = BeautifulSoup(soup, "html.parser")
 
+    for div in soup.find_all("div"):
+        div.insert_after("\n")
+
     for ul in soup.find_all("ul"):
         markdown_ul = ""
         for li in ul.find_all("li"):
@@ -149,6 +152,10 @@ def convert_to_markdown(soup, markdown=None):
             markdown_ul += f"{indentation}* {li.text}\n"
 
         ul.replace_with(markdown_ul)
+
+    prev_indentation_level = None
+    last_occurrence_index = -1
+    last_occurrence_indentation = False
 
     # Convert ordered lists
     for ol in soup.find_all("ol"):
@@ -161,6 +168,12 @@ def convert_to_markdown(soup, markdown=None):
             li = convert_links(li)
             indentation_level = len(li.find_parents("ol")) - 1
             indentation = "  " * indentation_level
+
+            if indentation_level != prev_indentation_level:
+                if prev_indentation_level == 1:
+                    last_occurrence_index = len(markdown_ol) - 1
+                    last_occurrence_indentation = True
+                prev_indentation_level = indentation_level
 
             if indentation_level == 0:
                 index += 1
@@ -181,6 +194,13 @@ def convert_to_markdown(soup, markdown=None):
                 markdown_ol += f"{indentation}{get_roman_numeral(index)}. {li.text}\\\n"
             else:
                 pass
+
+        if last_occurrence_indentation:
+            markdown_ol = (
+                    markdown_ol[:last_occurrence_index].rstrip("\\\n")
+                    + markdown_ol[last_occurrence_index:]
+            )
+
         ol.replace_with(markdown_ol)
 
     # Convert links
