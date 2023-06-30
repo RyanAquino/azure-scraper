@@ -1,36 +1,16 @@
 import os
-import platform
 import shutil
 from pathlib import Path
-from sys import platform
+from platform import system
 
 from selenium.webdriver.chrome.options import Options as ChromeOptions
 from selenium.webdriver.chrome.service import Service
 
 import config
-from logger import logging
-
-
-def get_driver_by_os():
-    ps = platform.system()
-
-    if ps == "Windows":
-        driver_path = "chromedriver.exe"
-    elif ps == "Darwin":
-        driver_path = "chromedriver_mac"
-
-        if platform.processor() == "arm":
-            driver_path = "chromedriver_mac_arm"
-    else:
-        driver_path = "chromedriver_linux"
-
-    logging.info(f"Using driver {driver_path}.")
-
-    return Service(executable_path=f"drivers/{driver_path}")
 
 
 def chrome_settings_init():
-    download_directory = Path(f"{os.getcwd()}/data/attachments")
+    download_directory = Path(os.getcwd(), "data", "attachments")
     language_code = "en-GB"
 
     chrome_options = ChromeOptions()
@@ -51,8 +31,9 @@ def chrome_settings_init():
 
     if config.BINARY_PATH_LOCATION:
         chrome_options.binary_location = config.BINARY_PATH_LOCATION
-    else:
-        chrome_settings["service"] = get_driver_by_os()
+
+    if system() == "Windows":
+        chrome_settings["service"] = Service(executable_path="drivers/chromedriver.exe")
 
     # Clean attachments directory
     if os.path.isdir(download_directory):

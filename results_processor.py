@@ -1,46 +1,55 @@
 import json
 import os
 import shutil
-from datetime import datetime
 from pathlib import Path
 
 import config
-from action_utils import add_line_break
+from action_utils import (
+    add_line_break,
+    convert_date,
+    convert_to_markdown,
+    create_symlink,
+)
 from logger import logging
 
 
-def create_history_metadata(history, file):
+def create_history_metadata(history, history_path):
     for item in history:
-        file.write(f"* Date: {item['Date']}\n")
-        file.write(f"   * User: {item['User']}\n")
-        file.write(f"   * Title: {item['Title']}\n")
+        formatted_date = convert_date(item["Date"], date_format="%a %d/%m/%Y %H:%M")
+        title = item["Title"].replace(" ", "_")
+        filename = f"{formatted_date}_{item['User']}_{title}.md"
+        path = Path(history_path, filename)
+        with open(path, "w", encoding="utf-8") as file:
+            file.write(f"* Date: {item['Date']}\n")
+            file.write(f"   * User: {item['User']}\n")
+            file.write(f"   * Title: {item['Title']}\n")
 
-        if item["Content"]:
-            file.write(f"   * Content: {add_line_break(item['Content'], 60)}\n")
+            if item["Content"]:
+                file.write(f"   * Content: {add_line_break(item['Content'], 60)}\n")
 
-        if item["Fields"]:
-            file.write(f"   * Fields\n")
-            fields = item["Fields"]
+            if item["Fields"]:
+                file.write("   * Fields\n")
+                fields = item["Fields"]
 
-            for index in range(0, len(fields)):
-                field = fields[index]
+                for field in fields:
+                    file.write(f"       * {field['name']}\n")
+                    file.write(f"           * Old Value: {field['old_value']}\n")
+                    file.write(f"           * New Value: {field['new_value']}\n")
 
-                file.write(f"       * {field['name']}\n")
-                file.write(f"           * Old Value: {field['old_value']}\n")
-                file.write(f"           * New Value: {field['new_value']}\n")
-
-        if links := item.get("Links"):
-            for link in links:
-                file.write(f"   * Links\n")
-                file.write(f"       * Type: {link['Type']}\n")
-                file.write(f"       * Link to item file: {link['Link to item file']}\n")
-                file.write(f"       * Title: {link['Title']}\n")
+            if links := item.get("Links"):
+                for link in links:
+                    file.write("   * Links\n")
+                    file.write(f"       * Type: {link['Type']}\n")
+                    file.write(
+                        f"       * Link to item file: {link['Link to item file']}\n"
+                    )
+                    file.write(f"       * Title: {link['Title']}\n")
 
 
 def create_directory_hierarchy(
     dicts,
-    path=os.path.join(os.getcwd(), "data"),
-    attachments_path=(Path.cwd() / "data" / "attachments"),
+    path=Path(Path.cwd(), "data"),
+    attachments_path=(Path(Path.cwd(), "data", "attachments")),
     indent=0,
 ):
     exclude_fields = [
@@ -52,79 +61,82 @@ def create_directory_hierarchy(
     ]
 
     for d in dicts:
-        dir_name = f"{d['Task id']}_{d['Title']}"
-        dir_path = os.path.join(path, dir_name)
-        discussion_path = os.path.join(dir_path, "discussion")
-        development_path = os.path.join(dir_path, "development")
-        work_item_attachments_path = os.path.join(dir_path, "attachments")
-        discussion_attachments_path = os.path.join(discussion_path, "attachments")
+        dir_name = f"{d['Task id']}_{d['Title'].replace(' ','_')}"
+        dir_path = Path(path, dir_name)
+        history_path = Path(dir_path, "history")
+        discussion_path = Path(dir_path, "discussion")
+        development_path = Path(dir_path, "development")
+        work_item_attachments_path = Path(dir_path, "attachments")
+        discussion_attachments_path = Path(discussion_path, "attachments")
+        related_works_path = Path(dir_path, "related")
 
         print(" " * indent + dir_name)
         logging.info(f"Creating directory in {dir_path}")
         os.makedirs(dir_path, exist_ok=True)
+        os.makedirs(history_path, exist_ok=True)
         os.makedirs(discussion_path, exist_ok=True)
         shutil.rmtree(discussion_path)
         os.makedirs(discussion_attachments_path, exist_ok=True)
         os.makedirs(development_path, exist_ok=True)
         os.makedirs(work_item_attachments_path, exist_ok=True)
+        os.makedirs(related_works_path, exist_ok=True)
 
         if "history" in d and d["history"]:
-            with open(os.path.join(dir_path, "history.md"), "w") as file:
-                create_history_metadata(d.pop("history"), file)
+            create_history_metadata(d.pop("history"), history_path)
 
         if "discussions" in d and d["discussions"]:
             for discussion in d.pop("discussions"):
-                discussion_date = datetime.strptime(
-                    discussion["Date"], "%d %B %Y %H:%M:%S"
-                )
-
-                file_name = (
-                    f"{discussion_date.strftime('%Y_%m_%d')}_{discussion['User']}.md"
-                )
-                with open(os.path.join(discussion_path, file_name), "a+") as file:
+                discussion_date = convert_date(discussion["Date"])
+                file_name = f"{discussion_date}_{discussion['User']}.md"
+                with open(Path(discussion_path, file_name), "a+") as file:
                     file.write(
-                        f"* Title: <{discussion['User']} commented {discussion_date.strftime('%B %d, %Y %H:%m:%S %p')}>\n"
+                        f"* Title: <{discussion['User']} commented {convert_date(discussion['Date'], new_format='%B %d, %Y %H:%m:%S %p')}>\n"
                     )
                     file.write(
                         f"* Content: {add_line_break(discussion['Content'], 90)}\n"
                     )
 
-                if discussion["attachments"]:
-                    for attachment in discussion["attachments"]:
-                        source = os.path.join(attachments_path, attachment["filename"])
-                        destination = os.path.join(
-                            discussion_attachments_path, attachment["filename"]
-                        )
+                    file.write("* Absolute link to attachment/s\n")
 
-                        if os.path.exists(source):
-                            shutil.move(source, destination)
+                    if discussion["attachments"]:
+                        for attachment in discussion["attachments"]:
+                            source = Path(attachments_path, attachment["filename"])
+                            destination = Path(
+                                discussion_attachments_path, attachment["filename"]
+                            )
+                            file.write(
+                                f"  * [{attachment['filename']}]({destination})\n"
+                            )
+
+                            if os.path.exists(source):
+                                shutil.move(source, destination)
 
         if d.get("attachments"):
             for attachment in d["attachments"]:
-                source = os.path.join(attachments_path, attachment["filename"])
-                destination = os.path.join(
-                    work_item_attachments_path, attachment["filename"]
-                )
+                source = Path(attachments_path, attachment["filename"])
+                destination = Path(work_item_attachments_path, attachment["filename"])
 
                 if os.path.exists(source):
                     shutil.move(source, destination)
 
-        with open(os.path.join(dir_path, "description.md"), "w") as file:
+        with open(Path(dir_path, "description.md"), "w", encoding="utf-8") as file:
             if d["description"]:
-                file.write(d.pop("description"))
+                description = convert_to_markdown(d.pop("description"))
+                file.write(str(description))
 
-        with open(os.path.join(dir_path, "metadata.md"), "w") as file:
+        with open(Path(dir_path, "metadata.md"), "w") as file:
             for key, value in d.items():
                 if key not in exclude_fields:
                     file.write(f"* {key}: {value}\n")
 
-        with open(os.path.join(dir_path, "origin.md"), "w") as file:
+        with open(Path(dir_path, "origin.md"), "w") as file:
             file.write(config.BASE_URL + config.WORK_ITEM_ENDPOINT + d["Task id"])
 
         for development in d.pop("development"):
-            with open(
-                os.path.join(development_path, f"changeset_{development['ID']}.md"), "w"
-            ) as file:
+            change_filename = Path(
+                development_path, f"changeset_{development['ID']}.md"
+            )
+            with open(change_filename, "w") as file:
                 if change_sets := development["change_sets"]:
                     for change_set in change_sets:
                         file.write(f"* 'File Name': {change_set['File Name']}\n")
@@ -138,45 +150,42 @@ def create_directory_hierarchy(
 def create_related_work_contents(scrape_results, path: Path = Path("data")):
     for item in scrape_results:
         task_id = item.get("Task id")
-        task_title = item.get("Title")
+        task_title = item.get("Title").replace(" ", "_")
         folder_name = f"{task_id}_{task_title}"
         dir_path = Path(path, folder_name)
 
-        folder_path = [i for i in Path(Path.cwd() / path).resolve().rglob(folder_name)]
+        folder_path = [i for i in Path(Path.cwd(), path).resolve().rglob(folder_name)]
+        related_dir = Path(folder_path[0], "related")
 
-        with open(os.path.join(folder_path[0], "related_work.md"), "w") as file:
-            for related_work in item.get("related_work"):
-                related_work_type = related_work.get("type")
-                related_work_data = {
-                    "type": related_work_type,
-                    "links to item file": [],
-                }
+        for related_work in item.get("related_work"):
+            related_work_type = related_work.get("type")
 
-                for work_items in related_work.get("related_work_items", []):
-                    work_item_folder_name = work_items.get("link")
-                    work_item_updated_at = work_items.get("updated_at")
+            for work_items in related_work.get("related_work_items", []):
+                work_item_target = work_items.get("link_target")
+                work_item_file_name = work_items.get("filename_source")
+                work_item_updated_at = convert_date(work_items.get("updated_at"))
 
-                    work_item_path = [
-                        i
-                        for i in Path(Path.cwd() / "data")
-                        .resolve()
-                        .rglob(work_item_folder_name)
-                    ]
+                target_path = Path(related_dir, work_item_target)
 
-                    if not work_item_path:
-                        logging.error(work_items)
-                        continue
+                work_item_path = [
+                    i
+                    for i in Path(Path.cwd(), "data")
+                    .resolve()
+                    .rglob(work_item_file_name)
+                ]
 
-                    work_item_path = work_item_path[0]
-                    related_work_data["links to item file"].append(
-                        {"link": work_item_path, "updated_at": work_item_updated_at}
-                    )
+                if not work_item_path:
+                    create_symlink("/non-existent/another-project-source", target_path)
+                    continue
 
-                file.write(f"* Type: {related_work_type}\n")
+                work_item_path = work_item_path[0]
+                create_symlink(work_item_path, target_path)
 
-                for links in related_work_data.get("links to item file"):
-                    file.write(f"    * Link to item file: `{links.get('link')}`\n")
-                    file.write(f"    * Last update: {links.get('updated_at')}\n\n")
+                related_md_filename = Path(related_dir, f"{work_item_target}.md")
+                with open(related_md_filename, "w") as file:
+                    file.write(f"* Type: {related_work_type}\n")
+                    file.write(f"    * Link to item file: `{work_item_path}`\n")
+                    file.write(f"    * Last update: {work_item_updated_at}\n\n")
 
         if "children" in item:
             create_related_work_contents(item["children"], dir_path)
@@ -185,16 +194,21 @@ def create_related_work_contents(scrape_results, path: Path = Path("data")):
 def cleanup_existing_folders(directory: Path):
     for item in directory.iterdir():
         item_path = directory / item
-        if item.is_dir() and item.name != 'attachments':
+
+        if os.path.islink(item_path):
+            os.unlink(item_path)
+
+        if item.is_dir() and item.name != "attachments":
             shutil.rmtree(item_path)
 
 
 def post_process_results(save_file, downloads_directory):
     with open(save_file) as f:
         scrape_result = json.load(f)
-        cleanup_existing_folders((Path.cwd() / "data"))
+        cleanup_existing_folders(Path(Path.cwd(), "data"))
         create_directory_hierarchy(scrape_result)
         create_related_work_contents(scrape_result)
 
         # Clean downloads directory after post process
-        shutil.rmtree(downloads_directory)
+        if downloads_directory.exists() and downloads_directory.is_dir():
+            shutil.rmtree(downloads_directory)
