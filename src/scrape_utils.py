@@ -12,6 +12,7 @@ from action_utils import (
     find_elements_by_xpath,
     get_anchor_link,
     get_text,
+    show_more,
 )
 
 
@@ -176,12 +177,13 @@ def scrape_history(dialog_box):
 
 
 def scrape_related_work(driver, dialog_box):
-    related_work_xpath = (
-        "(.//div[@class='links-control-container']/div[@class='la-main-component'])"
-        "[last()]/div[@class='la-list']/div"
-    )
-    related_work_items = find_elements_by_xpath(dialog_box, related_work_xpath)
     results = []
+
+    related_work_xpath = "(.//div[@class='links-control-container']/div[@class='la-main-component'])[last()]"
+    show_more_xpath = "//div[@class='la-show-more']"
+    show_more(dialog_box, f"{related_work_xpath}{show_more_xpath}")
+
+    related_work_items = find_elements_by_xpath(dialog_box, f"{related_work_xpath}/div[@class='la-list']/div")
 
     if not related_work_items:
         return results
@@ -226,6 +228,10 @@ def scrape_related_work(driver, dialog_box):
                 )
                 time.sleep(3)
 
+            driver.execute_script(
+                "arguments[0].dispatchEvent(new MouseEvent('mouseout', {'bubbles': true}));",
+                updated_at_hover,
+            )
             updated_at = " ".join(updated_at.split(" ")[-4:])
 
             related_work_item_id = related_work_link.get_attribute("href").split("/")[
