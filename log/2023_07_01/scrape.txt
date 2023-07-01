@@ -1,0 +1,49 @@
+2023-07-01 03:16:17,650 INFO Navigate and login to https://xxx/Assambly/_backlogs/backlog/Assambly%20Team/Backlog%20items/
+2023-07-01 03:16:31,500 INFO Done
+2023-07-01 03:16:33,816 INFO Sleeping...
+2023-07-01 03:21:24,643 INFO Open dialog box for 'Project example scheduler'
+2023-07-01 03:24:23,912 INFO Close dialog box for 'Project example scheduler'
+2023-07-01 03:24:24,783 INFO Close dialog box for 'Example project for spec template'
+2023-07-01 03:24:25,822 INFO Sleeping...
+2023-07-01 03:32:19,612 INFO Open dialog box for 'Common project'
+2023-07-01 03:37:05,129 INFO Close dialog box for 'Common project'
+2023-07-01 03:37:06,415 INFO Open dialog box for 'Initial project'
+2023-07-01 03:42:16,259 INFO Close dialog box for 'Initial project'
+2023-07-01 03:42:17,123 INFO Close dialog box for 'Initial VS project'
+2023-07-01 03:42:18,143 INFO Sleeping...
+2023-07-01 03:48:24,234 INFO Open dialog box for 'Expected traffic volume'
+2023-07-01 03:51:34,105 INFO Close dialog box for 'Expected traffic volume'
+2023-07-01 03:51:35,295 INFO Open dialog box for 'Visual specification'
+2023-07-01 03:55:59,294 INFO Close dialog box for 'Visual specification'
+2023-07-01 03:56:00,137 INFO Close dialog box for 'Project spec'
+2023-07-01 03:56:01,142 INFO Sleeping...
+2023-07-01 04:02:29,937 INFO Open dialog box for 'Architecture for components assemblies'
+2023-07-01 04:05:39,914 INFO Close dialog box for 'Architecture for components assemblies'
+2023-07-01 04:05:41,289 INFO Open dialog box for 'List of technologies required for entire project'
+2023-07-01 04:08:51,267 INFO Close dialog box for 'List of technologies required for entire project'
+2023-07-01 04:08:52,614 INFO Open dialog box for 'Database full design'
+2023-07-01 04:11:51,027 INFO Close dialog box for 'Database full design'
+2023-07-01 04:11:51,890 INFO Close dialog box for 'Project tech spec'
+2023-07-01 04:11:52,885 INFO Sleeping...
+2023-07-01 04:17:47,206 INFO Open dialog box for 'List for tables affected'
+2023-07-01 04:20:57,035 INFO Close dialog box for 'List for tables affected'
+2023-07-01 04:20:58,300 INFO Open dialog box for 'EF dll only with needed tables'
+2023-07-01 04:23:56,802 INFO Close dialog box for 'EF dll only with needed tables'
+2023-07-01 04:23:57,656 INFO Close dialog box for 'Project module spec'
+2023-07-01 04:23:58,730 INFO Sleeping...
+2023-07-01 04:32:10,468 INFO Open dialog box for 'Confirm by all project members'
+2023-07-01 04:35:19,253 INFO Close dialog box for 'Confirm by all project members'
+2023-07-01 04:35:20,564 INFO Open dialog box for 'Send to tech specification'
+2023-07-01 04:38:30,632 INFO Close dialog box for 'Send to tech specification'
+2023-07-01 04:38:31,832 INFO Open dialog box for 'Specification template'
+2023-07-01 04:41:50,802 INFO Close dialog box for 'Specification template'
+2023-07-01 04:41:51,603 INFO Close dialog box for 'Project features'
+2023-07-01 04:41:52,435 INFO Sleeping...
+2023-07-01 04:47:49,634 INFO Open dialog box for 'Host webjobs'
+2023-07-01 04:50:48,918 INFO Close dialog box for 'Host webjobs'
+2023-07-01 04:50:50,294 INFO Open dialog box for 'Main api'
+2023-07-01 04:53:48,061 INFO Close dialog box for 'Main api'
+2023-07-01 04:53:49,314 INFO Open dialog box for 'OAuth api authentication'
+2023-07-01 04:56:47,373 INFO Close dialog box for 'OAuth api authentication'
+2023-07-01 04:56:48,305 INFO Close dialog box for 'Solution architecture'
+2023-07-01 04:56:49,400 INFO Sleeping...
