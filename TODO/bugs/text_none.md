@@ -1,3 +1,7 @@
+# error
+
+## info
+* please find log file in log/2023_07_01
 Traceback (most recent call last):
   File "/home/paul/Downloads/test/main.py", line 183, in <module>
     main()
