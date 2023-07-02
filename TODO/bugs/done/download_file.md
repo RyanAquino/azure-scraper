@@ -5,3 +5,6 @@
 
 ## should
 * script should download any type of attached file
+
+## info
+* mistake in reporting bug, there is no need download file from repo
