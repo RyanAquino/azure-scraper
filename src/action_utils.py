@@ -4,6 +4,7 @@ import string
 from datetime import datetime
 
 from bs4 import BeautifulSoup
+from dateutil.parser import parse
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
@@ -92,7 +93,10 @@ def expand_collapsed_by_xpath(dialog_box):
 def convert_date(
     date_string, date_format="%d %B %Y %H:%M:%S", new_format="%Y_%m_%dT%H_%M_%S"
 ):
-    date_obj = datetime.strptime(date_string, date_format)
+    try:
+        date_obj = datetime.strptime(date_string, date_format)
+    except ValueError:
+        date_obj = parse(date_string, fuzzy=True)
 
     return date_obj.strftime(new_format)
 
