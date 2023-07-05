@@ -244,7 +244,7 @@ def scrape_related_work(driver, dialog_box):
                 {
                     "filename_source": f"{related_work_item_id}_{related_work_title}",
                     "link_target": f"{related_work_item_id}_{related_work_title}_update_{convert_date(updated_at)}_{related_work_type}",
-                    "updated_at": updated_at,
+                    "updated_at": " ".join(updated_at.split(" ")[-4:]),
                 }
             )
 
