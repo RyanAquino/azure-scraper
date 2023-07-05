@@ -235,7 +235,6 @@ def scrape_related_work(driver, dialog_box):
                 "arguments[0].dispatchEvent(new MouseEvent('mouseout', {'bubbles': true}));",
                 updated_at_hover,
             )
-            updated_at = convert_date(updated_at)
 
             related_work_item_id = related_work_link.get_attribute("href").split("/")[
                 -1
@@ -244,8 +243,8 @@ def scrape_related_work(driver, dialog_box):
             result["related_work_items"].append(
                 {
                     "filename_source": f"{related_work_item_id}_{related_work_title}",
-                    "link_target": f"{related_work_item_id}_{related_work_title}_update_{updated_at}_{related_work_type}",
-                    "updated_at": str(updated_at),
+                    "link_target": f"{related_work_item_id}_{related_work_title}_update_{convert_date(updated_at)}_{related_work_type}",
+                    "updated_at": updated_at,
                 }
             )
 
