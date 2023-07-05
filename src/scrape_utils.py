@@ -1,3 +1,4 @@
+import logging
 import time
 import urllib.parse
 
@@ -227,6 +228,8 @@ def scrape_related_work(driver, dialog_box):
                     f"Retrying hover on work related date ... {retry_count}/{config.MAX_RETRIES}"
                 )
                 time.sleep(3)
+
+            logging.info(f"related work item '{updated_at}'")
 
             driver.execute_script(
                 "arguments[0].dispatchEvent(new MouseEvent('mouseout', {'bubbles': true}));",
