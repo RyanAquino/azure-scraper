@@ -221,7 +221,7 @@ def scrape_related_work(driver, dialog_box):
                     updated_at_hover,
                 )
                 updated_at = get_text(
-                    related_work, "//p[contains(@class, 'ms-Tooltip-subtext')]"
+                    driver, "//p[contains(@class, 'ms-Tooltip-subtext')]"
                 )
                 retry_count += 1
                 print(
