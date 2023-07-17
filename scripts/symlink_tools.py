@@ -6,7 +6,7 @@ import shutil
 from pathlib import Path
 
 
-def main(directory_path: Path):
+def run(directory_path: Path):
     if not directory_path.is_dir():
         print(f"{directory_path} is not a valid directory.")
         return
@@ -17,7 +17,7 @@ def main(directory_path: Path):
     # Recursively process subdirectories first
     for item in directory_path.iterdir():
         if item.is_dir():
-            main(item)
+            run(item)
 
     # Check the current directory's contents
     for item in directory_path.iterdir():
@@ -31,6 +31,16 @@ def main(directory_path: Path):
         shutil.rmtree(directory_path)
 
 
+def main():
+    base_directory = input("Enter base absolute/relative path directory:")
+    base_path = Path(base_directory)
+
+    if not base_path.is_dir():
+        print("Directory not valid. Please run again")
+        return
+
+    return run(base_path)
+
+
 if __name__ == "__main__":
-    base_path = Path("sample_directory")
-    main(base_path)
+    main()
