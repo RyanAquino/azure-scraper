@@ -1,8 +1,8 @@
 """ Create sample nested directories with symlink
 """
-from pathlib import Path
-import platform
 import os
+import platform
+from pathlib import Path
 
 
 def create_nested_directories(path, link, depth=5):
