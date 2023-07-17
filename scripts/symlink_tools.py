@@ -1,39 +1,36 @@
-""" Traverse all directories and 
-    delete folders if all files are symlink.
 """
-
+Traverse all directories and
+delete folders if all files are of type symlink.
+"""
+import shutil
 from pathlib import Path
 
 
-def traverse_directory(directory_path):
-    for item_path in directory_path:
-        yield item_path
+def main(directory_path: Path):
+    if not directory_path.is_dir():
+        print(f"{directory_path} is not a valid directory.")
+        return
 
+    symbolic_links_count = 0
+    non_symbolic_links_count = 0
 
-def run_symlink_tool1(directory):
-    for item in traverse_directory(directory):
+    # Recursively process subdirectories first
+    for item in directory_path.iterdir():
         if item.is_dir():
-            prev_file_count = len(list(item.glob("**/*")))
-            for item_files in item.glob("**/*"):
-                if item_files.is_symlink():
-                    print(f"Unlink item {item}.")
-                    item.unlink()
-                else:
-                    print(f"Skip!! item {item} is not a symlink.")
-                    new_file_count = len(list(item.glob("**/*")))
+            main(item)
 
-            if prev_file_count == 0:
-                print(f"Skip!! Directory {item} does not have any files.")
-                continue
-            elif new_file_count > 0:
-                print(f"Skip!! Directory {item} contains non-symlink files.")
-                continue
+    # Check the current directory's contents
+    for item in directory_path.iterdir():
+        if item.is_symlink():
+            symbolic_links_count += 1
+        else:
+            non_symbolic_links_count += 1
 
-            elif new_file_count == 0:
-                item.rmdir()
-                print(f"Remove directory {item}.")
+    if symbolic_links_count > 0 and non_symbolic_links_count == 0:
+        print(f"Deleting directory: {directory_path}")
+        shutil.rmtree(directory_path)
 
 
 if __name__ == "__main__":
     base_path = Path("sample_directory")
-    run_symlink_tool1(sorted(base_path.glob("**/*"), reverse=True))
+    main(base_path)

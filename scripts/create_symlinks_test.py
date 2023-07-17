@@ -16,9 +16,10 @@ def create_nested_directories(path, link, depth=5):
         file_path1 = Path(path, "symlink_file1")
         file_path2 = Path(path, "symlink_file2")
         file_path3 = Path(path, "symlink_file3")
-        # os.symlink(file_path1, link)
-        # os.symlink(file_path2, link)
-        # os.symlink(file_path3, link)
+
+        os.symlink(link, file_path1)
+        os.symlink(link, file_path2)
+        os.symlink(link, file_path3)
 
         create_nested_directories(path, link, depth=depth - 1)
 
