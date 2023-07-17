@@ -5,3 +5,4 @@ venv/
 *.json
 *.log
 .env
+sample_directory*/
