@@ -10,6 +10,9 @@ def create_nested_directories(path, link, depth=5):
         path = Path(path, f"directory_{depth}")
         path.mkdir(parents=True, exist_ok=True)
 
+        empty_path = Path(path, f"empty_directory_{depth}")
+        empty_path.mkdir(parents=True, exist_ok=True)
+
         file_path1 = Path(path, "symlink_file1")
         file_path2 = Path(path, "symlink_file2")
         file_path3 = Path(path, "symlink_file3")
