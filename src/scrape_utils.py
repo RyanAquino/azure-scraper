@@ -221,7 +221,7 @@ def scrape_related_work(driver, dialog_box):
                     updated_at_hover,
                 )
                 updated_at = get_text(
-                    driver, "//p[contains(@class, 'ms-Tooltip-subtext')]"
+                    driver, "//p[contains(text(), 'Updated by')]"
                 )
                 retry_count += 1
                 print(
@@ -229,6 +229,8 @@ def scrape_related_work(driver, dialog_box):
                 )
                 time.sleep(3)
 
+            html_source = driver.execute_script("return document.getElementsByTagName('html')[0].innerHTML")
+            log_html(html_source)
             logging.info(f"related work item '{updated_at}'")
 
             driver.execute_script(
@@ -384,3 +386,9 @@ def scrape_development(driver):
 def scrape_description(element):
     html = element.get_attribute("innerHTML")
     return html
+
+
+def log_html(page_source):
+    log_file_path = "source.log"
+    with open(log_file_path, "w", encoding="utf-8") as file:
+        file.write(page_source)
