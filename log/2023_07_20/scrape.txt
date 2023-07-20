@@ -1,0 +1,2 @@
+2023-07-20 20:20:19,291 INFO Open dialog box for 'Design new banners'
+2023-07-20 20:20:59,769 INFO related work item 'Updated by Xxxx on 28 March 2017 16:34:34'
