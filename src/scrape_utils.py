@@ -51,7 +51,7 @@ def scrape_attachments(driver, dialog_box):
         query_params = urllib.parse.parse_qs(parsed_url.query)
 
         updated_at = convert_date(date_attached.text, date_format="%d/%m/%Y %H:%M")
-        file_name, file_extension = query_params.get("fileName")[0].split(".")
+        file_name, file_extension = query_params.get("fileName")[0].rsplit(".", 1)
         resource_id = parsed_url.path.split("/")[-1]
         new_file_name = f"{updated_at}_{file_name}_{resource_id}.{file_extension}"
         query_params["fileName"] = [new_file_name]
@@ -259,7 +259,7 @@ def scrape_discussion_attachments(driver, attachment, discussion_date):
     parsed_url = urllib.parse.urlparse(attachment.get_attribute("src"))
     query_params = urllib.parse.parse_qs(parsed_url.query)
 
-    file_name, file_extension = query_params.get("fileName")[0].split(".")
+    file_name, file_extension = query_params.get("fileName")[0].rsplit(".", 1)
     resource_id = parsed_url.path.split("/")[-1]
     discussion_date = convert_date(discussion_date)
     query_params["fileName"] = [
