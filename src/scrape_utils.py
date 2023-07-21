@@ -229,8 +229,6 @@ def scrape_related_work(driver, dialog_box):
                 )
                 time.sleep(3)
 
-            html_source = driver.execute_script("return document.getElementsByTagName('html')[0].innerHTML")
-            log_html(html_source)
             logging.info(f"related work item '{updated_at}'")
 
             driver.execute_script(
@@ -277,7 +275,7 @@ def scrape_discussion_attachments(driver, attachment, discussion_date):
     return {"url": updated_url, "filename": query_params["fileName"][0]}
 
 
-def scrape_discussions(driver, action):
+def scrape_discussions(driver):
     results = []
 
     dialog_xpath = "//div[@role='dialog'][last()]"
@@ -302,7 +300,10 @@ def scrape_discussions(driver, action):
             retry_count = 0
 
             while date is None and retry_count < config.MAX_RETRIES:
-                action.move_to_element(comment_timestamp).perform()
+                driver.execute_script(
+                    "arguments[0].dispatchEvent(new MouseEvent('mouseover', {'bubbles': true}));",
+                    comment_timestamp,
+                )
                 date = get_text(
                     discussion, "//p[contains(@class, 'ms-Tooltip-subtext')]"
                 )
@@ -311,6 +312,15 @@ def scrape_discussions(driver, action):
                     f"Retrying hover on discussion date ... {retry_count}/{config.MAX_RETRIES}"
                 )
                 time.sleep(3)
+
+            html_source = driver.execute_script("return document.getElementsByTagName('html')[0].innerHTML")
+            log_html(html_source, "discussion_date.log")
+            logging.info(f"discussion date '{date}'")
+
+            driver.execute_script(
+                "arguments[0].dispatchEvent(new MouseEvent('mouseout', {'bubbles': true}));",
+                comment_timestamp,
+            )
 
             discussion_date = " ".join(date.split(" ")[-4:])
 
@@ -388,7 +398,6 @@ def scrape_description(element):
     return html
 
 
-def log_html(page_source):
-    log_file_path = "source.log"
+def log_html(page_source, log_file_path="source.log"):
     with open(log_file_path, "w", encoding="utf-8") as file:
         file.write(page_source)

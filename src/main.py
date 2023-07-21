@@ -71,7 +71,7 @@ def scrape_child_work_items(driver, dialog_box):
         "Activity": get_input_value(dialog_box, activity_xpath),
         "Blocked": get_input_value(dialog_box, blocked_xpath),
         "related_work": scrape_related_work(driver, dialog_box),
-        "discussions": scrape_discussions(driver, action),
+        "discussions": scrape_discussions(driver),
         "attachments": scrape_attachments(driver, dialog_box),
         "description": scrape_description(desc),
     }
