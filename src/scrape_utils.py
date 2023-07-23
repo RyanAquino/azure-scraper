@@ -1,6 +1,7 @@
 import logging
 import time
 import urllib.parse
+from collections import deque
 
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
@@ -33,16 +34,15 @@ def scrape_attachments(driver, dialog_box):
     # Retrieve attachment links
     attachments_data = []
 
-    attachments_area = find_element_by_xpath(
-        dialog_box, "(.//div[@class='grid-content-spacer'])[last()]/parent::div"
+    attachment_rows = find_elements_by_xpath(
+        dialog_box, "(.//div[@class='grid-content-spacer'])[last()]/parent::div//div[@role='row']"
     )
-    attachment_rows_xpath = ".//div[@role='row']"
-    attachment_rows = find_elements_by_xpath(attachments_area, attachment_rows_xpath)
+
+    a_href_xpath = ".//div[contains(@class, 'attachments-grid-file-name')]//a"
+    date_attached_xpath = ".//div[3]"
+    attachments = []
 
     for attachment in attachment_rows:
-        a_href_xpath = ".//div[contains(@class, 'attachments-grid-file-name')]//a"
-        date_attached_xpath = ".//div[3]"
-
         attachment_href = find_element_by_xpath(attachment, a_href_xpath)
         attachment_url = attachment_href.get_attribute("href")
         date_attached = find_element_by_xpath(attachment, date_attached_xpath)
@@ -51,15 +51,19 @@ def scrape_attachments(driver, dialog_box):
         query_params = urllib.parse.parse_qs(parsed_url.query)
 
         updated_at = convert_date(date_attached.text, date_format="%d/%m/%Y %H:%M")
-        file_name, file_extension = query_params.get("fileName")[0].rsplit(".", 1)
         resource_id = parsed_url.path.split("/")[-1]
-        new_file_name = f"{updated_at}_{file_name}_{resource_id}.{file_extension}"
+
+        file_name = query_params.get("fileName")[0]
+        new_file_name = f"{updated_at}_{resource_id}_{file_name}"
+
         query_params["fileName"] = [new_file_name]
         updated_url = urllib.parse.urlunparse(
             parsed_url._replace(query=urllib.parse.urlencode(query_params, doseq=True))
         )
         attachments_data.append({"url": updated_url, "filename": new_file_name})
-        driver.get(updated_url)
+        attachments.append(updated_url)
+
+    deque(map(driver.get, attachments))
 
     # Navigate back to details
     details_tab_xpath = "//li[@aria-label='Details']"
@@ -256,13 +260,13 @@ def scrape_related_work(driver, dialog_box):
 def scrape_discussion_attachments(driver, attachment, discussion_date):
     parsed_url = urllib.parse.urlparse(attachment.get_attribute("src"))
     query_params = urllib.parse.parse_qs(parsed_url.query)
-
-    file_name, file_extension = query_params.get("fileName")[0].rsplit(".", 1)
-    resource_id = parsed_url.path.split("/")[-1]
     discussion_date = convert_date(discussion_date)
-    query_params["fileName"] = [
-        f"{discussion_date}_{file_name}_{resource_id}.{file_extension}"
-    ]
+    resource_id = parsed_url.path.split("/")[-1]
+
+    file_name = query_params.get("fileName")[0]
+    new_file_name = f"{discussion_date}_{resource_id}_{file_name}"
+
+    query_params["fileName"] = [new_file_name]
 
     if "download" not in query_params:
         query_params["download"] = "True"
