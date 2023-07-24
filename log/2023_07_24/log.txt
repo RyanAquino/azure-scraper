@@ -1,0 +1,22 @@
+Traceback (most recent call last):
+  File "/home/paul/Downloads/prod/location_app/main.py", line 183, in <module>
+    main()
+  File "/home/paul/Downloads/prod/location_app/main.py", line 171, in main
+    scraper(
+  File "/home/paul/Downloads/prod/location_app/main.py", line 153, in scraper
+    work_item_data = scrape_child_work_items(driver, dialog_box)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/paul/Downloads/prod/location_app/main.py", line 107, in scrape_child_work_items
+    child_data = scrape_child_work_items(driver, child_dialog_box)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/paul/Downloads/prod/location_app/main.py", line 107, in scrape_child_work_items
+    child_data = scrape_child_work_items(driver, child_dialog_box)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/paul/Downloads/prod/location_app/main.py", line 107, in scrape_child_work_items
+    child_data = scrape_child_work_items(driver, child_dialog_box)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/paul/Downloads/prod/location_app/main.py", line 65, in scrape_child_work_items
+    "User Name": find_element_by_xpath(dialog_box, username_xpath).text,
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'text'
+
