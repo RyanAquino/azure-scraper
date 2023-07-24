@@ -2,6 +2,7 @@
 Traverse all directories and
 delete folders if all files are of type symlink.
 """
+import argparse
 import shutil
 from pathlib import Path
 
@@ -32,14 +33,17 @@ def run(directory_path: Path):
 
 
 def main():
-    base_directory = input("Enter base absolute/relative path directory:")
-    base_path = Path(base_directory)
+    parser = argparse.ArgumentParser(description="Retrieve the base absolute/relative path directory.")
+    parser.add_argument("--base-directory", type=str, help="Base absolute/relative path directory", required=True)
 
-    if not base_path.is_dir():
+    args = parser.parse_args()
+    base_directory = args.base_directory
+
+    if not Path(base_directory).is_dir():
         print("Directory not valid. Please run again")
         return
 
-    return run(base_path)
+    return run(Path(base_directory))
 
 
 if __name__ == "__main__":
