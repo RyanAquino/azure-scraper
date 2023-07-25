@@ -12,6 +12,7 @@ from action_utils import (
     find_elements_by_xpath,
     get_input_value,
     send_keys_by_name,
+    get_text,
 )
 from driver_utils import chrome_settings_init
 from logger import logging
@@ -59,10 +60,13 @@ def scrape_child_work_items(driver, dialog_box):
     description = f"{work_item_control_xpath}//*[@aria-label='Description']"
 
     desc = find_element_by_xpath(dialog_box, description)
+    task_id = get_text(dialog_box, work_id_xpath)
+    username = get_text(dialog_box, username_xpath)
+
     work_item_data = {
-        "Task id": find_element_by_xpath(dialog_box, work_id_xpath).text,
+        "Task id": task_id,
         "Title": get_input_value(dialog_box, title_xpath).replace(" ", "_"),
-        "User Name": find_element_by_xpath(dialog_box, username_xpath).text,
+        "User Name": username,
         "State": get_input_value(dialog_box, state_xpath),
         "Area": get_input_value(dialog_box, area_xpath),
         "Iteration": get_input_value(dialog_box, iteration_xpath),
