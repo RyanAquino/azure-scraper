@@ -1,0 +1,37 @@
+Traceback (most recent call last):
+  File "/home/paul/Downloads/prod/location_app/main.py", line 187, in <module>
+    main()
+  File "/home/paul/Downloads/prod/location_app/main.py", line 175, in main
+    scraper(
+  File "/home/paul/Downloads/prod/location_app/main.py", line 157, in scraper
+    work_item_data = scrape_child_work_items(driver, dialog_box)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/paul/Downloads/prod/location_app/main.py", line 111, in scrape_child_work_items
+    child_data = scrape_child_work_items(driver, child_dialog_box)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/paul/Downloads/prod/location_app/main.py", line 111, in scrape_child_work_items
+    child_data = scrape_child_work_items(driver, child_dialog_box)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/paul/Downloads/prod/location_app/main.py", line 111, in scrape_child_work_items
+    child_data = scrape_child_work_items(driver, child_dialog_box)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/paul/Downloads/prod/location_app/main.py", line 64, in scrape_child_work_items
+    username = get_text(dialog_box, username_xpath)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/paul/Downloads/prod/location_app/action_utils.py", line 70, in get_text
+    return element.text
+           ^^^^^^^^^^^^
+  File "/home/paul/miniconda3/envs/tfs/lib/python3.11/site-packages/selenium/webdriver/remote/webelement.py", line 90, in text
+    return self._execute(Command.GET_ELEMENT_TEXT)["value"]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/paul/miniconda3/envs/tfs/lib/python3.11/site-packages/selenium/webdriver/remote/webelement.py", line 403, in _execute
+    return self._parent.execute(command, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/paul/miniconda3/envs/tfs/lib/python3.11/site-packages/selenium/webdriver/remote/webdriver.py", line 440, in execute
+    self.error_handler.check_response(response)
+  File "/home/paul/miniconda3/envs/tfs/lib/python3.11/site-packages/selenium/webdriver/remote/errorhandler.py", line 245, in check_response
+    raise exception_class(message, screen, stacktrace)
+selenium.common.exceptions.StaleElementReferenceException: Message: stale element reference: element is not attached to the page document
+  (Session info: chrome=112.0.5615.165)
+Stacktrace:
+
