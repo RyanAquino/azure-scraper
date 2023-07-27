@@ -1,5 +1,7 @@
+import logging
 import time
 import urllib.parse
+from collections import deque
 
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
@@ -12,6 +14,7 @@ from action_utils import (
     find_elements_by_xpath,
     get_anchor_link,
     get_text,
+    show_more,
 )
 
 
@@ -31,16 +34,16 @@ def scrape_attachments(driver, dialog_box):
     # Retrieve attachment links
     attachments_data = []
 
-    attachments_area = find_element_by_xpath(
-        dialog_box, "(.//div[@class='grid-content-spacer'])[last()]/parent::div"
+    attachment_rows = find_elements_by_xpath(
+        dialog_box,
+        "(.//div[@class='grid-content-spacer'])[last()]/parent::div//div[@role='row']",
     )
-    attachment_rows_xpath = ".//div[@role='row']"
-    attachment_rows = find_elements_by_xpath(attachments_area, attachment_rows_xpath)
+
+    a_href_xpath = ".//div[contains(@class, 'attachments-grid-file-name')]//a"
+    date_attached_xpath = ".//div[3]"
+    attachments = []
 
     for attachment in attachment_rows:
-        a_href_xpath = ".//div[contains(@class, 'attachments-grid-file-name')]//a"
-        date_attached_xpath = ".//div[3]"
-
         attachment_href = find_element_by_xpath(attachment, a_href_xpath)
         attachment_url = attachment_href.get_attribute("href")
         date_attached = find_element_by_xpath(attachment, date_attached_xpath)
@@ -49,15 +52,19 @@ def scrape_attachments(driver, dialog_box):
         query_params = urllib.parse.parse_qs(parsed_url.query)
 
         updated_at = convert_date(date_attached.text, date_format="%d/%m/%Y %H:%M")
-        file_name, file_extension = query_params.get("fileName")[0].split(".")
         resource_id = parsed_url.path.split("/")[-1]
-        new_file_name = f"{updated_at}_{file_name}_{resource_id}.{file_extension}"
+
+        file_name = query_params.get("fileName")[0]
+        new_file_name = f"{updated_at}_{resource_id}_{file_name}"
+
         query_params["fileName"] = [new_file_name]
         updated_url = urllib.parse.urlunparse(
             parsed_url._replace(query=urllib.parse.urlencode(query_params, doseq=True))
         )
         attachments_data.append({"url": updated_url, "filename": new_file_name})
-        driver.get(updated_url)
+        attachments.append(updated_url)
+
+    deque(map(driver.get, attachments))
 
     # Navigate back to details
     details_tab_xpath = "//li[@aria-label='Details']"
@@ -176,12 +183,15 @@ def scrape_history(dialog_box):
 
 
 def scrape_related_work(driver, dialog_box):
-    related_work_xpath = (
-        "(.//div[@class='links-control-container']/div[@class='la-main-component'])"
-        "[last()]/div[@class='la-list']/div"
-    )
-    related_work_items = find_elements_by_xpath(dialog_box, related_work_xpath)
     results = []
+
+    related_work_xpath = "(.//div[@class='links-control-container']/div[@class='la-main-component'])[last()]"
+    show_more_xpath = "//div[@class='la-show-more']"
+    show_more(dialog_box, f"{related_work_xpath}{show_more_xpath}")
+
+    related_work_items = find_elements_by_xpath(
+        dialog_box, f"{related_work_xpath}/div[@class='la-list']/div"
+    )
 
     if not related_work_items:
         return results
@@ -217,16 +227,19 @@ def scrape_related_work(driver, dialog_box):
                     "arguments[0].dispatchEvent(new MouseEvent('mouseover', {'bubbles': true}));",
                     updated_at_hover,
                 )
-                updated_at = get_text(
-                    related_work, "//p[contains(@class, 'ms-Tooltip-subtext')]"
-                )
+                updated_at = get_text(driver, "//p[contains(text(), 'Updated by')]")
                 retry_count += 1
                 print(
                     f"Retrying hover on work related date ... {retry_count}/{config.MAX_RETRIES}"
                 )
                 time.sleep(3)
 
-            updated_at = " ".join(updated_at.split(" ")[-4:])
+            logging.info(f"related work item '{updated_at}'")
+
+            driver.execute_script(
+                "arguments[0].dispatchEvent(new MouseEvent('mouseout', {'bubbles': true}));",
+                updated_at_hover,
+            )
 
             related_work_item_id = related_work_link.get_attribute("href").split("/")[
                 -1
@@ -236,7 +249,7 @@ def scrape_related_work(driver, dialog_box):
                 {
                     "filename_source": f"{related_work_item_id}_{related_work_title}",
                     "link_target": f"{related_work_item_id}_{related_work_title}_update_{convert_date(updated_at)}_{related_work_type}",
-                    "updated_at": updated_at,
+                    "updated_at": " ".join(updated_at.split(" ")[-4:]),
                 }
             )
 
@@ -248,13 +261,13 @@ def scrape_related_work(driver, dialog_box):
 def scrape_discussion_attachments(driver, attachment, discussion_date):
     parsed_url = urllib.parse.urlparse(attachment.get_attribute("src"))
     query_params = urllib.parse.parse_qs(parsed_url.query)
-
-    file_name, file_extension = query_params.get("fileName")[0].split(".")
-    resource_id = parsed_url.path.split("/")[-1]
     discussion_date = convert_date(discussion_date)
-    query_params["fileName"] = [
-        f"{discussion_date}_{file_name}_{resource_id}.{file_extension}"
-    ]
+    resource_id = parsed_url.path.split("/")[-1]
+
+    file_name = query_params.get("fileName")[0]
+    new_file_name = f"{discussion_date}_{resource_id}_{file_name}"
+
+    query_params["fileName"] = [new_file_name]
 
     if "download" not in query_params:
         query_params["download"] = "True"
@@ -267,7 +280,7 @@ def scrape_discussion_attachments(driver, attachment, discussion_date):
     return {"url": updated_url, "filename": query_params["fileName"][0]}
 
 
-def scrape_discussions(driver, action):
+def scrape_discussions(driver):
     results = []
 
     dialog_xpath = "//div[@role='dialog'][last()]"
@@ -292,7 +305,10 @@ def scrape_discussions(driver, action):
             retry_count = 0
 
             while date is None and retry_count < config.MAX_RETRIES:
-                action.move_to_element(comment_timestamp).perform()
+                driver.execute_script(
+                    "arguments[0].dispatchEvent(new MouseEvent('mouseover', {'bubbles': true}));",
+                    comment_timestamp,
+                )
                 date = get_text(
                     discussion, "//p[contains(@class, 'ms-Tooltip-subtext')]"
                 )
@@ -301,6 +317,17 @@ def scrape_discussions(driver, action):
                     f"Retrying hover on discussion date ... {retry_count}/{config.MAX_RETRIES}"
                 )
                 time.sleep(3)
+
+            html_source = driver.execute_script(
+                "return document.getElementsByTagName('html')[0].innerHTML"
+            )
+            log_html(html_source, "discussion_date.log")
+            logging.info(f"discussion date '{date}'")
+
+            driver.execute_script(
+                "arguments[0].dispatchEvent(new MouseEvent('mouseout', {'bubbles': true}));",
+                comment_timestamp,
+            )
 
             discussion_date = " ".join(date.split(" ")[-4:])
 
@@ -376,3 +403,8 @@ def scrape_development(driver):
 def scrape_description(element):
     html = element.get_attribute("innerHTML")
     return html
+
+
+def log_html(page_source, log_file_path="source.log"):
+    with open(log_file_path, "w", encoding="utf-8") as file:
+        file.write(page_source)

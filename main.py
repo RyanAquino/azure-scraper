@@ -11,6 +11,7 @@ from action_utils import (
     find_element_by_xpath,
     find_elements_by_xpath,
     get_input_value,
+    get_text,
     send_keys_by_name,
 )
 from driver_utils import chrome_settings_init
@@ -43,12 +44,11 @@ def scrape_child_work_items(driver, dialog_box):
     work_item_control_xpath = (
         ".//div[contains(@class, 'work-item-control initialized')]"
     )
-    work_id_xpath = ".//div[contains(@class, 'work-item-form-id initialized')]//span"
-    title_xpath = ".//div[contains(@class, 'work-item-form-title initialized')]//input"
-    username_xpath = (
-        ".//div[contains(@class, 'work-item-form-assignedTo initialized')]"
-        "//span[contains(@class, 'text-cursor')]"
+    work_id_xpath = (
+        "(.//div[contains(@class, 'work-item-form-id initialized')]//span)[last()]"
     )
+    title_xpath = ".//div[contains(@class, 'work-item-form-title initialized')]//input"
+    username_xpath = "(.//div[@aria-label='Assigned To Field'])[last()]//span[contains(@class, 'text-cursor')]"
     state_xpath = f"{work_item_control_xpath}//*[@aria-label='State Field']"
     area_xpath = f"{work_item_control_xpath}//*[@aria-label='Area Path']"
     iteration_xpath = f"{work_item_control_xpath}//*[@aria-label='Iteration Path']"
@@ -59,10 +59,13 @@ def scrape_child_work_items(driver, dialog_box):
     description = f"{work_item_control_xpath}//*[@aria-label='Description']"
 
     desc = find_element_by_xpath(dialog_box, description)
+    task_id = get_text(dialog_box, work_id_xpath)
+    username = get_text(dialog_box, username_xpath)
+
     work_item_data = {
-        "Task id": find_element_by_xpath(dialog_box, work_id_xpath).text,
+        "Task id": task_id,
         "Title": get_input_value(dialog_box, title_xpath).replace(" ", "_"),
-        "User Name": find_element_by_xpath(dialog_box, username_xpath).text,
+        "User Name": username,
         "State": get_input_value(dialog_box, state_xpath),
         "Area": get_input_value(dialog_box, area_xpath),
         "Iteration": get_input_value(dialog_box, iteration_xpath),
@@ -71,7 +74,7 @@ def scrape_child_work_items(driver, dialog_box):
         "Activity": get_input_value(dialog_box, activity_xpath),
         "Blocked": get_input_value(dialog_box, blocked_xpath),
         "related_work": scrape_related_work(driver, dialog_box),
-        "discussions": scrape_discussions(driver, action),
+        "discussions": scrape_discussions(driver),
         "attachments": scrape_attachments(driver, dialog_box),
         "description": scrape_description(desc),
     }
@@ -102,6 +105,9 @@ def scrape_child_work_items(driver, dialog_box):
 
             logging.info(f"Open dialog box for '{work_item_element.text}'")
             work_item_element.click()
+
+            time.sleep(5)
+
             dialog_xpath = "//div[@role='dialog'][last()]"
             child_dialog_box = find_element_by_xpath(driver, dialog_xpath)
             child_data = scrape_child_work_items(driver, child_dialog_box)
