@@ -44,12 +44,9 @@ def scrape_child_work_items(driver, dialog_box):
     work_item_control_xpath = (
         ".//div[contains(@class, 'work-item-control initialized')]"
     )
-    work_id_xpath = ".//div[contains(@class, 'work-item-form-id initialized')]//span"
+    work_id_xpath = "(.//div[contains(@class, 'work-item-form-id initialized')]//span)[last()]"
     title_xpath = ".//div[contains(@class, 'work-item-form-title initialized')]//input"
-    username_xpath = (
-        ".//div[contains(@class, 'work-item-form-assignedTo initialized')]"
-        "//span[contains(@class, 'text-cursor')]"
-    )
+    username_xpath = "(.//div[@aria-label='Assigned To Field'])[last()]//span[contains(@class, 'text-cursor')]"
     state_xpath = f"{work_item_control_xpath}//*[@aria-label='State Field']"
     area_xpath = f"{work_item_control_xpath}//*[@aria-label='Area Path']"
     iteration_xpath = f"{work_item_control_xpath}//*[@aria-label='Iteration Path']"
