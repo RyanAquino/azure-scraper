@@ -1,6 +1,8 @@
 import json
 import time
 
+from urllib.parse import urlparse
+
 from selenium import webdriver
 from selenium.webdriver.common.action_chains import ActionChains
 
@@ -27,7 +29,16 @@ from scrape_utils import (
 )
 
 
-def login(driver, email, password):
+def login(driver, url, email, password):
+    scheme, domain, path = urlparse(url)[0:3]
+    # Navigate to the site and login
+    
+    if domain != "dev.azure.com":
+        driver.get(f"{scheme}://{email}:{password}@{domain}{path}")
+        driver.get(url)
+        return
+    
+    driver.get(url)
     send_keys_by_name(driver, "loginfmt", email)
     click_button_by_id(driver, "idSIButton9")
     send_keys_by_name(driver, "passwd", password)
@@ -123,14 +134,9 @@ def scrape_child_work_items(driver, dialog_box):
 
 
 def scraper(driver, url, email, password, file_path):
-    driver.maximize_window()
-
     logging.info(f"Navigate and login to {url}")
-    # Navigate to the site and login
-    driver.get(url)
-    login(driver, email, password)
+    login(driver, url, email, password)
     logging.info(f"Done")
-
     # Find each work item
     work_items = find_elements_by_xpath(driver, '//div[@aria-level="1"]')
     work_items_count = len(work_items)
@@ -176,7 +182,7 @@ def main():
     with webdriver.Chrome(**chrome_config) as wd:
         scraper(
             wd,
-            config.BASE_URL + config.BACKLOG_ENDPOINT,
+            config.BASE_URL,
             config.EMAIL,
             config.PASSWORD,
             save_file,
