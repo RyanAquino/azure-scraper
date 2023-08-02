@@ -140,10 +140,7 @@ def convert_links(soup):
     return soup
 
 
-def convert_to_markdown(soup, markdown=None):
-    if markdown is None:
-        soup = BeautifulSoup(soup, "html.parser")
-
+def convert_to_markdown(soup):
     for div in soup.find_all("div"):
         div.insert_after("\n")
 

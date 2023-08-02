@@ -12,16 +12,14 @@ from action_utils import (
     click_button_by_xpath,
     find_element_by_xpath,
     find_elements_by_xpath,
-    get_input_value,
-    get_text,
     send_keys_by_name,
 )
 from driver_utils import chrome_settings_init
 from logger import logging
 from results_processor import post_process_results
 from scrape_utils import (
+    scrape_basic_fields,
     scrape_attachments,
-    scrape_description,
     scrape_development,
     scrape_discussions,
     scrape_history,
@@ -32,12 +30,11 @@ from scrape_utils import (
 def login(driver, url, email, password):
     scheme, domain, path = urlparse(url)[0:3]
     # Navigate to the site and login
-    
     if domain != "dev.azure.com":
         driver.get(f"{scheme}://{email}:{password}@{domain}{path}")
         driver.get(url)
         return
-    
+
     driver.get(url)
     send_keys_by_name(driver, "loginfmt", email)
     click_button_by_id(driver, "idSIButton9")
@@ -52,50 +49,20 @@ def scrape_child_work_items(driver, dialog_box):
         ".//div[child::div[contains(@class, 'la-group-title') "
         "and contains(text(), 'Child')]]//div[@class='la-item']"
     )
-    work_item_control_xpath = (
-        ".//div[contains(@class, 'work-item-control initialized')]"
-    )
-    work_id_xpath = (
-        "(.//div[contains(@class, 'work-item-form-id initialized')]//span)[last()]"
-    )
-    title_xpath = ".//div[contains(@class, 'work-item-form-title initialized')]//input"
-    username_xpath = "(.//div[@aria-label='Assigned To Field'])[last()]//span[contains(@class, 'text-cursor')]"
-    state_xpath = f"{work_item_control_xpath}//*[@aria-label='State Field']"
-    area_xpath = f"{work_item_control_xpath}//*[@aria-label='Area Path']"
-    iteration_xpath = f"{work_item_control_xpath}//*[@aria-label='Iteration Path']"
-    priority_xpath = f"{work_item_control_xpath}//*[@aria-label='Priority']"
-    remaining_xpath = f"{work_item_control_xpath}//*[@aria-label='Remaining Work']"
-    activity_xpath = f"{work_item_control_xpath}//*[@aria-label='Activity']"
-    blocked_xpath = f"{work_item_control_xpath}//*[@aria-label='Blocked']"
-    description = f"{work_item_control_xpath}//*[@aria-label='Description']"
+    container = ".//div[contains(@class, 'work-item-control initialized')]"
+    description_xpath = f"{container}//*[@aria-label='Description']"
+    description = find_element_by_xpath(dialog_box, description_xpath)
 
-    desc = find_element_by_xpath(dialog_box, description)
-    task_id = get_text(dialog_box, work_id_xpath)
-    username = get_text(dialog_box, username_xpath)
+    work_item_data = scrape_basic_fields(dialog_box)
+    work_item_data["related_work"] = scrape_related_work(driver, dialog_box)
+    work_item_data["discussions"] = scrape_discussions(driver)
+    work_item_data["attachments"] = scrape_attachments(driver, dialog_box)
 
-    work_item_data = {
-        "Task id": task_id,
-        "Title": get_input_value(dialog_box, title_xpath).replace(" ", "_"),
-        "User Name": username,
-        "State": get_input_value(dialog_box, state_xpath),
-        "Area": get_input_value(dialog_box, area_xpath),
-        "Iteration": get_input_value(dialog_box, iteration_xpath),
-        "Priority": get_input_value(dialog_box, priority_xpath),
-        "Remaining Work": get_input_value(dialog_box, remaining_xpath),
-        "Activity": get_input_value(dialog_box, activity_xpath),
-        "Blocked": get_input_value(dialog_box, blocked_xpath),
-        "related_work": scrape_related_work(driver, dialog_box),
-        "discussions": scrape_discussions(driver),
-        "attachments": scrape_attachments(driver, dialog_box),
-        "description": scrape_description(desc),
-    }
-
-    details_xpath = ".//li[@aria-label='Details']"
-    history_xpath = ".//li[@aria-label='History']"
+    details_xpath = "//ul[@role='tablist']//li[1]"
+    history_xpath = "//ul[@role='tablist']//li[2]"
 
     # Navigate to history tab
     click_button_by_xpath(dialog_box, history_xpath)
-
     work_item_data["history"] = scrape_history(dialog_box)
 
     # Navigate back to details tab
@@ -104,15 +71,13 @@ def scrape_child_work_items(driver, dialog_box):
     work_item_data["development"] = scrape_development(driver)
     child_work_items = find_elements_by_xpath(dialog_box, child_xpath)
 
-    print(work_item_data)
-
     if child_work_items:
         children = []
         for work_item in child_work_items:
             work_item_element = find_element_by_xpath(work_item, ".//a")
 
             # Reposition movement to clear space / description
-            action.move_to_element(desc).perform()
+            action.move_to_element(description).perform()
 
             logging.info(f"Open dialog box for '{work_item_element.text}'")
             work_item_element.click()
@@ -136,7 +101,8 @@ def scrape_child_work_items(driver, dialog_box):
 def scraper(driver, url, email, password, file_path):
     logging.info(f"Navigate and login to {url}")
     login(driver, url, email, password)
-    logging.info(f"Done")
+    logging.info("Done")
+
     # Find each work item
     work_items = find_elements_by_xpath(driver, '//div[@aria-level="1"]')
     work_items_count = len(work_items)
@@ -147,7 +113,7 @@ def scraper(driver, url, email, password, file_path):
         work_items = find_elements_by_xpath(driver, '//div[@aria-level="1"]')
         work_item = work_items[work_items_ctr]
 
-        logging.info(f"Sleeping...")
+        logging.info("Sleeping...")
         time.sleep(5)
 
         work_item_element = find_element_by_xpath(work_item, ".//a")
@@ -171,7 +137,7 @@ def scraper(driver, url, email, password, file_path):
         work_items_ctr += 1
 
     logging.info(f"Saving result to {file_path}")
-    with open(file_path, "w") as outfile:
+    with open(file_path, "w", encoding="utf-8") as outfile:
         json.dump(result_set, outfile)
 
 
@@ -179,9 +145,9 @@ def main():
     save_file = "data/scrape_result.json"
     chrome_config, chrome_downloads = chrome_settings_init()
 
-    with webdriver.Chrome(**chrome_config) as wd:
+    with webdriver.Chrome(**chrome_config) as driver:
         scraper(
-            wd,
+            driver,
             config.BASE_URL,
             config.EMAIL,
             config.PASSWORD,
