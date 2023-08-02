@@ -59,7 +59,7 @@ def scrape_basic_fields(dialog_box):
             if element.name == "input":
                 value = element.get("value")
 
-                if value is None:
+                if "value" not in element:
                     value = get_input_value(
                         dialog_box, f"//input[@aria-label='{attribute}']"
                     )

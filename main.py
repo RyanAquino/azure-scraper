@@ -58,8 +58,8 @@ def scrape_child_work_items(driver, dialog_box):
     work_item_data["discussions"] = scrape_discussions(driver)
     work_item_data["attachments"] = scrape_attachments(driver, dialog_box)
 
-    details_xpath = "//ul[@role='tablist']//li[1]"
-    history_xpath = "//ul[@role='tablist']//li[2]"
+    details_xpath = "//ul[@role='tablist']/li[1]"
+    history_xpath = "//ul[@role='tablist']/li[2]"
 
     # Navigate to history tab
     click_button_by_xpath(dialog_box, history_xpath)
