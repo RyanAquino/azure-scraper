@@ -3,19 +3,85 @@ import time
 import urllib.parse
 from collections import deque
 
+from bs4 import BeautifulSoup
+
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
 
 import config
 from action_utils import (
     convert_date,
+    convert_to_markdown,
     expand_collapsed_by_xpath,
     find_element_by_xpath,
     find_elements_by_xpath,
     get_anchor_link,
     get_text,
     show_more,
+    get_input_value,
 )
+
+
+def scrape_basic_fields(dialog_box):
+    title_xpath = ".//div[contains(@class, 'work-item-form-title initialized')]//input"
+    title = get_input_value(dialog_box, title_xpath)
+    description_xpath = ".//div[contains(@class, 'work-item-control initialized')]//*[@aria-label='Description']"
+    description = find_element_by_xpath(dialog_box, description_xpath)
+
+    if title is None:
+        return
+
+    labels = [
+        "ID Field",
+        "Assigned To Field",
+        "State Field",
+        "Area Path",
+        "Iteration Path",
+        "Priority",
+        "Remaining Work",
+        "Activity",
+        "Blocked",
+    ]
+    basic_fields = {}
+
+    soup = BeautifulSoup(dialog_box.get_attribute("innerHTML"), "html.parser")
+    description_soup = BeautifulSoup(
+        description.get_attribute("innerHTML"), "html.parser"
+    )
+
+    for element in soup.select("[aria-label]"):
+        attribute = element.get("aria-label")
+
+        if attribute in labels:
+            if attribute == "Assigned To Field":
+                element = element.find("span", {"class": "text-cursor"})
+
+            if element.name == "input":
+                value = element.get("value")
+
+                if value is None:
+                    value = get_input_value(
+                        dialog_box, f"//input[@aria-label='{attribute}']"
+                    )
+
+            else:
+                value = element.text if element.text else None
+
+            basic_fields[attribute] = value
+
+    return {
+        "Task id": basic_fields["ID Field"],
+        "Title": title.replace(" ", "_"),
+        "User Name": basic_fields["Assigned To Field"],
+        "State": basic_fields["State Field"],
+        "Area": basic_fields["Area Path"],
+        "Iteration": basic_fields["Iteration Path"],
+        "Priority": basic_fields["Priority"],
+        "Remaining Work": basic_fields.get("Remaining Work"),
+        "Activity": basic_fields.get("Activity"),
+        "Blocked": basic_fields.get("Blocked"),
+        "description": convert_to_markdown(description_soup),
+    }
 
 
 def scrape_attachments(driver, dialog_box):
@@ -398,11 +464,6 @@ def scrape_development(driver):
             driver.close()
             driver.switch_to.window(original_window)
     return results
-
-
-def scrape_description(element):
-    html = element.get_attribute("innerHTML")
-    return html
 
 
 def log_html(page_source, log_file_path="source.log"):
