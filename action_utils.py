@@ -81,9 +81,11 @@ def add_line_break(word, max_length):
         return word
 
 
-def expand_collapsed_by_xpath(dialog_box):
-    collapsed_xpath = ".//div[@aria-expanded='false']"
-    collapsed = find_elements_by_xpath(dialog_box, collapsed_xpath)
+def expand_collapsed_by_xpath(driver):
+    dialog_box = "//div[@role='dialog'][last()]"
+    history_items = "//div[@class='history-item-list']"
+    collapsed_xpath = f"{dialog_box}{history_items}//div[@aria-expanded='false']"
+    collapsed = find_elements_by_xpath(driver, collapsed_xpath)
 
     if collapsed:
         for collapse_item in collapsed:

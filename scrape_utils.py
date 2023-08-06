@@ -140,111 +140,110 @@ def scrape_attachments(driver, dialog_box):
     return attachments_data
 
 
-def scrape_history(dialog_box):
+def get_element_text(element):
+    if element is not None:
+        return element.text
+
+
+def scrape_history(driver):
     results = []
+    dialog_box = "//div[@role='dialog'][last()]"
 
     # Check if there are collapsed history items
-    expand_collapsed_by_xpath(dialog_box)
-
-    history_container_xpath = (
-        "(//div[contains(@class, 'workitem-history-control-container')])[last()]"
-    )
+    expand_collapsed_by_xpath(driver)
 
     history_items = find_elements_by_xpath(
-        dialog_box,
-        f"{history_container_xpath}//div[@class='history-item-summary-details']",
+        driver,
+        f"{dialog_box}//div[@class='history-item-summary']",
     )
 
     for history in history_items:
         history.click()
 
-        details_panel_xpath = (
-            f"{history_container_xpath}//div[@class='history-details-panel']"
-        )
+        details_xpath = f"{dialog_box}//div[@class='history-item-viewer']"
+        details = find_element_by_xpath(driver, details_xpath)
+
+        soup = BeautifulSoup(details.get_attribute("innerHTML"), "html.parser")
+        username = soup.find("span", {"class": "history-item-name-changed-by"}).text
+        date = soup.find("span", {"class": "history-item-date"}).text
+        summary = soup.find("div", {"class": "history-item-summary-text"}).text
+
+        print(username, date, summary)
 
         result = {
-            "User": get_text(
-                dialog_box,
-                f"{details_panel_xpath}//span[contains(@class, 'history-item-name-changed-by')]",
-            ),
-            "Date": get_text(
-                dialog_box,
-                f"{details_panel_xpath}//span[contains(@class, 'history-item-date')]",
-            ),
-            "Title": get_text(
-                dialog_box,
-                f"{details_panel_xpath}//div[contains(@class, 'history-item-summary-text')]",
-            ),
-            "Content": None,
+            "User": username,
+            "Date": date,
+            "Title": summary,
             "Links": [],
             "Fields": [],
         }
 
-        # Get all field changes
-        if fields := find_elements_by_xpath(
-            dialog_box, f"{details_panel_xpath}//div[@class='field-name']"
-        ):
+        if history_fields := soup.find("div", class_="fields"):
+            fields = history_fields.find_all("div", class_="field-name")
+
             for field in fields:
-                field_name = get_text(field, ".//span")
-                field_value = find_element_by_xpath(field, "./following-sibling::div")
-                old_value = get_text(field_value, ".//span[@class='field-old-value']")
-                new_value = get_text(field_value, ".//span[@class='field-new-value']")
+                field_name = field.span.text
+                field_value = field.find_next_sibling("div", class_="field-values")
 
+                new_value = field_value.find("span", class_="field-new-value")
+                old_value = field_value.find("span", class_="field-old-value")
                 result["Fields"].append(
-                    {"name": field_name, "old_value": old_value, "new_value": new_value}
-                )
-
-        if html_field := find_elements_by_xpath(
-            dialog_box,
-            f"{details_panel_xpath}//div[@class='html-field-name history-section']",
-        ):
-            for field in html_field:
-                field_name = get_text(
-                    field,
-                    f"{details_panel_xpath}//div[@class='html-field-name history-section']",
-                )
-                field_value = find_element_by_xpath(
-                    field, "//parent::div/following-sibling::div"
-                )
-                old_value = get_text(
-                    field_value, "//span[@class='html-field-old-value']"
-                )
-                new_value = get_text(
-                    field_value, "//span[@class='html-field-new-value']"
-                )
-
-                result["Fields"].append(
-                    {"name": field_name, "old_value": old_value, "new_value": new_value}
-                )
-
-        # Get comments
-        if comment := get_text(
-            dialog_box,
-            f"{details_panel_xpath}//div[contains(@class, 'history-item-comment')]",
-        ):
-            result["Content"] = comment
-
-        # Get Links
-        if links := find_elements_by_xpath(
-            dialog_box, f"{details_panel_xpath}//div[@class='history-links']"
-        ):
-            for link in links:
-                result["Links"].append(
                     {
-                        "Type": get_text(
-                            link, ".//span[contains(@class, 'link-display-name')]//span"
-                        ),
-                        "Link to item file": get_anchor_link(
-                            link, ".//span[contains(@class, 'link-text')]//a"
-                        ),
-                        "Title": get_text(
-                            link, ".//span[contains(@class, 'link-text')]//span"
-                        ),
+                        "name": field_name,
+                        "old_value": get_element_text(old_value),
+                        "new_value": get_element_text(new_value),
                     }
                 )
+        if html_field := soup.find("div", class_="html-field"):
+            field_name = html_field.find("div", {"class": "html-field-name"})
+            old_value = html_field.find("div", class_="html-field-old-value-container")
+            new_value = html_field.find("div", class_="html-field-new-value-container")
 
-        results.append(result)
+            result["Fields"].append(
+                {
+                    "name": field_name,
+                    "old_value": get_element_text(old_value),
+                    "new_value": get_element_text(new_value),
+                }
+            )
 
+        if added_comment := soup.find("div", {"class": "history-item-comment"}):
+            result["Fields"].append(
+                {
+                    "name": "Comments",
+                    "old_value": None,
+                    "new_value": added_comment.text,
+                }
+            )
+
+        if editted_comments := soup.find(
+            "div", {"class": "history-item-comment-edited"}
+        ):
+            old_comment = editted_comments.find("div", class_="old-comment")
+            new_comment = editted_comments.find("div", class_="new-comment")
+
+            result["Fields"].append(
+                {
+                    "name": "Comments",
+                    "old_value": old_comment.text,
+                    "new_value": new_comment.text,
+                }
+            )
+
+        # Get Links
+        if link := soup.find("div", class_="history-links"):
+            display_name = link.find("span", class_="link-display-name").text
+            link = link.find("span", class_="link-text")
+
+            result["Links"].append(
+                {
+                    "Type": display_name,
+                    "Link to item file": link.a.get("href"),
+                    "Title": link.span.text,
+                }
+            )
+
+    results.append(result)
     return results
 
 
