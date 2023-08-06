@@ -104,18 +104,18 @@ def create_directory_hierarchy(
 
                     file.write("* Absolute link to attachment/s\n")
 
-                    if discussion["attachments"]:
-                        for attachment in discussion["attachments"]:
-                            source = Path(attachments_path, attachment["filename"])
-                            destination = Path(
-                                discussion_attachments_path, attachment["filename"]
-                            )
-                            file.write(
-                                f"  * [{attachment['filename']}]({destination})\n"
-                            )
+                    # if discussion["attachments"]:
+                    #     for attachment in discussion["attachments"]:
+                    #         source = Path(attachments_path, attachment["filename"])
+                    #         destination = Path(
+                    #             discussion_attachments_path, attachment["filename"]
+                    #         )
+                    #         file.write(
+                    #             f"  * [{attachment['filename']}]({destination})\n"
+                    #         )
 
-                            if os.path.exists(source):
-                                shutil.move(source, destination)
+                    #         if os.path.exists(source):
+                    #             shutil.move(source, destination)
 
         if d.get("attachments"):
             for attachment in d["attachments"]:
@@ -135,9 +135,9 @@ def create_directory_hierarchy(
                     file.write(f"* {key}: {value}\n")
 
         with open(Path(dir_path, "origin.md"), "w", encoding="utf-8") as file:
-            scheme, domain, path = urlparse(config.BASE_URL)[0:3]
-            path = "/".join(path.split("/")[1:3])
-            origin = f"{scheme}://{domain}/{path}/_workitems/edit/{d['Task id']}"
+            scheme, domain, url_path = urlparse(config.BASE_URL)[0:3]
+            url_path = "/".join(url_path.split("/")[1:3])
+            origin = f"{scheme}://{domain}/{url_path}/_workitems/edit/{d['Task id']}"
             file.write(origin)
 
         for development in d.pop("development"):

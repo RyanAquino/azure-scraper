@@ -324,14 +324,13 @@ def scrape_related_work(driver, dialog_box):
     return results
 
 
-def scrape_discussion_attachments(driver, attachment, discussion_date):
-    parsed_url = urllib.parse.urlparse(attachment.get_attribute("src"))
+def scrape_discussion_attachments(attachment, discussion_date):
+    parsed_url = urllib.parse.urlparse(attachment.get("src"))
     query_params = urllib.parse.parse_qs(parsed_url.query)
-    discussion_date = convert_date(discussion_date)
     resource_id = parsed_url.path.split("/")[-1]
 
     file_name = query_params.get("fileName")[0]
-    new_file_name = f"{discussion_date}_{resource_id}_{file_name}"
+    new_file_name = f"{convert_date(discussion_date)}_{resource_id}_{file_name}"
 
     query_params["fileName"] = [new_file_name]
 
@@ -341,68 +340,62 @@ def scrape_discussion_attachments(driver, attachment, discussion_date):
     updated_url = urllib.parse.urlunparse(
         parsed_url._replace(query=urllib.parse.urlencode(query_params, doseq=True))
     )
-    driver.get(updated_url)
 
     return {"url": updated_url, "filename": query_params["fileName"][0]}
 
 
 def scrape_discussions(driver):
     results = []
-
     dialog_xpath = "//div[@role='dialog'][last()]"
+    container_xpath = f"{dialog_xpath}//div[@class='comments-section']"
+    discussion_container = find_element_by_xpath(driver, container_xpath)
 
-    discussions_xpath = (
-        f"{dialog_xpath}//div[contains(@class, 'initialized work-item-discussion-control')]"
-        "//div[contains(@class, 'wit-comment-item')]"
-    )
-    discussions = find_elements_by_xpath(driver, discussions_xpath)
+    html = discussion_container.get_attribute("innerHTML")
+    soup = BeautifulSoup(html, "html.parser")
+
+    discussions = soup.find_all("div", class_="comment-item-right")
 
     if discussions:
-        for discussion in discussions:
-            content_xpath = ".//div[@class='comment-content']"
-            content = get_text(discussion, content_xpath)
+        for index, discussion in enumerate(discussions):
+            index += 1
+            username = discussion.find("span", class_="user-display-name").text
+            discussion_content = discussion.find("div", class_="comment-content")
+            content = convert_to_markdown(discussion_content)
+            attachments = discussion.find_all("img")
 
-            content_attachment_xpath = f"{content_xpath}//img"
-            attachments = find_elements_by_xpath(discussion, content_attachment_xpath)
-            comment_timestamp = find_element_by_xpath(
-                discussion, ".//a[@class='comment-timestamp']"
+            comment_header_xpath = (
+                f"({container_xpath}//div[@class='comment-header-left'])[{index}]"
             )
+
+            timestamp_xpath = (
+                f"({comment_header_xpath}//*[@class='comment-timestamp'])[1]"
+            )
+            comment_timestamp = find_element_by_xpath(driver, timestamp_xpath)
+
             date = None
             retry_count = 0
-
             while date is None and retry_count < config.MAX_RETRIES:
                 driver.execute_script(
                     "arguments[0].dispatchEvent(new MouseEvent('mouseover', {'bubbles': true}));",
                     comment_timestamp,
                 )
-                date = get_text(
-                    discussion, "//p[contains(@class, 'ms-Tooltip-subtext')]"
-                )
+                date = get_text(driver, "//p[contains(@class, 'ms-Tooltip-subtext')]")
+
+                if date:
+                    break
+
                 retry_count += 1
                 print(
                     f"Retrying hover on discussion date ... {retry_count}/{config.MAX_RETRIES}"
                 )
                 time.sleep(3)
 
-            html_source = driver.execute_script(
-                "return document.getElementsByTagName('html')[0].innerHTML"
-            )
-            log_html(html_source, "discussion_date.log")
-            logging.info(f"discussion date '{date}'")
-
-            driver.execute_script(
-                "arguments[0].dispatchEvent(new MouseEvent('mouseout', {'bubbles': true}));",
-                comment_timestamp,
-            )
-
-            discussion_date = " ".join(date.split(" ")[-4:])
-
             result = {
-                "User": get_text(discussion, ".//span[@class='user-display-name']"),
+                "User": username,
                 "Content": content,
-                "Date": discussion_date,
+                "Date": date,
                 "attachments": [
-                    scrape_discussion_attachments(driver, attachment, discussion_date)
+                    scrape_discussion_attachments(attachment, date)
                     for attachment in (attachments or [])
                 ],
             }
