@@ -24,9 +24,6 @@ def create_history_metadata(history, history_path):
             file.write(f"   * User: {item['User']}\n")
             file.write(f"   * Title: {item['Title']}\n")
 
-            if item["Content"]:
-                file.write(f"   * Content: {add_line_break(item['Content'], 60)}\n")
-
             if item["Fields"]:
                 file.write("   * Fields\n")
                 fields = item["Fields"]

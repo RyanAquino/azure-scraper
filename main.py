@@ -57,13 +57,12 @@ def scrape_child_work_items(driver, dialog_box):
     work_item_data["related_work"] = scrape_related_work(driver, dialog_box)
     work_item_data["discussions"] = scrape_discussions(driver)
     work_item_data["attachments"] = scrape_attachments(driver, dialog_box)
+    work_item_data["history"] = scrape_history(dialog_box)
+    work_item_data["development"] = scrape_development(driver)
 
-    click_button_by_xpath(dialog_box, ".//ul[@role='tablist']/li[2]")
-    work_item_data["history"] = scrape_history(driver)
-    click_button_by_xpath(dialog_box, ".//ul[@role='tablist']/li[1]")
-
-    # work_item_data["development"] = scrape_development(driver)
     child_work_items = find_elements_by_xpath(dialog_box, child_xpath)
+
+    print(work_item_data)
 
     if child_work_items:
         children = []
@@ -75,9 +74,6 @@ def scrape_child_work_items(driver, dialog_box):
 
             logging.info(f"Open dialog box for '{work_item_element.text}'")
             work_item_element.click()
-
-            time.sleep(5)
-
             dialog_xpath = "//div[@role='dialog'][last()]"
             child_dialog_box = find_element_by_xpath(driver, dialog_xpath)
             child_data = scrape_child_work_items(driver, child_dialog_box)

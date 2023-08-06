@@ -1,4 +1,4 @@
-import logging
+import re
 import time
 import urllib.parse
 from collections import deque
@@ -19,6 +19,7 @@ from action_utils import (
     get_text,
     show_more,
     get_input_value,
+    click_button_by_xpath,
 )
 
 
@@ -147,28 +148,31 @@ def get_element_text(element):
 
 def scrape_history(driver):
     results = []
-    dialog_box = "//div[@role='dialog'][last()]"
+    dialog_box_xpath = "//div[@role='dialog'][last()]"
+    details_tab_xpath = ".//ul[@role='tablist']/li[1]"
+    history_xpath = ".//ul[@role='tablist']/li[2]"
+
+    # Navigate to history tab
+    click_button_by_xpath(driver, history_xpath)
 
     # Check if there are collapsed history items
     expand_collapsed_by_xpath(driver)
 
     history_items = find_elements_by_xpath(
         driver,
-        f"{dialog_box}//div[@class='history-item-summary']",
+        f"{dialog_box_xpath}//div[@class='history-item-summary']",
     )
 
     for history in history_items:
         history.click()
 
-        details_xpath = f"{dialog_box}//div[@class='history-item-viewer']"
+        details_xpath = f"{dialog_box_xpath}//div[@class='history-item-viewer']"
         details = find_element_by_xpath(driver, details_xpath)
 
         soup = BeautifulSoup(details.get_attribute("innerHTML"), "html.parser")
         username = soup.find("span", {"class": "history-item-name-changed-by"}).text
         date = soup.find("span", {"class": "history-item-date"}).text
         summary = soup.find("div", {"class": "history-item-summary-text"}).text
-
-        print(username, date, summary)
 
         result = {
             "User": username,
@@ -243,82 +247,88 @@ def scrape_history(driver):
                 }
             )
 
-    results.append(result)
+        results.append(result)
+
+    # Navigate back to details tab
+    click_button_by_xpath(driver, details_tab_xpath)
+
     return results
 
 
 def scrape_related_work(driver, dialog_box):
     results = []
+    details_xpath = ".//ul[@role='tablist']/li[1]"
+    related_work_xpath = ".//ul[@role='tablist']/li[3]"
 
-    related_work_xpath = "(.//div[@class='links-control-container']/div[@class='la-main-component'])[last()]"
-    show_more_xpath = "//div[@class='la-show-more']"
-    show_more(dialog_box, f"{related_work_xpath}{show_more_xpath}")
+    # Navigate to related work tab
+    related_work_tab = find_element_by_xpath(dialog_box, related_work_xpath)
 
-    related_work_items = find_elements_by_xpath(
-        dialog_box, f"{related_work_xpath}/div[@class='la-list']/div"
-    )
+    if not related_work_tab.text:
+        return []
 
-    if not related_work_items:
-        return results
+    related_work_tab.click()
 
-    for related_work_item in related_work_items:
-        related_work_type_xpath = "div[@class='la-group-title']"
-        related_work_type = find_element_by_xpath(
-            related_work_item, related_work_type_xpath
-        )
+    grid_canvas_container_xpath = ".//div[@class='grid-canvas']"
+    grid_canvas_container = find_element_by_xpath(dialog_box, grid_canvas_container_xpath)
+    driver.execute_script("arguments[0].scrollTop = arguments[0].scrollHeight", grid_canvas_container)
 
-        related_work_type = related_work_type.text
-        related_work_type = related_work_type.split(" ")[0]
-        result = {"type": related_work_type, "related_work_items": []}
+    related_work_items_xpath = f"{grid_canvas_container_xpath}//div[contains(@class, 'grid-row grid-row-normal') and @aria-level]"
+    related_work_items = find_elements_by_xpath(dialog_box, related_work_items_xpath)
 
-        related_works_xpath = "div[@class='la-item']"
-        related_works = find_elements_by_xpath(related_work_item, related_works_xpath)
+    # Click last work item to load all
+    related_work_items[-1].click()
 
-        updated_at_hover_xpath = (
-            "div/div/div[@class='la-additional-data']/div[1]/div/span"
-        )
+    related_work_items = find_elements_by_xpath(dialog_box, related_work_items_xpath)
+    related_work_items_elements = [related_work_item for related_work_item in related_work_items]
 
-        for related_work in related_works:
-            related_work_link = find_element_by_xpath(related_work, "div/div/div//a")
+    soup = BeautifulSoup(dialog_box.get_attribute("innerHTML"), "html.parser")
+    soup = soup.find("div", {"class": "grid-canvas"})
+    related_work_type = None
+    related_work_data = {}
 
-            updated_at_hover = find_element_by_xpath(
-                related_work, updated_at_hover_xpath
-            )
-            updated_at = None
-            retry_count = 0
+    for index, element in enumerate(soup.find_all("div", {"aria-level": True})):
+        is_label = element.get("aria-level") == "1"
 
-            while updated_at is None and retry_count < config.MAX_RETRIES:
-                driver.execute_script(
-                    "arguments[0].dispatchEvent(new MouseEvent('mouseover', {'bubbles': true}));",
-                    updated_at_hover,
-                )
-                updated_at = get_text(driver, "//p[contains(text(), 'Updated by')]")
-                retry_count += 1
-                print(
-                    f"Retrying hover on work related date ... {retry_count}/{config.MAX_RETRIES}"
-                )
-                time.sleep(3)
+        if not is_label and related_work_type:
+            work_item = element.find("a")
 
-            logging.info(f"related work item '{updated_at}'")
+            related_work_item_id = work_item.get("href").split("/")[-1]
+            related_work_title = work_item.get_text().replace(" ", "_")
+
+            updated_date = find_element_by_xpath(related_work_items_elements[index], ".//span[contains(text(), 'Updated')]")
+
+            if not updated_date:
+                continue
 
             driver.execute_script(
-                "arguments[0].dispatchEvent(new MouseEvent('mouseout', {'bubbles': true}));",
-                updated_at_hover,
+                "arguments[0].dispatchEvent(new MouseEvent('mouseover', {'bubbles': true}));",
+                updated_date,
             )
+            updated_at_element = find_element_by_xpath(driver, "(.//div[contains(text(), 'Updated by') and contains(@class, 'popup-content-container')])[last()]")
+            updated_at = updated_at_element.text
 
-            related_work_item_id = related_work_link.get_attribute("href").split("/")[
-                -1
-            ]
-            related_work_title = related_work_link.text.replace(" ", "_")
-            result["related_work_items"].append(
+            related_work_data[related_work_type].append(
                 {
                     "filename_source": f"{related_work_item_id}_{related_work_title}",
                     "link_target": f"{related_work_item_id}_{related_work_title}_update_{convert_date(updated_at)}_{related_work_type}",
                     "updated_at": " ".join(updated_at.split(" ")[-4:]),
                 }
             )
+            driver.execute_script("arguments[0].parentNode.removeChild(arguments[0]);", updated_at_element)
+        else:
+            related_work_type = element.find("span").get_text(strip=True)
+            related_work_type = re.search(r'^\w+', related_work_type).group()
+            related_work_data[related_work_type] = []
 
-        results.append(result)
+    # Format
+    for work_item_type, related_works in related_work_data.items():
+        results.append({
+            "type": work_item_type,
+            "related_work_items": related_works
+        })
+
+    # Navigate back to details tab
+    click_button_by_xpath(dialog_box, details_xpath)
 
     return results
 
