@@ -195,7 +195,7 @@ def scrape_history(driver):
                     }
                 )
         if html_field := soup.find("div", class_="html-field"):
-            field_name = html_field.find("div", {"class": "html-field-name"})
+            field_name = html_field.find("div", {"class": "html-field-name"}).text
             old_value = html_field.find("div", class_="html-field-old-value-container")
             new_value = html_field.find("div", class_="html-field-new-value-container")
 
