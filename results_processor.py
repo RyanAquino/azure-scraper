@@ -5,11 +5,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 import config
-from action_utils import (
-    add_line_break,
-    convert_date,
-    create_symlink,
-)
+from action_utils import add_line_break, convert_date, create_symlink
 from logger import logging
 
 
