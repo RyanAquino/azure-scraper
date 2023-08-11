@@ -48,6 +48,8 @@ def scrape_child_work_items(driver):
     close_xpath = ".//button[contains(@class, 'ui-button')]"
 
     retry = 0
+    title = None
+    dialog_box = None
 
     while retry < config.MAX_RETRIES:
         title = get_input_value(driver, title_xpath)
