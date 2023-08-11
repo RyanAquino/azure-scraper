@@ -3,20 +3,19 @@ import time
 import urllib.parse
 
 from bs4 import BeautifulSoup
-
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
 
 import config
 from action_utils import (
+    click_button_by_xpath,
     convert_date,
     convert_to_markdown,
     expand_collapsed_by_xpath,
     find_element_by_xpath,
     find_elements_by_xpath,
-    get_text,
     get_input_value,
-    click_button_by_xpath,
+    get_text,
 )
 
 

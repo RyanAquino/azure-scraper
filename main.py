@@ -1,24 +1,24 @@
 import json
 import time
-
 from urllib.parse import urlparse
 
 from selenium import webdriver
+
 import config
 from action_utils import (
     click_button_by_id,
     click_button_by_xpath,
     find_element_by_xpath,
     find_elements_by_xpath,
-    send_keys_by_name,
     get_input_value,
+    send_keys_by_name,
 )
 from driver_utils import chrome_settings_init
 from logger import logging
 from results_processor import post_process_results
 from scrape_utils import (
-    scrape_basic_fields,
     scrape_attachments,
+    scrape_basic_fields,
     scrape_development,
     scrape_discussions,
     scrape_history,
