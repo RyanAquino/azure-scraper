@@ -1,7 +1,6 @@
 import re
 import time
 import urllib.parse
-from collections import deque
 
 from bs4 import BeautifulSoup
 
@@ -15,9 +14,7 @@ from action_utils import (
     expand_collapsed_by_xpath,
     find_element_by_xpath,
     find_elements_by_xpath,
-    get_anchor_link,
     get_text,
-    show_more,
     get_input_value,
     click_button_by_xpath,
 )
@@ -97,8 +94,10 @@ def scrape_attachments(driver):
     # Retrieve attachment links
     attachments_data = []
 
-    grid_row_xpath = f"{dialog_xpath}//div[contains(@class, 'grid-row')]"
-    grid_rows = find_elements_by_xpath(driver, grid_row_xpath)
+    grid_rows = find_elements_by_xpath(
+        driver,
+        f"({dialog_xpath}//div[@class='grid-content-spacer'])[last()]/parent::div//div[@role='row']",
+    )
 
     for grid_row in grid_rows:
         attachment_href = find_element_by_xpath(grid_row, ".//a")
@@ -227,8 +226,8 @@ def scrape_history(driver):
             result["Links"].append(
                 {
                     "Type": display_name,
-                    "Link to item file": link.a.get("href"),
-                    "Title": link.span.text,
+                    "Link to item file": link.a.get("href") if link.a else None,
+                    "Title": link.span.text if link.span else None,
                 }
             )
 

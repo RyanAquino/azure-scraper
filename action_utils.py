@@ -3,7 +3,6 @@ import platform
 import string
 from datetime import datetime
 
-from bs4 import BeautifulSoup
 from dateutil.parser import parse
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
@@ -210,11 +209,3 @@ def convert_to_markdown(soup):
     convert_links(soup)
 
     return soup.get_text()
-
-
-def show_more(dialog_box, related_work_xpath):
-    if show_more_button := find_element_by_xpath(dialog_box, related_work_xpath):
-        show_more_button.click()
-        show_more(dialog_box, related_work_xpath)
-
-    return None
