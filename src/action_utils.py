@@ -3,7 +3,6 @@ import platform
 import string
 from datetime import datetime
 
-from bs4 import BeautifulSoup
 from dateutil.parser import parse
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
@@ -81,9 +80,11 @@ def add_line_break(word, max_length):
         return word
 
 
-def expand_collapsed_by_xpath(dialog_box):
-    collapsed_xpath = ".//div[@aria-expanded='false']"
-    collapsed = find_elements_by_xpath(dialog_box, collapsed_xpath)
+def expand_collapsed_by_xpath(driver):
+    dialog_box = "//div[@role='dialog'][last()]"
+    history_items = "//div[@class='history-item-list']"
+    collapsed_xpath = f"{dialog_box}{history_items}//div[@aria-expanded='false']"
+    collapsed = find_elements_by_xpath(driver, collapsed_xpath)
 
     if collapsed:
         for collapse_item in collapsed:
@@ -140,10 +141,7 @@ def convert_links(soup):
     return soup
 
 
-def convert_to_markdown(soup, markdown=None):
-    if markdown is None:
-        soup = BeautifulSoup(soup, "html.parser")
-
+def convert_to_markdown(soup):
     for div in soup.find_all("div"):
         div.insert_after("\n")
 
@@ -201,8 +199,8 @@ def convert_to_markdown(soup, markdown=None):
 
         if last_occurrence_indentation:
             markdown_ol = (
-                    markdown_ol[:last_occurrence_index].rstrip("\\\n")
-                    + markdown_ol[last_occurrence_index:]
+                markdown_ol[:last_occurrence_index].rstrip("\\\n")
+                + markdown_ol[last_occurrence_index:]
             )
 
         ol.replace_with(markdown_ol)
@@ -211,11 +209,3 @@ def convert_to_markdown(soup, markdown=None):
     convert_links(soup)
 
     return soup.get_text()
-
-
-def show_more(dialog_box, related_work_xpath):
-    if show_more_button := find_element_by_xpath(dialog_box, related_work_xpath):
-        show_more_button.click()
-        show_more(dialog_box, related_work_xpath)
-
-    return None

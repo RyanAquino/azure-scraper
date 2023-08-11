@@ -2,14 +2,10 @@ import json
 import os
 import shutil
 from pathlib import Path
+from urllib.parse import urlparse
 
 import config
-from action_utils import (
-    add_line_break,
-    convert_date,
-    convert_to_markdown,
-    create_symlink,
-)
+from action_utils import add_line_break, convert_date, create_symlink
 from logger import logging
 
 
@@ -23,9 +19,6 @@ def create_history_metadata(history, history_path):
             file.write(f"* Date: {item['Date']}\n")
             file.write(f"   * User: {item['User']}\n")
             file.write(f"   * Title: {item['Title']}\n")
-
-            if item["Content"]:
-                file.write(f"   * Content: {add_line_break(item['Content'], 60)}\n")
 
             if item["Fields"]:
                 file.write("   * Fields\n")
@@ -58,6 +51,7 @@ def create_directory_hierarchy(
         "discussions",
         "history",
         "attachments",
+        "development",
     ]
 
     for d in dicts:
@@ -88,9 +82,14 @@ def create_directory_hierarchy(
             for discussion in d.pop("discussions"):
                 discussion_date = convert_date(discussion["Date"])
                 file_name = f"{discussion_date}_{discussion['User']}.md"
-                with open(Path(discussion_path, file_name), "a+") as file:
+                new_date = convert_date(
+                    discussion["Date"], new_format="%B %d, %Y %H:%m:%S %p"
+                )
+                with open(
+                    Path(discussion_path, file_name), "a+", encoding="utf-8"
+                ) as file:
                     file.write(
-                        f"* Title: <{discussion['User']} commented {convert_date(discussion['Date'], new_format='%B %d, %Y %H:%m:%S %p')}>\n"
+                        f"* Title: <{discussion['User']} commented {new_date}>\n"
                     )
                     file.write(
                         f"* Content: {add_line_break(discussion['Content'], 90)}\n"
@@ -121,22 +120,24 @@ def create_directory_hierarchy(
 
         with open(Path(dir_path, "description.md"), "w", encoding="utf-8") as file:
             if d["description"]:
-                description = convert_to_markdown(d.pop("description"))
-                file.write(str(description))
+                file.write(str(d.pop("description")))
 
-        with open(Path(dir_path, "metadata.md"), "w") as file:
+        with open(Path(dir_path, "metadata.md"), "w", encoding="utf-8") as file:
             for key, value in d.items():
                 if key not in exclude_fields:
                     file.write(f"* {key}: {value}\n")
 
-        with open(Path(dir_path, "origin.md"), "w") as file:
-            file.write(config.BASE_URL + config.WORK_ITEM_ENDPOINT + d["Task id"])
+        with open(Path(dir_path, "origin.md"), "w", encoding="utf-8") as file:
+            scheme, domain, url_path = urlparse(config.BASE_URL)[0:3]
+            url_path = "/".join(url_path.split("/")[1:3])
+            origin = f"{scheme}://{domain}/{url_path}/_workitems/edit/{d['Task id']}"
+            file.write(origin)
 
         for development in d.pop("development"):
             change_filename = Path(
                 development_path, f"changeset_{development['ID']}.md"
             )
-            with open(change_filename, "w") as file:
+            with open(change_filename, "w", encoding="utf-8") as file:
                 if change_sets := development["change_sets"]:
                     for change_set in change_sets:
                         file.write(f"* 'File Name': {change_set['File Name']}\n")
@@ -182,7 +183,7 @@ def create_related_work_contents(scrape_results, path: Path = Path("data")):
                 create_symlink(work_item_path, target_path)
 
                 related_md_filename = Path(related_dir, f"{work_item_target}.md")
-                with open(related_md_filename, "w") as file:
+                with open(related_md_filename, "w", encoding="utf-8") as file:
                     file.write(f"* Type: {related_work_type}\n")
                     file.write(f"    * Link to item file: `{work_item_path}`\n")
                     file.write(f"    * Last update: {work_item_updated_at}\n\n")
@@ -203,8 +204,8 @@ def cleanup_existing_folders(directory: Path):
 
 
 def post_process_results(save_file, downloads_directory):
-    with open(save_file) as f:
-        scrape_result = json.load(f)
+    with open(save_file, "r", encoding="utf-8") as file:
+        scrape_result = json.load(file)
         cleanup_existing_folders(Path(Path.cwd(), "data"))
         create_directory_hierarchy(scrape_result)
         create_related_work_contents(scrape_result)

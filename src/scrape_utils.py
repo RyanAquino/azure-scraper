@@ -1,52 +1,108 @@
-import logging
+import re
 import time
 import urllib.parse
-from collections import deque
 
+from bs4 import BeautifulSoup
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
 
 import config
 from action_utils import (
+    click_button_by_xpath,
     convert_date,
+    convert_to_markdown,
     expand_collapsed_by_xpath,
     find_element_by_xpath,
     find_elements_by_xpath,
-    get_anchor_link,
+    get_input_value,
     get_text,
-    show_more,
 )
 
 
-def scrape_attachments(driver, dialog_box):
-    # Attachment count
-    attachment_count_xpath = "(.//span[contains(@class, 'attachment-count')])[last()]"
-    attachment_count = find_element_by_xpath(dialog_box, attachment_count_xpath)
+def scrape_basic_fields(dialog_box):
+    labels = [
+        "ID Field",
+        "Assigned To Field",
+        "State Field",
+        "Area Path",
+        "Iteration Path",
+        "Priority",
+        "Remaining Work",
+        "Activity",
+        "Blocked",
+    ]
 
-    if not attachment_count or not attachment_count.text.strip():
-        return None
+    basic_fields = {}
+
+    html = dialog_box.get_attribute("innerHTML")
+    soup = BeautifulSoup(html, "html.parser")
+
+    for element in soup.select("[aria-label]"):
+        attribute = element.get("aria-label")
+
+        if attribute in labels:
+            if attribute == "Assigned To Field":
+                element = element.find("span", {"class": "text-cursor"})
+
+            if element.name == "input":
+                value = element.get("value")
+
+                if "value" not in element:
+                    input_xpath = f".//input[@aria-label='{attribute}']"
+                    value = get_input_value(dialog_box, input_xpath)
+            else:
+                value = element.text if element.text else None
+
+            basic_fields[attribute] = value
+
+    description_xpath = ".//div[@aria-label='Description']"
+    element = find_element_by_xpath(dialog_box, description_xpath)
+    html = element.get_attribute("innerHTML")
+    soup = BeautifulSoup(html, "html.parser")
+    basic_fields["Description"] = convert_to_markdown(soup)
+
+    return {
+        "Task id": basic_fields["ID Field"],
+        "User Name": basic_fields["Assigned To Field"],
+        "State": basic_fields["State Field"],
+        "Area": basic_fields["Area Path"],
+        "Iteration": basic_fields["Iteration Path"],
+        "Priority": basic_fields["Priority"],
+        "Remaining Work": basic_fields.get("Remaining Work"),
+        "Activity": basic_fields.get("Activity"),
+        "Blocked": basic_fields.get("Blocked"),
+        "description": basic_fields.get("Description"),
+    }
+
+
+def scrape_attachments(driver):
+    dialog_xpath = "//div[@role='dialog'][last()]"
+    attachments_tab = f"{dialog_xpath}//ul[@role='tablist']/li[4]"
+    details_tab = f"{dialog_xpath}//ul[@role='tablist']/li[1]"
+
+    # Attachment count
+    attachments_count = get_text(driver, f"{attachments_tab}/span[2]")
+
+    if attachments_count is None:
+        print("No attachments:", attachments_count)
+        return
 
     # Navigate to attachments page
-    attachment_xpath = "//li[@aria-label='Attachments']"
-    attachment_button = find_elements_by_xpath(dialog_box, attachment_xpath)
-    attachment_button[-1].click()
+    click_button_by_xpath(driver, attachments_tab)
 
     # Retrieve attachment links
     attachments_data = []
 
-    attachment_rows = find_elements_by_xpath(
-        dialog_box, "(.//div[@class='grid-content-spacer'])[last()]/parent::div//div[@role='row']"
+    grid_rows = find_elements_by_xpath(
+        driver,
+        f"({dialog_xpath}//div[@class='grid-content-spacer'])[last()]/parent::div//div[@role='row']",
     )
 
-    a_href_xpath = ".//div[contains(@class, 'attachments-grid-file-name')]//a"
-    date_attached_xpath = ".//div[3]"
-    attachments = []
+    for grid_row in grid_rows:
+        attachment_href = find_element_by_xpath(grid_row, ".//a")
+        date_attached = find_element_by_xpath(grid_row, "./div[3]")
 
-    for attachment in attachment_rows:
-        attachment_href = find_element_by_xpath(attachment, a_href_xpath)
         attachment_url = attachment_href.get_attribute("href")
-        date_attached = find_element_by_xpath(attachment, date_attached_xpath)
-
         parsed_url = urllib.parse.urlparse(attachment_url)
         query_params = urllib.parse.parse_qs(parsed_url.query)
 
@@ -61,210 +117,223 @@ def scrape_attachments(driver, dialog_box):
             parsed_url._replace(query=urllib.parse.urlencode(query_params, doseq=True))
         )
         attachments_data.append({"url": updated_url, "filename": new_file_name})
-        attachments.append(updated_url)
 
-    deque(map(driver.get, attachments))
+        driver.get(updated_url)
 
     # Navigate back to details
-    details_tab_xpath = "//li[@aria-label='Details']"
-    details_tab_button = find_elements_by_xpath(dialog_box, details_tab_xpath)
-    details_tab_button[-1].click()
+    click_button_by_xpath(driver, details_tab)
 
     return attachments_data
 
 
-def scrape_history(dialog_box):
+def get_element_text(element):
+    if element is not None:
+        return element.text
+
+
+def scrape_history(driver):
     results = []
+    dialog_box_xpath = "//div[@role='dialog'][last()]"
+    details_tab_xpath = f"{dialog_box_xpath}//ul[@role='tablist']/li[1]"
+    history_xpath = f"{dialog_box_xpath}//ul[@role='tablist']/li[2]"
+
+    # Navigate to history tab
+    click_button_by_xpath(driver, history_xpath)
 
     # Check if there are collapsed history items
-    expand_collapsed_by_xpath(dialog_box)
+    expand_collapsed_by_xpath(driver)
 
-    history_container_xpath = (
-        "(//div[contains(@class, 'workitem-history-control-container')])[last()]"
-    )
-
-    history_items = find_elements_by_xpath(
-        dialog_box,
-        f"{history_container_xpath}//div[@class='history-item-summary-details']",
-    )
+    history_items_xpath = f"{dialog_box_xpath}//div[@class='history-item-summary']"
+    history_items = find_elements_by_xpath(driver, history_items_xpath)
 
     for history in history_items:
         history.click()
 
-        details_panel_xpath = (
-            f"{history_container_xpath}//div[@class='history-details-panel']"
-        )
+        details_xpath = f"{dialog_box_xpath}//div[@class='history-item-viewer']"
+        details = find_element_by_xpath(driver, details_xpath)
+
+        soup = BeautifulSoup(details.get_attribute("innerHTML"), "html.parser")
+        username = soup.find("span", {"class": "history-item-name-changed-by"}).text
+        date = soup.find("span", {"class": "history-item-date"}).text
+        summary = soup.find("div", {"class": "history-item-summary-text"}).text
 
         result = {
-            "User": get_text(
-                dialog_box,
-                f"{details_panel_xpath}//span[contains(@class, 'history-item-name-changed-by')]",
-            ),
-            "Date": get_text(
-                dialog_box,
-                f"{details_panel_xpath}//span[contains(@class, 'history-item-date')]",
-            ),
-            "Title": get_text(
-                dialog_box,
-                f"{details_panel_xpath}//div[contains(@class, 'history-item-summary-text')]",
-            ),
-            "Content": None,
+            "User": username,
+            "Date": date,
+            "Title": summary,
             "Links": [],
             "Fields": [],
         }
 
-        # Get all field changes
-        if fields := find_elements_by_xpath(
-            dialog_box, f"{details_panel_xpath}//div[@class='field-name']"
-        ):
+        if history_fields := soup.find("div", class_="fields"):
+            fields = history_fields.find_all("div", class_="field-name")
+
             for field in fields:
-                field_name = get_text(field, ".//span")
-                field_value = find_element_by_xpath(field, "./following-sibling::div")
-                old_value = get_text(field_value, ".//span[@class='field-old-value']")
-                new_value = get_text(field_value, ".//span[@class='field-new-value']")
+                field_name = field.span.text
+                field_value = field.find_next_sibling("div", class_="field-values")
 
+                new_value = field_value.find("span", class_="field-new-value")
+                old_value = field_value.find("span", class_="field-old-value")
                 result["Fields"].append(
-                    {"name": field_name, "old_value": old_value, "new_value": new_value}
-                )
-
-        if html_field := find_elements_by_xpath(
-            dialog_box,
-            f"{details_panel_xpath}//div[@class='html-field-name history-section']",
-        ):
-            for field in html_field:
-                field_name = get_text(
-                    field,
-                    f"{details_panel_xpath}//div[@class='html-field-name history-section']",
-                )
-                field_value = find_element_by_xpath(
-                    field, "//parent::div/following-sibling::div"
-                )
-                old_value = get_text(
-                    field_value, "//span[@class='html-field-old-value']"
-                )
-                new_value = get_text(
-                    field_value, "//span[@class='html-field-new-value']"
-                )
-
-                result["Fields"].append(
-                    {"name": field_name, "old_value": old_value, "new_value": new_value}
-                )
-
-        # Get comments
-        if comment := get_text(
-            dialog_box,
-            f"{details_panel_xpath}//div[contains(@class, 'history-item-comment')]",
-        ):
-            result["Content"] = comment
-
-        # Get Links
-        if links := find_elements_by_xpath(
-            dialog_box, f"{details_panel_xpath}//div[@class='history-links']"
-        ):
-            for link in links:
-                result["Links"].append(
                     {
-                        "Type": get_text(
-                            link, ".//span[contains(@class, 'link-display-name')]//span"
-                        ),
-                        "Link to item file": get_anchor_link(
-                            link, ".//span[contains(@class, 'link-text')]//a"
-                        ),
-                        "Title": get_text(
-                            link, ".//span[contains(@class, 'link-text')]//span"
-                        ),
+                        "name": field_name,
+                        "old_value": get_element_text(old_value),
+                        "new_value": get_element_text(new_value),
                     }
                 )
+        if html_field := soup.find("div", class_="html-field"):
+            field_name = html_field.find("div", {"class": "html-field-name"}).text
+            old_value = html_field.find("div", class_="html-field-old-value-container")
+            new_value = html_field.find("div", class_="html-field-new-value-container")
+
+            result["Fields"].append(
+                {
+                    "name": field_name,
+                    "old_value": get_element_text(old_value),
+                    "new_value": get_element_text(new_value),
+                }
+            )
+
+        if added_comment := soup.find("div", {"class": "history-item-comment"}):
+            result["Fields"].append(
+                {
+                    "name": "Comments",
+                    "old_value": None,
+                    "new_value": added_comment.text,
+                }
+            )
+
+        if editted_comments := soup.find(
+            "div", {"class": "history-item-comment-edited"}
+        ):
+            old_comment = editted_comments.find("div", class_="old-comment")
+            new_comment = editted_comments.find("div", class_="new-comment")
+
+            result["Fields"].append(
+                {
+                    "name": "Comments",
+                    "old_value": old_comment.text,
+                    "new_value": new_comment.text,
+                }
+            )
+
+        # Get Links
+        if link := soup.find("div", class_="history-links"):
+            display_name = link.find("span", class_="link-display-name").text
+            link = link.find("span", class_="link-text")
+
+            result["Links"].append(
+                {
+                    "Type": display_name,
+                    "Link to item file": link.a.get("href") if link.a else None,
+                    "Title": link.span.text if link.span else None,
+                }
+            )
 
         results.append(result)
+
+    # Navigate back to details tab
+    click_button_by_xpath(driver, details_tab_xpath)
 
     return results
 
 
 def scrape_related_work(driver, dialog_box):
     results = []
+    details_xpath = ".//ul[@role='tablist']/li[1]"
+    related_work_xpath = ".//ul[@role='tablist']/li[3]"
 
-    related_work_xpath = "(.//div[@class='links-control-container']/div[@class='la-main-component'])[last()]"
-    show_more_xpath = "//div[@class='la-show-more']"
-    show_more(dialog_box, f"{related_work_xpath}{show_more_xpath}")
+    # Navigate to related work tab
+    related_work_tab = find_element_by_xpath(dialog_box, related_work_xpath)
 
-    related_work_items = find_elements_by_xpath(dialog_box, f"{related_work_xpath}/div[@class='la-list']/div")
+    if not related_work_tab.text:
+        return []
 
-    if not related_work_items:
-        return results
+    related_work_tab.click()
 
-    for related_work_item in related_work_items:
-        related_work_type_xpath = "div[@class='la-group-title']"
-        related_work_type = find_element_by_xpath(
-            related_work_item, related_work_type_xpath
-        )
+    grid_canvas_container_xpath = ".//div[@class='grid-canvas']"
+    grid_canvas_container = find_element_by_xpath(
+        dialog_box, grid_canvas_container_xpath
+    )
+    driver.execute_script(
+        "arguments[0].scrollTop = arguments[0].scrollHeight", grid_canvas_container
+    )
 
-        related_work_type = related_work_type.text
-        related_work_type = related_work_type.split(" ")[0]
-        result = {"type": related_work_type, "related_work_items": []}
+    related_work_items_xpath = f"{grid_canvas_container_xpath}//div[contains(@class, 'grid-row grid-row-normal') and @aria-level]"
+    related_work_items = find_elements_by_xpath(dialog_box, related_work_items_xpath)
 
-        related_works_xpath = "div[@class='la-item']"
-        related_works = find_elements_by_xpath(related_work_item, related_works_xpath)
+    # Click last work item to load all
+    related_work_items[-1].click()
 
-        updated_at_hover_xpath = (
-            "div/div/div[@class='la-additional-data']/div[1]/div/span"
-        )
+    related_work_items = find_elements_by_xpath(dialog_box, related_work_items_xpath)
+    related_work_items_elements = [
+        related_work_item for related_work_item in related_work_items
+    ]
 
-        for related_work in related_works:
-            related_work_link = find_element_by_xpath(related_work, "div/div/div//a")
+    soup = BeautifulSoup(dialog_box.get_attribute("innerHTML"), "html.parser")
+    soup = soup.find("div", {"class": "grid-canvas"})
+    related_work_type = None
+    related_work_data = {}
 
-            updated_at_hover = find_element_by_xpath(
-                related_work, updated_at_hover_xpath
+    for index, element in enumerate(soup.find_all("div", {"aria-level": True})):
+        is_label = element.get("aria-level") == "1"
+
+        if not is_label and related_work_type:
+            work_item = element.find("a")
+
+            related_work_item_id = work_item.get("href").split("/")[-1]
+            related_work_title = work_item.get_text().replace(" ", "_")
+
+            updated_date = find_element_by_xpath(
+                related_work_items_elements[index],
+                ".//span[contains(text(), 'Updated')]",
             )
-            updated_at = None
-            retry_count = 0
 
-            while updated_at is None and retry_count < config.MAX_RETRIES:
-                driver.execute_script(
-                    "arguments[0].dispatchEvent(new MouseEvent('mouseover', {'bubbles': true}));",
-                    updated_at_hover,
-                )
-                updated_at = get_text(
-                    driver, "//p[contains(text(), 'Updated by')]"
-                )
-                retry_count += 1
-                print(
-                    f"Retrying hover on work related date ... {retry_count}/{config.MAX_RETRIES}"
-                )
-                time.sleep(3)
-
-            logging.info(f"related work item '{updated_at}'")
+            if not updated_date:
+                continue
 
             driver.execute_script(
-                "arguments[0].dispatchEvent(new MouseEvent('mouseout', {'bubbles': true}));",
-                updated_at_hover,
+                "arguments[0].dispatchEvent(new MouseEvent('mouseover', {'bubbles': true}));",
+                updated_date,
             )
+            updated_at_element = find_element_by_xpath(
+                driver,
+                "(.//div[contains(text(), 'Updated by') and contains(@class, 'popup-content-container')])[last()]",
+            )
+            updated_at = updated_at_element.text
 
-            related_work_item_id = related_work_link.get_attribute("href").split("/")[
-                -1
-            ]
-            related_work_title = related_work_link.text.replace(" ", "_")
-            result["related_work_items"].append(
+            related_work_data[related_work_type].append(
                 {
                     "filename_source": f"{related_work_item_id}_{related_work_title}",
                     "link_target": f"{related_work_item_id}_{related_work_title}_update_{convert_date(updated_at)}_{related_work_type}",
                     "updated_at": " ".join(updated_at.split(" ")[-4:]),
                 }
             )
+            driver.execute_script(
+                "arguments[0].parentNode.removeChild(arguments[0]);", updated_at_element
+            )
+        else:
+            related_work_type = element.find("span").get_text(strip=True)
+            related_work_type = re.search(r"^\w+", related_work_type).group()
+            related_work_data[related_work_type] = []
 
-        results.append(result)
+    # Format
+    for work_item_type, related_works in related_work_data.items():
+        results.append({"type": work_item_type, "related_work_items": related_works})
+
+    # Navigate back to details tab
+    click_button_by_xpath(dialog_box, details_xpath)
 
     return results
 
 
 def scrape_discussion_attachments(driver, attachment, discussion_date):
-    parsed_url = urllib.parse.urlparse(attachment.get_attribute("src"))
+    parsed_url = urllib.parse.urlparse(attachment.get("src"))
     query_params = urllib.parse.parse_qs(parsed_url.query)
-    discussion_date = convert_date(discussion_date)
     resource_id = parsed_url.path.split("/")[-1]
 
     file_name = query_params.get("fileName")[0]
-    new_file_name = f"{discussion_date}_{resource_id}_{file_name}"
+    new_file_name = f"{convert_date(discussion_date)}_{resource_id}_{file_name}"
 
     query_params["fileName"] = [new_file_name]
 
@@ -275,65 +344,66 @@ def scrape_discussion_attachments(driver, attachment, discussion_date):
         parsed_url._replace(query=urllib.parse.urlencode(query_params, doseq=True))
     )
     driver.get(updated_url)
-
     return {"url": updated_url, "filename": query_params["fileName"][0]}
 
 
 def scrape_discussions(driver):
     results = []
-
     dialog_xpath = "//div[@role='dialog'][last()]"
-
-    discussions_xpath = (
-        f"{dialog_xpath}//div[contains(@class, 'initialized work-item-discussion-control')]"
-        "//div[contains(@class, 'wit-comment-item')]"
+    container_xpath = f"{dialog_xpath}//div[@class='comments-section']"
+    javascript_command = (
+        "arguments[0].dispatchEvent(new MouseEvent('mouseover', {'bubbles': true}));"
     )
-    discussions = find_elements_by_xpath(driver, discussions_xpath)
+    mouse_out_command = (
+        "arguments[0].dispatchEvent(new MouseEvent('mouseout', {'bubbles': true}));"
+    )
+
+    discussion_container = find_element_by_xpath(driver, container_xpath)
+
+    html = discussion_container.get_attribute("innerHTML")
+    soup = BeautifulSoup(html, "html.parser")
+
+    discussions = soup.find_all("div", class_="comment-item-right")
 
     if discussions:
-        for discussion in discussions:
-            content_xpath = ".//div[@class='comment-content']"
-            content = get_text(discussion, content_xpath)
+        for index, discussion in enumerate(discussions):
+            index += 1
+            username = discussion.find("span", class_="user-display-name").text
+            discussion_content = discussion.find("div", class_="comment-content")
+            content = convert_to_markdown(discussion_content)
+            attachments = discussion.find_all("img")
 
-            content_attachment_xpath = f"{content_xpath}//img"
-            attachments = find_elements_by_xpath(discussion, content_attachment_xpath)
-            comment_timestamp = find_element_by_xpath(
-                discussion, ".//a[@class='comment-timestamp']"
+            comment_header_xpath = (
+                f"({container_xpath}//div[@class='comment-header-left'])[{index}]"
             )
+
+            timestamp_xpath = (
+                f"({comment_header_xpath}//*[@class='comment-timestamp'])[1]"
+            )
+            comment_timestamp = find_element_by_xpath(driver, timestamp_xpath)
+
             date = None
             retry_count = 0
-
             while date is None and retry_count < config.MAX_RETRIES:
-                driver.execute_script(
-                    "arguments[0].dispatchEvent(new MouseEvent('mouseover', {'bubbles': true}));",
-                    comment_timestamp,
-                )
-                date = get_text(
-                    discussion, "//p[contains(@class, 'ms-Tooltip-subtext')]"
-                )
+                driver.execute_script(javascript_command, comment_timestamp)
+                date = get_text(driver, "//p[contains(@class, 'ms-Tooltip-subtext')]")
+
+                if date:
+                    driver.execute_script(mouse_out_command, comment_timestamp)
+                    break
+
                 retry_count += 1
                 print(
                     f"Retrying hover on discussion date ... {retry_count}/{config.MAX_RETRIES}"
                 )
                 time.sleep(3)
 
-            html_source = driver.execute_script("return document.getElementsByTagName('html')[0].innerHTML")
-            log_html(html_source, "discussion_date.log")
-            logging.info(f"discussion date '{date}'")
-
-            driver.execute_script(
-                "arguments[0].dispatchEvent(new MouseEvent('mouseout', {'bubbles': true}));",
-                comment_timestamp,
-            )
-
-            discussion_date = " ".join(date.split(" ")[-4:])
-
             result = {
-                "User": get_text(discussion, ".//span[@class='user-display-name']"),
+                "User": username,
                 "Content": content,
-                "Date": discussion_date,
+                "Date": date,
                 "attachments": [
-                    scrape_discussion_attachments(driver, attachment, discussion_date)
+                    scrape_discussion_attachments(driver, attachment, date)
                     for attachment in (attachments or [])
                 ],
             }
@@ -395,11 +465,6 @@ def scrape_development(driver):
             driver.close()
             driver.switch_to.window(original_window)
     return results
-
-
-def scrape_description(element):
-    html = element.get_attribute("innerHTML")
-    return html
 
 
 def log_html(page_source, log_file_path="source.log"):
