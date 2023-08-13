@@ -16,3 +16,4 @@ max1 = os.getenv("max_retries")
 MAX_RETRIES = int(0 if max1 is None else max1)
 max2 = os.getenv("max_wait_time")
 MAX_WAIT_TIME = int(0 if max2 is None else max2)
+ON_PREM = os.getenv("on_prem", "false").lower() == "true"
