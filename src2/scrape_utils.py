@@ -77,7 +77,7 @@ def scrape_basic_fields(dialog_box):
 
 def scrape_attachments(driver):
     dialog_xpath = "//div[@role='dialog'][last()]"
-    attachments_tab = f"{dialog_xpath}//ul[@role='tablist']/li[4]"
+    attachments_tab = f"{dialog_xpath}//ul[@role='tablist']/li[5]"
     details_tab = f"{dialog_xpath}//ul[@role='tablist']/li[1]"
 
     # Attachment count
@@ -135,7 +135,7 @@ def scrape_history(driver):
     results = []
     dialog_box_xpath = "//div[@role='dialog'][last()]"
     details_tab_xpath = f"{dialog_box_xpath}//ul[@role='tablist']/li[1]"
-    history_xpath = f"{dialog_box_xpath}//ul[@role='tablist']/li[2]"
+    history_xpath = f"{dialog_box_xpath}//ul[@role='tablist']/li[3]"
     history_items_xpath = f"{dialog_box_xpath}//div[@class='history-item-summary']"
 
     # Navigate to history tab
@@ -255,7 +255,7 @@ def scrape_history(driver):
 def scrape_related_work(driver, dialog_box):
     results = []
     details_xpath = ".//ul[@role='tablist']/li[1]"
-    related_work_xpath = ".//ul[@role='tablist']/li[3]"
+    related_work_xpath = ".//ul[@role='tablist']/li[4]"
 
     # Navigate to related work tab
     related_work_tab = find_element_by_xpath(dialog_box, related_work_xpath)
