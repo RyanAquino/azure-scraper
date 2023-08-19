@@ -136,6 +136,7 @@ def scrape_history(driver):
     dialog_box_xpath = "//div[@role='dialog'][last()]"
     details_tab_xpath = f"{dialog_box_xpath}//ul[@role='tablist']/li[1]"
     history_xpath = f"{dialog_box_xpath}//ul[@role='tablist']/li[2]"
+    history_items_xpath = f"{dialog_box_xpath}//div[@class='history-item-summary']"
 
     # Navigate to history tab
     click_button_by_xpath(driver, history_xpath)
@@ -143,8 +144,21 @@ def scrape_history(driver):
     # Check if there are collapsed history items
     expand_collapsed_by_xpath(driver)
 
-    history_items_xpath = f"{dialog_box_xpath}//div[@class='history-item-summary']"
-    history_items = find_elements_by_xpath(driver, history_items_xpath)
+    retry = 0
+    history_items = None
+
+    while retry < config.MAX_RETRIES:
+        history_items = find_elements_by_xpath(driver, history_items_xpath)
+
+        if history_items:
+            break
+
+        if retry == config.MAX_RETRIES:
+            print("Error: Unable to find history items!!")
+            return
+
+        retry += 1
+        print(f"Retrying to find history items... {retry}/{config.MAX_RETRIES}")
 
     for history in history_items:
         history.click()
