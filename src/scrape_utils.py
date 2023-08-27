@@ -301,6 +301,17 @@ def scrape_related_work(driver, dialog_box):
     soup = soup.find("div", {"class": "grid-canvas"})
     related_work_type = None
     related_work_data = {}
+    valid_labels = [
+        "Child",
+        "Duplicate",
+        "Duplicate Of",
+        "Predecessor",
+        "Related",
+        "Successor",
+        "Tested By",
+        "Tests",
+        "Parent"
+    ]
 
     for index, element in enumerate(soup.find_all("div", {"aria-level": True})):
         is_label = element.get("aria-level") == "1"
@@ -341,6 +352,11 @@ def scrape_related_work(driver, dialog_box):
             )
         else:
             related_work_type = element.find("span").get_text(strip=True)
+
+            if related_work_type not in valid_labels:
+                related_work_type = None
+                continue
+
             related_work_type = re.search(r"^\w+", related_work_type).group()
             related_work_data[related_work_type] = []
 
@@ -465,17 +481,26 @@ def scrape_changesets(driver):
 
 def scrape_development(driver):
     results = []
-
-    development_links = find_elements_by_xpath(
-        driver,
-        f"//div[@role='dialog'][last()]//span[@aria-label='Development section.']/ancestor::div[@class='grid-group']//a",
+    dialog_box = "//div[@role='dialog'][last()]"
+    development_section = (
+        "//span[@aria-label='Development section.']/ancestor::div[@class='grid-group']"
+    )
+    development_items = find_elements_by_xpath(
+        driver, f"{dialog_box}{development_section}//div[@class='la-item']"
     )
 
     original_window = driver.current_window_handle
+    print("Development items", development_items)
+    if development_items:
+        for development_item in development_items:
+            failed = get_text(
+                development_item, ".//span[@class='la-text build-failed']"
+            )
 
-    if development_links:
-        for development_link in development_links:
-            development_link.click()
+            if failed:
+                continue
+
+            click_button_by_xpath(development_item, ".//a")
 
             WebDriverWait(driver, config.MAX_WAIT_TIME).until(
                 EC.number_of_windows_to_be(2)
