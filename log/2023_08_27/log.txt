@@ -1,0 +1,31 @@
+Open dialog box for  Research parent work item
+Development items [<selenium.webdriver.remote.webelement.WebElement (session="ff0501370db43381070ebb898bb0014e", element="902007d7-c15d-4445-90f8-454a35cf9a70")>, <selenium.webdriver.remote.webelement.WebElement (session="ff0501370db43381070ebb898bb0014e", element="7bb27d4d-30a6-4daa-ad77-242d21b77446")>, <selenium.webdriver.remote.webelement.WebElement (session="ff0501370db43381070ebb898bb0014e", element="8e56cd0a-deb9-4ab1-b203-bdc51b572ff0")>, <selenium.webdriver.remote.webelement.WebElement (session="ff0501370db43381070ebb898bb0014e", element="d0048261-189b-4f46-8aae-1fa5efec5648")>, <selenium.webdriver.remote.webelement.WebElement (session="ff0501370db43381070ebb898bb0014e", element="9eea3865-17d7-490b-8a77-f499bfbe719e")>, <selenium.webdriver.remote.webelement.WebElement (session="ff0501370db43381070ebb898bb0014e", element="639c3286-ee92-4280-b1e2-82e24dab4fa0")>]
+Traceback (most recent call last):
+  File "/home/paul/Downloads/prod/location_app/main.py", line 147, in <module>
+    main()
+  File "/home/paul/Downloads/prod/location_app/main.py", line 135, in main
+    scraper(
+  File "/home/paul/Downloads/prod/location_app/main.py", line 120, in scraper
+    work_item_data = scrape_child_work_items(driver)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/paul/Downloads/prod/location_app/main.py", line 88, in scrape_child_work_items
+    child_data = scrape_child_work_items(driver)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/paul/Downloads/prod/location_app/main.py", line 88, in scrape_child_work_items
+    child_data = scrape_child_work_items(driver)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/paul/Downloads/prod/location_app/main.py", line 88, in scrape_child_work_items
+    child_data = scrape_child_work_items(driver)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/paul/Downloads/prod/location_app/main.py", line 72, in scrape_child_work_items
+    work_item_data["development"] = scrape_development(driver)
+                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/paul/Downloads/prod/location_app/scrape_utils.py", line 503, in scrape_development
+    click_button_by_xpath(development_item, ".//a")
+  File "/home/paul/Downloads/prod/location_app/action_utils.py", line 22, in click_button_by_xpath
+    element = WebDriverWait(driver, config.MAX_WAIT_TIME).until(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/paul/miniconda3/envs/tfs/lib/python3.11/site-packages/selenium/webdriver/support/wait.py", line 95, in until
+    raise TimeoutException(message, screen, stacktrace)
+selenium.common.exceptions.TimeoutException: Message: 
+
