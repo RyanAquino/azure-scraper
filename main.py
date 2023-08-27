@@ -67,11 +67,11 @@ def scrape_child_work_items(driver):
 
     work_item_data = scrape_basic_fields(dialog_box)
     work_item_data["Title"] = title.replace(" ", "_")
-    work_item_data["discussions"] = scrape_discussions(driver)
-    work_item_data["related_work"] = scrape_related_work(driver, dialog_box)
+    # work_item_data["discussions"] = scrape_discussions(driver)
+    # work_item_data["related_work"] = scrape_related_work(driver, dialog_box)
     work_item_data["development"] = scrape_development(driver)
-    work_item_data["history"] = scrape_history(driver)
-    work_item_data["attachments"] = scrape_attachments(driver)
+    # work_item_data["history"] = scrape_history(driver)
+    # work_item_data["attachments"] = scrape_attachments(driver)
 
     for key, value in work_item_data.items():
         print(key, ":", value)
@@ -140,7 +140,7 @@ def main():
             save_file,
         )
 
-    post_process_results(save_file, chrome_downloads)
+    # post_process_results(save_file, chrome_downloads)
 
 
 if __name__ == "__main__":
