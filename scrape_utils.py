@@ -452,16 +452,23 @@ def scrape_changesets(driver):
 
 def scrape_development(driver):
     results = []
-
-    development_links = find_elements_by_xpath(
-        driver,
-        f"//div[@role='dialog'][last()]//span[@aria-label='Development section.']/ancestor::div[@class='grid-group']//a",
+    dialog_box = "//div[@role='dialog'][last()]"
+    development_section = (
+        "//span[@aria-label='Development section.']/ancestor::div[@class='grid-group']"
+    )
+    development_items = find_elements_by_xpath(
+        driver, f"{dialog_box}{development_section}//div[@class='la-item']"
     )
 
     original_window = driver.current_window_handle
-
-    if development_links:
-        for development_link in development_links:
+    print("Development items", development_items)
+    if development_items:
+        for development_item in development_items:
+            failed = get_text(
+                development_item, ".//span[@class='la-text build-failed']"
+            )
+            print(failed)
+            continue
             development_link.click()
 
             WebDriverWait(driver, config.MAX_WAIT_TIME).until(
