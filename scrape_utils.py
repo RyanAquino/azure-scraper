@@ -467,9 +467,11 @@ def scrape_development(driver):
             failed = get_text(
                 development_item, ".//span[@class='la-text build-failed']"
             )
-            print(failed)
-            continue
-            development_link.click()
+
+            if failed:
+                continue
+
+            click_button_by_xpath(development_item, ".//a")
 
             WebDriverWait(driver, config.MAX_WAIT_TIME).until(
                 EC.number_of_windows_to_be(2)
