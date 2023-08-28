@@ -16,6 +16,7 @@ from action_utils import (
     find_elements_by_xpath,
     get_input_value,
     get_text,
+    show_more,
 )
 
 
@@ -485,6 +486,7 @@ def scrape_development(driver):
     development_section = (
         "//span[@aria-label='Development section.']/ancestor::div[@class='grid-group']"
     )
+    show_more(driver, f"{development_section}//div[@class='la-show-more']")
     development_items = find_elements_by_xpath(
         driver, f"{dialog_box}{development_section}//div[@class='la-item']"
     )

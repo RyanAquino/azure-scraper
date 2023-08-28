@@ -209,3 +209,11 @@ def convert_to_markdown(soup):
     convert_links(soup)
 
     return soup.get_text()
+
+
+def show_more(dialog_box, xpath):
+    if show_more_button := find_element_by_xpath(dialog_box, xpath):
+        show_more_button.click()
+        show_more(dialog_box, xpath)
+
+    return None
