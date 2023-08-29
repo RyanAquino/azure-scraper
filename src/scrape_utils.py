@@ -493,11 +493,15 @@ def scrape_development(driver):
 
     original_window = driver.current_window_handle
     print("Development items", development_items)
+
+    failed_texts = [
+        ".//span[starts-with(text(), 'Integrated in build link can not be read.')]",
+        ".//span[@class='la-text build-failed']"
+    ]
+
     if development_items:
         for development_item in development_items:
-            failed = get_text(
-                development_item, ".//span[@class='la-text build-failed']"
-            )
+            failed = [get_text(development_item, text) for text in failed_texts]
 
             if failed:
                 continue
