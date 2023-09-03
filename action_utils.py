@@ -208,4 +208,4 @@ def convert_to_markdown(soup):
     # Convert links
     convert_links(soup)
 
-    return soup.get_text()
+    return soup.get_text().rstrip()
