@@ -52,12 +52,8 @@ def scrape_basic_fields(dialog_box):
                 if "value" not in element:
                     input_xpath = f".//input[@aria-label='{attribute}']"
                     value = get_input_value(dialog_box, input_xpath)
-                    print(input_xpath, value)
             else:
                 value = element.text if element.text else None
-
-            if attribute == "Description":
-                value = convert_to_markdown(element)
 
             basic_fields[attribute] = value
 
@@ -73,9 +69,18 @@ def scrape_basic_fields(dialog_box):
         )
 
         basic_fields["Description"] = retro + system_info + acceptance
+    elif soup.find(attrs={"aria-label": "Resolution section."}):
+        description_element = soup.find(attrs={"aria-label": "Description"})
+        resolution_element = soup.find(attrs={"aria-label": "Resolution"})
+        description = f"* Description\n** {convert_to_markdown(description_element)}\n"
+        resolution = f"* Repro Steps\n** {convert_to_markdown(resolution_element)}\n"
+
+        basic_fields["Description"] = description + resolution
+
     else:
         description_element = soup.find(attrs={"aria-label": "Description"})
-        basic_fields["Description"] = convert_to_markdown(description_element)
+        description = f"* Description\n** {convert_to_markdown(description_element)}\n"
+        basic_fields["Description"] = description
 
     return {
         "Task id": basic_fields["ID Field"],
