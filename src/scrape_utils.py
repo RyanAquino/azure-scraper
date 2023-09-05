@@ -31,6 +31,8 @@ def scrape_basic_fields(dialog_box):
         "Remaining Work",
         "Activity",
         "Blocked",
+        "Effort",
+        "Severity",
     ]
 
     basic_fields = {}
@@ -38,7 +40,7 @@ def scrape_basic_fields(dialog_box):
     html = dialog_box.get_attribute("innerHTML")
     soup = BeautifulSoup(html, "html.parser")
 
-    for element in soup.select("[aria-label]"):
+    for element in soup.find_all(attrs={"aria-label": True}):
         attribute = element.get("aria-label")
 
         if attribute in labels:
@@ -56,11 +58,30 @@ def scrape_basic_fields(dialog_box):
 
             basic_fields[attribute] = value
 
-    description_xpath = ".//div[@aria-label='Description']"
-    element = find_element_by_xpath(dialog_box, description_xpath)
-    html = element.get_attribute("innerHTML")
-    soup = BeautifulSoup(html, "html.parser")
-    basic_fields["Description"] = convert_to_markdown(soup)
+    if soup.find(attrs={"aria-label": "Repro Steps section."}):
+        repro_steps_element = soup.find(attrs={"aria-label": "Repro Steps"})
+        system_info_element = soup.find(attrs={"aria-label": "System Info"})
+        acceptance_element = soup.find(attrs={"aria-label": "Acceptance Criteria"})
+
+        retro = f"* Repro Steps\n** {convert_to_markdown(repro_steps_element)}\n"
+        system_info = f"* System Info\n** {convert_to_markdown(system_info_element)}\n"
+        acceptance = (
+            f"* Acceptance criteria \n** {convert_to_markdown(acceptance_element)}\n"
+        )
+
+        basic_fields["Description"] = retro + system_info + acceptance
+    elif soup.find(attrs={"aria-label": "Resolution section."}):
+        description_element = soup.find(attrs={"aria-label": "Description"})
+        resolution_element = soup.find(attrs={"aria-label": "Resolution"})
+        description = f"* Description\n\t* {convert_to_markdown(description_element)}\n"
+        resolution = f"* Repro Steps\n\t* {convert_to_markdown(resolution_element)}\n"
+
+        basic_fields["Description"] = description + resolution
+
+    else:
+        description_element = soup.find(attrs={"aria-label": "Description"})
+        description = f"* Description\n\t* {convert_to_markdown(description_element)}\n"
+        basic_fields["Description"] = description
 
     return {
         "Task id": basic_fields["ID Field"],
@@ -72,6 +93,8 @@ def scrape_basic_fields(dialog_box):
         "Remaining Work": basic_fields.get("Remaining Work"),
         "Activity": basic_fields.get("Activity"),
         "Blocked": basic_fields.get("Blocked"),
+        "Effort": basic_fields.get("Effort"),
+        "Severity": basic_fields.get("Severity"),
         "description": basic_fields.get("Description"),
     }
 
@@ -112,10 +135,20 @@ def scrape_attachments(driver):
         retry += 1
         print(f"Retrying to find attachment row items... {retry}/{config.MAX_RETRIES}")
 
-    for grid_row in grid_rows:
-        attachment_href = find_element_by_xpath(grid_row, ".//a")
-        date_attached = find_element_by_xpath(grid_row, "./div[3]")
+    retry = 0
+    attachment_href = None
 
+    for grid_row in grid_rows:
+
+        while not attachment_href and retry < config.MAX_RETRIES:
+            attachment_href = find_element_by_xpath(grid_row, ".//a")
+            retry += 1
+            print("Retrying attachment href...")
+
+        if not attachment_href:
+            continue
+
+        date_attached = find_element_by_xpath(grid_row, "./div[3]")
         attachment_url = attachment_href.get_attribute("href")
         parsed_url = urllib.parse.urlparse(attachment_url)
         query_params = urllib.parse.parse_qs(parsed_url.query)

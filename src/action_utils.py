@@ -5,6 +5,7 @@ from datetime import datetime
 
 from dateutil.parser import parse
 from selenium.webdriver.common.by import By
+from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
 
@@ -18,11 +19,17 @@ def click_button_by_id(driver, element_id):
     element.click()
 
 
-def click_button_by_xpath(driver, xpath):
-    element = WebDriverWait(driver, config.MAX_WAIT_TIME).until(
-        EC.element_to_be_clickable((By.XPATH, xpath))
-    )
-    element.click()
+def click_button_by_xpath(driver, xpath, retry=0):
+    while retry < config.MAX_RETRIES:
+        try:
+            element = WebDriverWait(driver, config.MAX_WAIT_TIME).until(
+                EC.element_to_be_clickable((By.XPATH, xpath))
+            )
+            return element.click()
+
+        except TimeoutException:
+            print(f"Retrying click button xpath: {xpath}")
+        retry += 1
 
 
 def send_keys_by_name(driver, name, keys):
@@ -208,7 +215,7 @@ def convert_to_markdown(soup):
     # Convert links
     convert_links(soup)
 
-    return soup.get_text()
+    return soup.get_text().rstrip()
 
 
 def show_more(dialog_box, xpath):
