@@ -16,6 +16,7 @@ from action_utils import (
     find_elements_by_xpath,
     get_input_value,
     get_text,
+    show_more,
 )
 
 
@@ -72,14 +73,14 @@ def scrape_basic_fields(dialog_box):
     elif soup.find(attrs={"aria-label": "Resolution section."}):
         description_element = soup.find(attrs={"aria-label": "Description"})
         resolution_element = soup.find(attrs={"aria-label": "Resolution"})
-        description = f"* Description\n** {convert_to_markdown(description_element)}\n"
-        resolution = f"* Repro Steps\n** {convert_to_markdown(resolution_element)}\n"
+        description = f"* Description\n\t* {convert_to_markdown(description_element)}\n"
+        resolution = f"* Repro Steps\n\t* {convert_to_markdown(resolution_element)}\n"
 
         basic_fields["Description"] = description + resolution
 
     else:
         description_element = soup.find(attrs={"aria-label": "Description"})
-        description = f"* Description\n** {convert_to_markdown(description_element)}\n"
+        description = f"* Description\n\t* {convert_to_markdown(description_element)}\n"
         basic_fields["Description"] = description
 
     return {
@@ -100,8 +101,8 @@ def scrape_basic_fields(dialog_box):
 
 def scrape_attachments(driver):
     dialog_xpath = "//div[@role='dialog'][last()]"
-    attachments_tab = f"{dialog_xpath}//ul[@role='tablist']/li[4]"
-    details_tab = f"{dialog_xpath}//ul[@role='tablist']/li[1]"
+    attachments_tab = f"{dialog_xpath}//li[@aria-label='Attachments']"
+    details_tab = f"{dialog_xpath}//li[@aria-label='Details']"
 
     # Attachment count
     attachments_count = get_text(driver, f"{attachments_tab}/span[2]")
@@ -115,16 +116,38 @@ def scrape_attachments(driver):
 
     # Retrieve attachment links
     attachments_data = []
+    retry = 0
+    grid_rows = []
 
-    grid_rows = find_elements_by_xpath(
-        driver,
-        f"({dialog_xpath}//div[@class='grid-content-spacer'])[last()]/parent::div//div[@role='row']",
-    )
+    while retry < config.MAX_RETRIES:
+        grid_rows = find_elements_by_xpath(
+            driver,
+            f"({dialog_xpath}//div[@class='grid-content-spacer'])[last()]/parent::div//div[@role='row']",
+        )
+
+        if grid_rows:
+            break
+
+        if retry == config.MAX_RETRIES:
+            print("Error: Unable to find history items!!")
+            return
+
+        retry += 1
+        print(f"Retrying to find attachment row items... {retry}/{config.MAX_RETRIES}")
+
+    retry = 0
+    attachment_href = None
 
     for grid_row in grid_rows:
-        attachment_href = find_element_by_xpath(grid_row, ".//a")
-        date_attached = find_element_by_xpath(grid_row, "./div[3]")
+        while not attachment_href and retry < config.MAX_RETRIES:
+            attachment_href = find_element_by_xpath(grid_row, ".//a")
+            retry += 1
+            print("Retrying attachment href...")
 
+        if not attachment_href:
+            continue
+
+        date_attached = find_element_by_xpath(grid_row, "./div[3]")
         attachment_url = attachment_href.get_attribute("href")
         parsed_url = urllib.parse.urlparse(attachment_url)
         query_params = urllib.parse.parse_qs(parsed_url.query)
@@ -157,9 +180,9 @@ def get_element_text(element):
 def scrape_history(driver):
     results = []
     dialog_box_xpath = "//div[@role='dialog'][last()]"
-    details_tab_xpath = f"{dialog_box_xpath}//ul[@role='tablist']/li[1]"
-    history_xpath = f"{dialog_box_xpath}//ul[@role='tablist']/li[2]"
-    history_items_xpath = f"{dialog_box_xpath}//div[@class='history-item-summary']"
+    details_tab_xpath = f"{dialog_box_xpath}//li[@aria-label='Details']"
+    history_xpath = f"{dialog_box_xpath}//li[@aria-label='History']"
+    history_items_xpath = f"{dialog_box_xpath}//div[@class='history-item-summary' or contains(@class, 'history-item-selected')]"
 
     # Navigate to history tab
     click_button_by_xpath(driver, history_xpath)
@@ -277,8 +300,8 @@ def scrape_history(driver):
 
 def scrape_related_work(driver, dialog_box):
     results = []
-    details_xpath = ".//ul[@role='tablist']/li[1]"
-    related_work_xpath = ".//ul[@role='tablist']/li[3]"
+    details_xpath = ".//li[@aria-label='Details']"
+    related_work_xpath = ".//li[@aria-label='Links']"
 
     # Navigate to related work tab
     related_work_tab = find_element_by_xpath(dialog_box, related_work_xpath)
@@ -311,6 +334,17 @@ def scrape_related_work(driver, dialog_box):
     soup = soup.find("div", {"class": "grid-canvas"})
     related_work_type = None
     related_work_data = {}
+    valid_labels = [
+        "Child",
+        "Duplicate",
+        "Duplicate Of",
+        "Predecessor",
+        "Related",
+        "Successor",
+        "Tested By",
+        "Tests",
+        "Parent",
+    ]
 
     for index, element in enumerate(soup.find_all("div", {"aria-level": True})):
         is_label = element.get("aria-level") == "1"
@@ -351,6 +385,11 @@ def scrape_related_work(driver, dialog_box):
             )
         else:
             related_work_type = element.find("span").get_text(strip=True)
+
+            if related_work_type not in valid_labels:
+                related_work_type = None
+                continue
+
             related_work_type = re.search(r"^\w+", related_work_type).group()
             related_work_data[related_work_type] = []
 
@@ -479,17 +518,22 @@ def scrape_development(driver):
     development_section = (
         "//span[@aria-label='Development section.']/ancestor::div[@class='grid-group']"
     )
+    show_more(driver, f"{development_section}//div[@class='la-show-more']")
     development_items = find_elements_by_xpath(
         driver, f"{dialog_box}{development_section}//div[@class='la-item']"
     )
 
     original_window = driver.current_window_handle
     print("Development items", development_items)
+
+    failed_texts = [
+        ".//span[starts-with(text(), 'Integrated in build link can not be read.')]",
+        ".//span[@class='la-text build-failed']",
+    ]
+
     if development_items:
         for development_item in development_items:
-            failed = get_text(
-                development_item, ".//span[@class='la-text build-failed']"
-            )
+            failed = [get_text(development_item, text) for text in failed_texts]
 
             if failed:
                 continue

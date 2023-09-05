@@ -27,9 +27,9 @@ from scrape_utils import (
 
 
 def login(driver, url, email, password):
-    scheme, domain, path = urlparse(url)[0:3]
     # Navigate to the site and login
-    if domain != "dev.azure.com":
+    if config.ON_PREM:
+        scheme, domain, path = urlparse(url)[0:3]
         driver.get(f"{scheme}://{email}:{password}@{domain}{path}")
         driver.get(url)
         return
