@@ -1,0 +1,27 @@
+Traceback (most recent call last):
+  File "/home/paul/Downloads/prod/location_app/main.py", line 147, in <module>
+    main()
+  File "/home/paul/Downloads/prod/location_app/main.py", line 135, in main
+    scraper(
+  File "/home/paul/Downloads/prod/location_app/main.py", line 120, in scraper
+    work_item_data = scrape_child_work_items(driver)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/paul/Downloads/prod/location_app/main.py", line 88, in scrape_child_work_items
+    child_data = scrape_child_work_items(driver)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/paul/Downloads/prod/location_app/main.py", line 88, in scrape_child_work_items
+    child_data = scrape_child_work_items(driver)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/paul/Downloads/prod/location_app/main.py", line 70, in scrape_child_work_items
+    work_item_data["discussions"] = scrape_discussions(driver)
+                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/paul/Downloads/prod/location_app/scrape_utils.py", line 482, in scrape_discussions
+    "attachments": [
+                   ^
+  File "/home/paul/Downloads/prod/location_app/scrape_utils.py", line 483, in <listcomp>
+    scrape_discussion_attachments(driver, attachment, date)
+  File "/home/paul/Downloads/prod/location_app/scrape_utils.py", line 412, in scrape_discussion_attachments
+    file_name = query_params.get("fileName")[0]
+                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^
+TypeError: 'NoneType' object is not subscriptable
+
