@@ -1,0 +1,38 @@
+Traceback (most recent call last):
+  File "/home/paul/Downloads/prod/location_app/action_utils.py", line 105, in convert_date
+    date_obj = datetime.strptime(date_string, date_format)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/paul/miniconda3/envs/tfs/lib/python3.11/_strptime.py", line 568, in _strptime_datetime
+    tt, fraction, gmtoff_fraction = _strptime(data_string, format)
+                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/paul/miniconda3/envs/tfs/lib/python3.11/_strptime.py", line 349, in _strptime
+    raise ValueError("time data %r does not match format %r" %
+ValueError: time data 'Xxx Xxxxxxxxxxxx xxxx xx Xxx Xxxxxx xxxxxxx' does not match format '%d %B %Y %H:%M:%S'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/paul/Downloads/prod/location_app/main.py", line 147, in <module>
+    main()
+  File "/home/paul/Downloads/prod/location_app/main.py", line 143, in main
+    post_process_results(save_file, chrome_downloads)
+  File "/home/paul/Downloads/prod/location_app/results_processor.py", line 210, in post_process_results
+    create_directory_hierarchy(scrape_result)
+  File "/home/paul/Downloads/prod/location_app/results_processor.py", line 148, in create_directory_hierarchy
+    create_directory_hierarchy(d["children"], dir_path, indent=indent + 2)
+  File "/home/paul/Downloads/prod/location_app/results_processor.py", line 148, in create_directory_hierarchy
+    create_directory_hierarchy(d["children"], dir_path, indent=indent + 2)
+  File "/home/paul/Downloads/prod/location_app/results_processor.py", line 83, in create_directory_hierarchy
+    discussion_date = convert_date(discussion["Date"])
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/paul/Downloads/prod/location_app/action_utils.py", line 107, in convert_date
+    date_obj = parse(date_string, fuzzy=True)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/paul/miniconda3/envs/tfs/lib/python3.11/site-packages/dateutil/parser/_parser.py", line 1368, in parse
+    return DEFAULTPARSER.parse(timestr, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/paul/miniconda3/envs/tfs/lib/python3.11/site-packages/dateutil/parser/_parser.py", line 646, in parse
+    raise ParserError("String does not contain a date: %s", timestr)
+dateutil.parser._parser.ParserError: String does not contain a date: Xxx Xxxxxxxxxxxx xxxx xx Xxx Xxxxxx xxxxxxx
+
+
