@@ -105,6 +105,9 @@ def convert_date(
         date_obj = datetime.strptime(date_string, date_format)
     except ValueError:
         date_obj = parse(date_string, fuzzy=True)
+    except Exception as err:
+        print(f"Unable to convert {date_string} to correct date format, ", err)
+        return None
 
     return date_obj.strftime(new_format)
 

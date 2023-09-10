@@ -409,7 +409,7 @@ def scrape_discussion_attachments(driver, attachment, discussion_date):
     resource_id = parsed_url.path.split("/")[-1]
 
     file_name = query_params.get("fileName")[0]
-    new_file_name = f"{convert_date(discussion_date)}_{resource_id}_{file_name}"
+    new_file_name = f"{discussion_date}_{resource_id}_{file_name}"
 
     query_params["fileName"] = [new_file_name]
 
@@ -463,6 +463,7 @@ def scrape_discussions(driver):
             while date is None and retry_count < config.MAX_RETRIES:
                 driver.execute_script(javascript_command, comment_timestamp)
                 date = get_text(driver, "//p[contains(@class, 'ms-Tooltip-subtext')]")
+                date = convert_date(date)
 
                 if date:
                     driver.execute_script(mouse_out_command, comment_timestamp)

@@ -80,8 +80,7 @@ def create_directory_hierarchy(
 
         if "discussions" in d and d["discussions"]:
             for discussion in d.pop("discussions"):
-                discussion_date = convert_date(discussion["Date"])
-                file_name = f"{discussion_date}_{discussion['User']}.md"
+                file_name = f"{discussion['Date']}_{discussion['User']}.md"
                 new_date = convert_date(
                     discussion["Date"], new_format="%B %d, %Y %H:%m:%S %p"
                 )
