@@ -437,9 +437,7 @@ def scrape_discussions(driver):
     javascript_command = (
         "arguments[0].dispatchEvent(new MouseEvent('mouseover', {'bubbles': true}));"
     )
-    mouse_out_command = (
-        "arguments[0].dispatchEvent(new MouseEvent('mouseout', {'bubbles': true}));"
-    )
+    mouse_out_command = "arguments[0].parentNode.removeChild(arguments[0]);"
 
     discussion_container = find_element_by_xpath(driver, container_xpath)
 
