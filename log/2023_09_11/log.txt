@@ -1,0 +1,16 @@
+Traceback (most recent call last):
+  File "/home/paul/Downloads/prod/location_app/main.py", line 147, in <module>
+    main()
+  File "/home/paul/Downloads/prod/location_app/main.py", line 143, in main
+    post_process_results(save_file, chrome_downloads)
+  File "/home/paul/Downloads/prod/location_app/results_processor.py", line 210, in post_process_results
+    create_directory_hierarchy(scrape_result)
+  File "/home/paul/Downloads/prod/location_app/results_processor.py", line 148, in create_directory_hierarchy
+    create_directory_hierarchy(d["children"], dir_path, indent=indent + 2)
+  File "/home/paul/Downloads/prod/location_app/results_processor.py", line 148, in create_directory_hierarchy
+    create_directory_hierarchy(d["children"], dir_path, indent=indent + 2)
+  File "/home/paul/Downloads/prod/location_app/results_processor.py", line 85, in create_directory_hierarchy
+    parsed_date = datetime.datetime.strptime(discussion["Date"], "%Y_%m_%dT%H_%M_%S")
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: strptime() argument 1 must be str, not None
+
