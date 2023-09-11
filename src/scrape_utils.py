@@ -3,6 +3,7 @@ import time
 import urllib.parse
 
 from bs4 import BeautifulSoup
+from dateutil.parser import ParserError
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
 
@@ -414,7 +415,7 @@ def scrape_discussion_attachments(driver, attachment, discussion_date):
         return {}
 
     file_name = file_name[0]
-    new_file_name = f"{convert_date(discussion_date)}_{resource_id}_{file_name}"
+    new_file_name = f"{discussion_date}_{resource_id}_{file_name}"
 
     query_params["fileName"] = [new_file_name]
 
@@ -469,6 +470,13 @@ def scrape_discussions(driver):
             while date is None and retry_count < config.MAX_RETRIES:
                 driver.execute_script(javascript_command, comment_timestamp)
                 date = get_text(driver, "//p[contains(@class, 'ms-Tooltip-subtext')]")
+                log_html(driver.page_source)
+
+                try:
+                    date = convert_date(date)
+                except ParserError as e:
+                    print(f"Parser error: {e} retrying...")
+                    date = None
 
                 if date:
                     driver.execute_script(mouse_out_command, comment_timestamp)
