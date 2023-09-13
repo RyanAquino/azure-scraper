@@ -408,7 +408,12 @@ def scrape_discussion_attachments(driver, attachment, discussion_date):
     query_params = urllib.parse.parse_qs(parsed_url.query)
     resource_id = parsed_url.path.split("/")[-1]
 
-    file_name = query_params.get("fileName")[0]
+    file_name = query_params.get("fileName")
+
+    if not file_name:
+        return {}
+
+    file_name = file_name[0]
     new_file_name = f"{convert_date(discussion_date)}_{resource_id}_{file_name}"
 
     query_params["fileName"] = [new_file_name]
@@ -420,6 +425,7 @@ def scrape_discussion_attachments(driver, attachment, discussion_date):
         parsed_url._replace(query=urllib.parse.urlencode(query_params, doseq=True))
     )
     driver.get(updated_url)
+
     return {"url": updated_url, "filename": query_params["fileName"][0]}
 
 
@@ -478,11 +484,17 @@ def scrape_discussions(driver):
                 "User": username,
                 "Content": content,
                 "Date": date,
-                "attachments": [
-                    scrape_discussion_attachments(driver, attachment, date)
-                    for attachment in (attachments or [])
-                ],
+                "attachments": [],
             }
+
+            for attachment in attachments or []:
+                attachment_data = scrape_discussion_attachments(
+                    driver, attachment, date
+                )
+
+                if attachment_data:
+                    result["attachments"].append(attachment_data)
+
             results.append(result)
     return results
 
