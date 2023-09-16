@@ -1,4 +1,3 @@
-import datetime
 import json
 import os
 import shutil
@@ -81,10 +80,11 @@ def create_directory_hierarchy(
 
         if "discussions" in d and d["discussions"]:
             for discussion in d.pop("discussions"):
-                file_name = f"{discussion['Date']}_{discussion['User']}.md"
-                parsed_date = datetime.datetime.strptime(discussion["Date"], "%Y_%m_%dT%H_%M_%S")
-                new_date = parsed_date.strftime("%B %d, %Y %H:%M:%S %p")
-
+                discussion_date = convert_date(discussion["Date"])
+                file_name = f"{discussion_date}_{discussion['User']}.md"
+                new_date = convert_date(
+                    discussion["Date"], new_format="%B %d, %Y %H:%m:%S %p"
+                )
                 with open(
                     Path(discussion_path, file_name), "a+", encoding="utf-8"
                 ) as file:
