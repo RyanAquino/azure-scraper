@@ -38,7 +38,7 @@ def chrome_settings_init():
         chrome_settings["service"] = Service(executable_path="drivers/chromedriver.exe")
 
     # Clean attachments directory
-    if os.path.isdir(download_directory):
+    if os.path.isdir(download_directory) and not os.listdir(download_directory):
         shutil.rmtree(download_directory)
         os.makedirs(download_directory)
 
