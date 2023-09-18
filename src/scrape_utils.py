@@ -287,7 +287,7 @@ def scrape_history(driver):
                 {
                     "Type": display_name,
                     "Link to item file": link.a.get("href") if link.a else None,
-                    "Title": link.span.text if link.span else None,
+                    "Title": link.span.text.lstrip(": ") if link.span else None,
                 }
             )
 
