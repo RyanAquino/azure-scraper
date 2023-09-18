@@ -1,5 +1,6 @@
 import json
 import time
+from pathlib import Path
 from urllib.parse import urlparse
 
 from selenium import webdriver
@@ -65,13 +66,16 @@ def scrape_child_work_items(driver):
         retry += 1
         print(f"Retrying finding of dialog box ... {retry}/{config.MAX_RETRIES}")
 
-    work_item_data = scrape_basic_fields(dialog_box)
-    work_item_data["Title"] = title.replace(" ", "_")
-    work_item_data["discussions"] = scrape_discussions(driver)
-    work_item_data["related_work"] = scrape_related_work(driver, dialog_box)
-    work_item_data["development"] = scrape_development(driver)
-    work_item_data["history"] = scrape_history(driver)
-    work_item_data["attachments"] = scrape_attachments(driver)
+    try:
+        work_item_data = scrape_basic_fields(dialog_box)
+        work_item_data["Title"] = title.replace(" ", "_")
+        work_item_data["discussions"] = scrape_discussions(driver)
+        work_item_data["related_work"] = scrape_related_work(driver, dialog_box)
+        work_item_data["development"] = scrape_development(driver)
+        work_item_data["history"] = scrape_history(driver)
+        work_item_data["attachments"] = scrape_attachments(driver)
+    except Exception:
+        raise
 
     for key, value in work_item_data.items():
         print(key, ":", value)
@@ -95,7 +99,15 @@ def scrape_child_work_items(driver):
     return work_item_data
 
 
-def scraper(driver, url, email, password, file_path):
+def scraper(
+    driver,
+    url,
+    email,
+    password,
+    file_path,
+    default_result_set=None,
+    default_start_index=0,
+):
     logging.info(f"Navigate and login to {url}")
     login(driver, url, email, password)
     logging.info("Done")
@@ -103,9 +115,10 @@ def scraper(driver, url, email, password, file_path):
     # Find each work item
     work_items = find_elements_by_xpath(driver, '//div[@aria-level="1"]')
     work_items_count = len(work_items)
-    work_items_ctr = 0
+    work_items_ctr = default_start_index
 
-    result_set = []
+    result_set = default_result_set if default_result_set else []
+
     while work_items_ctr < work_items_count:
         work_items = find_elements_by_xpath(driver, '//div[@aria-level="1"]')
         work_item = work_items[work_items_ctr]
@@ -117,31 +130,67 @@ def scraper(driver, url, email, password, file_path):
         click_button_by_xpath(work_item, ".//a")
 
         # Scrape Child Items
-        work_item_data = scrape_child_work_items(driver)
+        try:
+            work_item_data = scrape_child_work_items(driver)
+        except Exception as e:
+            err_msg = str(e)
+            logging.error(err_msg)
+            logging.error(work_items_ctr)
+            print(f"Exception: {err_msg}")
+            save_json_file(file_path, result_set)
+
+            return work_items_ctr
+
         result_set.append(work_item_data)
 
         work_items_ctr += 1
 
     logging.info(f"Saving result to {file_path}")
+    save_json_file(file_path, result_set)
+
+
+def save_json_file(file_path, result_set):
     with open(file_path, "w", encoding="utf-8") as outfile:
         json.dump(result_set, outfile)
 
 
-def main():
+def retrieve_result_set(save_file):
+    default_result_set = {}
+
+    if Path(save_file).exists():
+        try:
+            with open(save_file, "r") as json_file:
+                default_result_set = json.load(json_file)
+        except json.decoder.JSONDecodeError:
+            pass
+
+    return default_result_set
+
+
+def main(default_start_index):
     save_file = "data/scrape_result.json"
+    default_result_set = retrieve_result_set(save_file)
     chrome_config, chrome_downloads = chrome_settings_init()
 
     with webdriver.Chrome(**chrome_config) as driver:
-        scraper(
+        last_error_ctr = scraper(
             driver,
             config.BASE_URL,
             config.EMAIL,
             config.PASSWORD,
             save_file,
+            default_result_set,
+            default_start_index,
         )
 
-    post_process_results(save_file, chrome_downloads)
+    if last_error_ctr or last_error_ctr == 0:
+        err_msg = f"Error encountered. Please reprocess on index: {last_error_ctr}"
+        logging.error(err_msg)
+        print(err_msg)
+    else:
+        post_process_results(save_file, chrome_downloads)
 
 
 if __name__ == "__main__":
-    main()
+    start_index = input("Start work item index: ")
+    main(int(start_index))
