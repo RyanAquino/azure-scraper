@@ -2,7 +2,7 @@ import json
 import time
 from pathlib import Path
 from urllib.parse import urlparse
-
+from selenium.webdriver.common.action_chains import ActionChains
 from selenium import webdriver
 
 import config
@@ -88,6 +88,10 @@ def scrape_child_work_items(driver):
         children = []
         for work_item in child_work_items:
             click_button_by_xpath(work_item, ".//a")
+
+            actions = ActionChains(driver)
+            actions.move_by_offset(0, 0)
+            actions.perform()
 
             child_data = scrape_child_work_items(driver)
             children.append(child_data)
