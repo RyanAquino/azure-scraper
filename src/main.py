@@ -1,4 +1,5 @@
 import json
+import traceback
 import time
 from pathlib import Path
 from urllib.parse import urlparse
@@ -137,6 +138,7 @@ def scraper(
         try:
             work_item_data = scrape_child_work_items(driver)
         except Exception as e:
+            traceback.print_exception(e)
             err_msg = str(e)
             logging.error(err_msg)
             logging.error(work_items_ctr)
