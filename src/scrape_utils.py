@@ -471,12 +471,11 @@ def scrape_discussions(driver):
                 driver.execute_script(javascript_command, comment_timestamp)
                 date = get_text(driver, "//p[contains(@class, 'ms-Tooltip-subtext')]")
 
-                try:
-                    date = convert_date(date)
-                except ParserError:
-                    raise
-
                 if date:
+                    try:
+                        date = convert_date(date)
+                    except ParserError:
+                        raise
                     driver.execute_script(mouse_out_command, comment_timestamp)
                     break
 
