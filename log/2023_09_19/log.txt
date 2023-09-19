@@ -1,0 +1,27 @@
+Open dialog box for  Create feature (Project)
+Traceback (most recent call last):
+  File "/home/paul/Downloads/prod/location_app/main.py", line 139, in scraper
+    work_item_data = scrape_child_work_items(driver)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/paul/Downloads/prod/location_app/main.py", line 97, in scrape_child_work_items
+    child_data = scrape_child_work_items(driver)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/paul/Downloads/prod/location_app/main.py", line 97, in scrape_child_work_items
+    child_data = scrape_child_work_items(driver)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/paul/Downloads/prod/location_app/main.py", line 97, in scrape_child_work_items
+    child_data = scrape_child_work_items(driver)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/paul/Downloads/prod/location_app/main.py", line 73, in scrape_child_work_items
+    work_item_data["discussions"] = scrape_discussions(driver)
+                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/paul/Downloads/prod/location_app/scrape_utils.py", line 475, in scrape_discussions
+    date = convert_date(date)
+           ^^^^^^^^^^^^^^^^^^
+  File "/home/paul/Downloads/prod/location_app/action_utils.py", line 105, in convert_date
+    date_obj = datetime.strptime(date_string, date_format)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: strptime() argument 1 must be str, not None
+Exception: strptime() argument 1 must be str, not None
+Error encountered. Please reprocess on index: 0
+
