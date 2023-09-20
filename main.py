@@ -66,7 +66,7 @@ def scrape_child_work_items(driver):
         print(f"Retrying finding of dialog box ... {retry}/{config.MAX_RETRIES}")
 
     work_item_data = scrape_basic_fields(dialog_box)
-    work_item_data["Title"] = title.replace(" ", "_")
+    work_item_data["Title"] = title
     work_item_data["discussions"] = scrape_discussions(driver)
     work_item_data["related_work"] = scrape_related_work(driver, dialog_box)
     work_item_data["development"] = scrape_development(driver)

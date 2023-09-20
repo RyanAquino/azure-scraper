@@ -10,6 +10,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
 
 import config
+import re
 
 
 def click_button_by_id(driver, element_id):
@@ -224,3 +225,9 @@ def show_more(dialog_box, xpath):
         show_more(dialog_box, xpath)
 
     return None
+
+
+def validate_title(title):
+    # Use regular expression to replace non-alphanumeric characters with underscores
+    fixed_string = re.sub(r"[^a-zA-Z0-9]", "_", title)
+    return fixed_string

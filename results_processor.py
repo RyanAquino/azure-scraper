@@ -5,14 +5,14 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 import config
-from action_utils import add_line_break, convert_date, create_symlink
+from action_utils import add_line_break, convert_date, create_symlink, validate_title
 from logger import logging
 
 
 def create_history_metadata(history, history_path):
     for item in history:
         formatted_date = convert_date(item["Date"], date_format="%a %d/%m/%Y %H:%M")
-        title = item["Title"].replace(" ", "_")
+        title = validate_title(item["Title"])
         filename = f"{formatted_date}_{item['User']}_{title}.md"
         path = Path(history_path, filename)
         with open(path, "w", encoding="utf-8") as file:
@@ -55,7 +55,7 @@ def create_directory_hierarchy(
     ]
 
     for d in dicts:
-        dir_name = f"{d['Task id']}_{d['Title'].replace(' ','_')}"
+        dir_name = f"{d['Task id']}_{validate_title(d['Title'])}"
         dir_path = Path(path, dir_name)
         history_path = Path(dir_path, "history")
         discussion_path = Path(dir_path, "discussion")
