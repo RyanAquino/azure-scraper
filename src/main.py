@@ -1,10 +1,11 @@
 import json
-import traceback
 import time
+import traceback
 from pathlib import Path
 from urllib.parse import urlparse
-from selenium.webdriver.common.action_chains import ActionChains
+
 from selenium import webdriver
+from selenium.webdriver.common.action_chains import ActionChains
 
 import config
 from action_utils import (

@@ -1,16 +1,16 @@
 import os
 import platform
+import re
 import string
 from datetime import datetime
 
 from dateutil.parser import parse
-from selenium.webdriver.common.by import By
 from selenium.common.exceptions import TimeoutException
+from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
 
 import config
-import re
 
 
 def click_button_by_id(driver, element_id):

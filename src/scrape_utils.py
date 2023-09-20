@@ -3,9 +3,9 @@ import time
 import urllib.parse
 
 from bs4 import BeautifulSoup
+from dateutil.parser import ParserError
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
-from dateutil.parser import ParserError
 
 import config
 from action_utils import (
