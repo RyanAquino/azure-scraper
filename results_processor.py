@@ -151,7 +151,7 @@ def create_directory_hierarchy(
 def create_related_work_contents(scrape_results, path: Path = Path("data")):
     for item in scrape_results:
         task_id = item.get("Task id")
-        task_title = item.get("Title").replace(" ", "_")
+        task_title = validate_title(item.get("Title"))
         folder_name = f"{task_id}_{task_title}"
         dir_path = Path(path, folder_name)
 
