@@ -160,6 +160,7 @@ def create_related_work_contents(scrape_results, path: Path = Path("data")):
 
             for work_items in related_work.get("related_work_items", []):
                 work_item_target = work_items.get("link_target")
+                project_url = work_items.get("url")
                 work_item_file_name = work_items.get("filename_source")
                 work_item_updated_at = convert_date(work_items.get("updated_at"))
 
@@ -172,8 +173,10 @@ def create_related_work_contents(scrape_results, path: Path = Path("data")):
                     .rglob(work_item_file_name)
                 ]
 
+                # Another project
                 if not work_item_path:
-                    create_symlink("/non-existent/another-project-source", target_path)
+                    with open(Path(related_dir, f"{work_item_target}.md"), "w", encoding="utf-8") as file:
+                        file.write(f"origin: {project_url}")
                     continue
 
                 work_item_path = work_item_path[0]

@@ -18,6 +18,7 @@ from action_utils import (
     get_input_value,
     get_text,
     show_more,
+    validate_title,
 )
 
 
@@ -353,8 +354,9 @@ def scrape_related_work(driver, dialog_box):
         if not is_label and related_work_type:
             work_item = element.find("a")
 
-            related_work_item_id = work_item.get("href").split("/")[-1]
-            related_work_title = work_item.get_text().replace(" ", "_")
+            work_item_url = work_item.get("href")
+            related_work_item_id = work_item_url.split("/")[-1]
+            related_work_title = validate_title(work_item.get_text())
 
             updated_date = find_element_by_xpath(
                 related_work_items_elements[index],
@@ -379,6 +381,7 @@ def scrape_related_work(driver, dialog_box):
                     "filename_source": f"{related_work_item_id}_{related_work_title}",
                     "link_target": f"{related_work_item_id}_{related_work_title}_update_{convert_date(updated_at)}_{related_work_type}",
                     "updated_at": " ".join(updated_at.split(" ")[-4:]),
+                    "url": work_item_url,
                 }
             )
             driver.execute_script(
