@@ -555,7 +555,7 @@ def scrape_development(driver):
         for development_item in development_items:
             failed = [get_text(development_item, text) for text in failed_texts]
 
-            if failed:
+            if any(failed):
                 continue
 
             click_button_by_xpath(development_item, ".//a")
