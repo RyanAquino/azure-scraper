@@ -471,6 +471,9 @@ def scrape_discussions(driver):
             date = None
             retry_count = 0
             while date is None and retry_count < config.MAX_RETRIES:
+                if retry_count > 1:
+                    comment_timestamp = find_element_by_xpath(driver, timestamp_xpath)
+
                 driver.execute_script(javascript_command, comment_timestamp)
                 date = get_text(driver, "//p[contains(@class, 'ms-Tooltip-subtext')]")
 
