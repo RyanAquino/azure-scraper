@@ -444,6 +444,18 @@ def scrape_discussions(driver):
         "arguments[0].parentNode.removeChild(arguments[0]);"
     )
 
+    contains_discussions = None
+    retry = 0
+    while contains_discussions is None and retry < 3:
+        contains_discussions = find_element_by_xpath(driver, f"({container_xpath}//div[@class='comment-header-left'])[1]")
+
+        if contains_discussions:
+            break
+
+        retry += 1
+        time.sleep(1)
+        print("retrying discussion items...")
+
     discussion_container = find_element_by_xpath(driver, container_xpath)
 
     html = discussion_container.get_attribute("innerHTML")
@@ -471,24 +483,23 @@ def scrape_discussions(driver):
             date = None
             retry_count = 0
             while date is None and retry_count < config.MAX_RETRIES:
-                if retry_count >= 1:
-                    comment_timestamp = find_element_by_xpath(driver, timestamp_xpath)
-
                 driver.execute_script(javascript_command, comment_timestamp)
                 date = get_text(driver, "//p[contains(@class, 'ms-Tooltip-subtext')]")
+                date_element = find_element_by_xpath(driver, "//p[contains(@class, 'ms-Tooltip-subtext')]")
 
-                if date:
+                if date_element:
                     try:
-                        date = convert_date(date)
+                        date = convert_date(date_element.text)
                     except ParserError:
                         raise
-                    driver.execute_script(mouse_out_command, comment_timestamp)
+                    driver.execute_script(mouse_out_command, date_element)
                     break
 
                 retry_count += 1
                 print(
                     f"Retrying hover on discussion date ... {retry_count}/{config.MAX_RETRIES}"
                 )
+                discussion_container.click()
                 time.sleep(3)
 
             result = {
