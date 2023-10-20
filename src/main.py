@@ -85,7 +85,9 @@ def scrape_child_work_items(driver):
 
     child_container = "//div[@class='la-group-title' and contains(text(), 'Child')]"
     child_xpath = f".{child_container}/following-sibling::div"
-    show_more(dialog_box, "//div[@class='la-group-title']/../..//div[@class='la-show-more']")
+    show_more(
+        dialog_box, "//div[@class='la-group-title']/../..//div[@class='la-show-more']"
+    )
     child_work_items = find_elements_by_xpath(dialog_box, child_xpath)
 
     if child_work_items:

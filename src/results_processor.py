@@ -175,7 +175,11 @@ def create_related_work_contents(scrape_results, path: Path = Path("data")):
 
                 # Another project
                 if not work_item_path:
-                    with open(Path(related_dir, f"{work_item_target}.md"), "w", encoding="utf-8") as file:
+                    with open(
+                        Path(related_dir, f"{work_item_target}.md"),
+                        "w",
+                        encoding="utf-8",
+                    ) as file:
                         file.write(f"origin: {project_url}")
                     continue
 
