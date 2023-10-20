@@ -5,14 +5,14 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 import config
-from action_utils import add_line_break, convert_date, create_symlink
+from action_utils import add_line_break, convert_date, create_symlink, validate_title
 from logger import logging
 
 
 def create_history_metadata(history, history_path):
     for item in history:
         formatted_date = convert_date(item["Date"], date_format="%a %d/%m/%Y %H:%M")
-        title = item["Title"].replace(" ", "_")
+        title = validate_title(item["Title"])
         filename = f"{formatted_date}_{item['User']}_{title}.md"
         path = Path(history_path, filename)
         with open(path, "w", encoding="utf-8") as file:
@@ -55,7 +55,7 @@ def create_directory_hierarchy(
     ]
 
     for d in dicts:
-        dir_name = f"{d['Task id']}_{d['Title'].replace(' ','_')}"
+        dir_name = f"{d['Task id']}_{validate_title(d['Title'])}"
         dir_path = Path(path, dir_name)
         history_path = Path(dir_path, "history")
         discussion_path = Path(dir_path, "discussion")
@@ -80,11 +80,8 @@ def create_directory_hierarchy(
 
         if "discussions" in d and d["discussions"]:
             for discussion in d.pop("discussions"):
-                discussion_date = convert_date(discussion["Date"])
-                file_name = f"{discussion_date}_{discussion['User']}.md"
-                new_date = convert_date(
-                    discussion["Date"], new_format="%B %d, %Y %H:%m:%S %p"
-                )
+                file_name = f'{discussion["Date"]}_{discussion["User"]}.md'
+                new_date = discussion["Date"]
                 with open(
                     Path(discussion_path, file_name), "a+", encoding="utf-8"
                 ) as file:
@@ -151,7 +148,7 @@ def create_directory_hierarchy(
 def create_related_work_contents(scrape_results, path: Path = Path("data")):
     for item in scrape_results:
         task_id = item.get("Task id")
-        task_title = item.get("Title").replace(" ", "_")
+        task_title = validate_title(item.get("Title"))
         folder_name = f"{task_id}_{task_title}"
         dir_path = Path(path, folder_name)
 
@@ -163,6 +160,7 @@ def create_related_work_contents(scrape_results, path: Path = Path("data")):
 
             for work_items in related_work.get("related_work_items", []):
                 work_item_target = work_items.get("link_target")
+                project_url = work_items.get("url")
                 work_item_file_name = work_items.get("filename_source")
                 work_item_updated_at = convert_date(work_items.get("updated_at"))
 
@@ -175,8 +173,14 @@ def create_related_work_contents(scrape_results, path: Path = Path("data")):
                     .rglob(work_item_file_name)
                 ]
 
+                # Another project
                 if not work_item_path:
-                    create_symlink("/non-existent/another-project-source", target_path)
+                    with open(
+                        Path(related_dir, f"{work_item_target}.md"),
+                        "w",
+                        encoding="utf-8",
+                    ) as file:
+                        file.write(f"origin: {project_url}")
                     continue
 
                 work_item_path = work_item_path[0]

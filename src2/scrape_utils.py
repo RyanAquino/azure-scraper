@@ -3,6 +3,7 @@ import time
 import urllib.parse
 
 from bs4 import BeautifulSoup
+from dateutil.parser import ParserError
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
 
@@ -16,6 +17,8 @@ from action_utils import (
     find_elements_by_xpath,
     get_input_value,
     get_text,
+    show_more,
+    validate_title,
 )
 
 
@@ -30,6 +33,8 @@ def scrape_basic_fields(dialog_box):
         "Remaining Work",
         "Activity",
         "Blocked",
+        "Effort",
+        "Severity",
     ]
 
     basic_fields = {}
@@ -37,7 +42,7 @@ def scrape_basic_fields(dialog_box):
     html = dialog_box.get_attribute("innerHTML")
     soup = BeautifulSoup(html, "html.parser")
 
-    for element in soup.select("[aria-label]"):
+    for element in soup.find_all(attrs={"aria-label": True}):
         attribute = element.get("aria-label")
 
         if attribute in labels:
@@ -55,11 +60,30 @@ def scrape_basic_fields(dialog_box):
 
             basic_fields[attribute] = value
 
-    description_xpath = ".//div[@aria-label='Description']"
-    element = find_element_by_xpath(dialog_box, description_xpath)
-    html = element.get_attribute("innerHTML")
-    soup = BeautifulSoup(html, "html.parser")
-    basic_fields["Description"] = convert_to_markdown(soup)
+    if soup.find(attrs={"aria-label": "Repro Steps section."}):
+        repro_steps_element = soup.find(attrs={"aria-label": "Repro Steps"})
+        system_info_element = soup.find(attrs={"aria-label": "System Info"})
+        acceptance_element = soup.find(attrs={"aria-label": "Acceptance Criteria"})
+
+        retro = f"* Repro Steps\n** {convert_to_markdown(repro_steps_element)}\n"
+        system_info = f"* System Info\n** {convert_to_markdown(system_info_element)}\n"
+        acceptance = (
+            f"* Acceptance criteria \n** {convert_to_markdown(acceptance_element)}\n"
+        )
+
+        basic_fields["Description"] = retro + system_info + acceptance
+    elif soup.find(attrs={"aria-label": "Resolution section."}):
+        description_element = soup.find(attrs={"aria-label": "Description"})
+        resolution_element = soup.find(attrs={"aria-label": "Resolution"})
+        description = f"* Description\n\t* {convert_to_markdown(description_element)}\n"
+        resolution = f"* Repro Steps\n\t* {convert_to_markdown(resolution_element)}\n"
+
+        basic_fields["Description"] = description + resolution
+
+    else:
+        description_element = soup.find(attrs={"aria-label": "Description"})
+        description = f"* Description\n\t* {convert_to_markdown(description_element)}\n"
+        basic_fields["Description"] = description
 
     return {
         "Task id": basic_fields["ID Field"],
@@ -71,6 +95,8 @@ def scrape_basic_fields(dialog_box):
         "Remaining Work": basic_fields.get("Remaining Work"),
         "Activity": basic_fields.get("Activity"),
         "Blocked": basic_fields.get("Blocked"),
+        "Effort": basic_fields.get("Effort"),
+        "Severity": basic_fields.get("Severity"),
         "description": basic_fields.get("Description"),
     }
 
@@ -92,16 +118,38 @@ def scrape_attachments(driver):
 
     # Retrieve attachment links
     attachments_data = []
+    retry = 0
+    grid_rows = []
 
-    grid_rows = find_elements_by_xpath(
-        driver,
-        f"({dialog_xpath}//div[@class='grid-content-spacer'])[last()]/parent::div//div[@role='row']",
-    )
+    while retry < config.MAX_RETRIES:
+        grid_rows = find_elements_by_xpath(
+            driver,
+            f"({dialog_xpath}//div[@class='grid-content-spacer'])[last()]/parent::div//div[@role='row']",
+        )
+
+        if grid_rows:
+            break
+
+        if retry == config.MAX_RETRIES:
+            print("Error: Unable to find history items!!")
+            return
+
+        retry += 1
+        print(f"Retrying to find attachment row items... {retry}/{config.MAX_RETRIES}")
+
+    retry = 0
+    attachment_href = None
 
     for grid_row in grid_rows:
-        attachment_href = find_element_by_xpath(grid_row, ".//a")
-        date_attached = find_element_by_xpath(grid_row, "./div[3]")
+        while not attachment_href and retry < config.MAX_RETRIES:
+            attachment_href = find_element_by_xpath(grid_row, ".//a")
+            retry += 1
+            print("Retrying attachment href...")
 
+        if not attachment_href:
+            continue
+
+        date_attached = find_element_by_xpath(grid_row, "./div[3]")
         attachment_url = attachment_href.get_attribute("href")
         parsed_url = urllib.parse.urlparse(attachment_url)
         query_params = urllib.parse.parse_qs(parsed_url.query)
@@ -136,7 +184,7 @@ def scrape_history(driver):
     dialog_box_xpath = "//div[@role='dialog'][last()]"
     details_tab_xpath = f"{dialog_box_xpath}//ul[@role='tablist']/li[1]"
     history_xpath = f"{dialog_box_xpath}//ul[@role='tablist']/li[2]"
-    history_items_xpath = f"{dialog_box_xpath}//div[@class='history-item-summary']"
+    history_items_xpath = f"{dialog_box_xpath}//div[@class='history-item-summary' or contains(@class, 'history-item-selected')]"
 
     # Navigate to history tab
     click_button_by_xpath(driver, history_xpath)
@@ -240,7 +288,7 @@ def scrape_history(driver):
                 {
                     "Type": display_name,
                     "Link to item file": link.a.get("href") if link.a else None,
-                    "Title": link.span.text if link.span else None,
+                    "Title": link.span.text.lstrip(": ") if link.span else None,
                 }
             )
 
@@ -288,6 +336,17 @@ def scrape_related_work(driver, dialog_box):
     soup = soup.find("div", {"class": "grid-canvas"})
     related_work_type = None
     related_work_data = {}
+    valid_labels = [
+        "Child",
+        "Duplicate",
+        "Duplicate Of",
+        "Predecessor",
+        "Related",
+        "Successor",
+        "Tested By",
+        "Tests",
+        "Parent",
+    ]
 
     for index, element in enumerate(soup.find_all("div", {"aria-level": True})):
         is_label = element.get("aria-level") == "1"
@@ -295,8 +354,9 @@ def scrape_related_work(driver, dialog_box):
         if not is_label and related_work_type:
             work_item = element.find("a")
 
-            related_work_item_id = work_item.get("href").split("/")[-1]
-            related_work_title = work_item.get_text().replace(" ", "_")
+            work_item_url = work_item.get("href")
+            related_work_item_id = work_item_url.split("/")[-1]
+            related_work_title = validate_title(work_item.get_text())
 
             updated_date = find_element_by_xpath(
                 related_work_items_elements[index],
@@ -321,6 +381,7 @@ def scrape_related_work(driver, dialog_box):
                     "filename_source": f"{related_work_item_id}_{related_work_title}",
                     "link_target": f"{related_work_item_id}_{related_work_title}_update_{convert_date(updated_at)}_{related_work_type}",
                     "updated_at": " ".join(updated_at.split(" ")[-4:]),
+                    "url": work_item_url,
                 }
             )
             driver.execute_script(
@@ -328,6 +389,11 @@ def scrape_related_work(driver, dialog_box):
             )
         else:
             related_work_type = element.find("span").get_text(strip=True)
+
+            if related_work_type not in valid_labels:
+                related_work_type = None
+                continue
+
             related_work_type = re.search(r"^\w+", related_work_type).group()
             related_work_data[related_work_type] = []
 
@@ -346,8 +412,13 @@ def scrape_discussion_attachments(driver, attachment, discussion_date):
     query_params = urllib.parse.parse_qs(parsed_url.query)
     resource_id = parsed_url.path.split("/")[-1]
 
-    file_name = query_params.get("fileName")[0]
-    new_file_name = f"{convert_date(discussion_date)}_{resource_id}_{file_name}"
+    file_name = query_params.get("fileName")
+
+    if not file_name:
+        return {}
+
+    file_name = file_name[0]
+    new_file_name = f"{discussion_date}_{resource_id}_{file_name}"
 
     query_params["fileName"] = [new_file_name]
 
@@ -358,6 +429,7 @@ def scrape_discussion_attachments(driver, attachment, discussion_date):
         parsed_url._replace(query=urllib.parse.urlencode(query_params, doseq=True))
     )
     driver.get(updated_url)
+
     return {"url": updated_url, "filename": query_params["fileName"][0]}
 
 
@@ -368,9 +440,21 @@ def scrape_discussions(driver):
     javascript_command = (
         "arguments[0].dispatchEvent(new MouseEvent('mouseover', {'bubbles': true}));"
     )
-    mouse_out_command = (
-        "arguments[0].dispatchEvent(new MouseEvent('mouseout', {'bubbles': true}));"
-    )
+    mouse_out_command = "arguments[0].parentNode.removeChild(arguments[0]);"
+
+    contains_discussions = None
+    retry = 0
+    while contains_discussions is None and retry < 3:
+        contains_discussions = find_element_by_xpath(
+            driver, f"({container_xpath}//div[@class='comment-header-left'])[1]"
+        )
+
+        if contains_discussions:
+            break
+
+        retry += 1
+        time.sleep(1)
+        print("retrying discussion items...")
 
     discussion_container = find_element_by_xpath(driver, container_xpath)
 
@@ -401,26 +485,40 @@ def scrape_discussions(driver):
             while date is None and retry_count < config.MAX_RETRIES:
                 driver.execute_script(javascript_command, comment_timestamp)
                 date = get_text(driver, "//p[contains(@class, 'ms-Tooltip-subtext')]")
+                date_element = find_element_by_xpath(
+                    driver, "//p[contains(@class, 'ms-Tooltip-subtext')]"
+                )
 
-                if date:
-                    driver.execute_script(mouse_out_command, comment_timestamp)
+                if date_element:
+                    try:
+                        date = convert_date(date_element.text)
+                    except ParserError:
+                        raise
+                    driver.execute_script(mouse_out_command, date_element)
                     break
 
                 retry_count += 1
                 print(
                     f"Retrying hover on discussion date ... {retry_count}/{config.MAX_RETRIES}"
                 )
+                discussion_container.click()
                 time.sleep(3)
 
             result = {
                 "User": username,
                 "Content": content,
                 "Date": date,
-                "attachments": [
-                    scrape_discussion_attachments(driver, attachment, date)
-                    for attachment in (attachments or [])
-                ],
+                "attachments": [],
             }
+
+            for attachment in attachments or []:
+                attachment_data = scrape_discussion_attachments(
+                    driver, attachment, date
+                )
+
+                if attachment_data:
+                    result["attachments"].append(attachment_data)
+
             results.append(result)
     return results
 
@@ -452,17 +550,31 @@ def scrape_changesets(driver):
 
 def scrape_development(driver):
     results = []
-
-    development_links = find_elements_by_xpath(
-        driver,
-        f"//div[@role='dialog'][last()]//span[@aria-label='Development section.']/ancestor::div[@class='grid-group']//a",
+    dialog_box = "//div[@role='dialog'][last()]"
+    development_section = (
+        "//span[@aria-label='Development section.']/ancestor::div[@class='grid-group']"
+    )
+    show_more(driver, f"{development_section}//div[@class='la-show-more']")
+    development_items = find_elements_by_xpath(
+        driver, f"{dialog_box}{development_section}//div[@class='la-item']"
     )
 
     original_window = driver.current_window_handle
+    print("Development items", development_items)
 
-    if development_links:
-        for development_link in development_links:
-            development_link.click()
+    failed_texts = [
+        ".//span[starts-with(text(), 'Integrated in build link can not be read.')]",
+        ".//span[@class='la-text build-failed']",
+    ]
+
+    if development_items:
+        for development_item in development_items:
+            failed = [get_text(development_item, text) for text in failed_texts]
+
+            if any(failed):
+                continue
+
+            click_button_by_xpath(development_item, ".//a")
 
             WebDriverWait(driver, config.MAX_WAIT_TIME).until(
                 EC.number_of_windows_to_be(2)
