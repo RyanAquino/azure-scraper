@@ -1,0 +1,47 @@
+Traceback (most recent call last):
+  File "/home/paul/Downloads/prod/contact/action_utils.py", line 106, in convert_date
+    date_obj = datetime.strptime(date_string, date_format)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/paul/miniconda3/envs/tfs/lib/python3.11/_strptime.py", line 568, in _strptime_datetime
+    tt, fraction, gmtoff_fraction = _strptime(data_string, format)
+                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/paul/miniconda3/envs/tfs/lib/python3.11/_strptime.py", line 349, in _strptime
+    raise ValueError("time data %r does not match format %r" %
+ValueError: time data '18, 2016 2:52:50 PM' does not match format '%d %B %Y %H:%M:%S'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/paul/miniconda3/envs/tfs/lib/python3.11/site-packages/dateutil/parser/_parser.py", line 649, in parse
+    ret = self._build_naive(res, default)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/paul/miniconda3/envs/tfs/lib/python3.11/site-packages/dateutil/parser/_parser.py", line 1232, in _build_naive
+    if cday > monthrange(cyear, cmonth)[1]:
+              ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/paul/miniconda3/envs/tfs/lib/python3.11/calendar.py", line 126, in monthrange
+    raise IllegalMonthError(month)
+calendar.IllegalMonthError: bad month number 18; must be 1-12
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/paul/Downloads/prod/contact/main.py", line 207, in <module>
+    main(int(start_index))
+  File "/home/paul/Downloads/prod/contact/main.py", line 202, in main
+    post_process_results(save_file, chrome_downloads)
+  File "/home/paul/Downloads/prod/contact/results_processor.py", line 215, in post_process_results
+    create_related_work_contents(scrape_result)
+  File "/home/paul/Downloads/prod/contact/results_processor.py", line 165, in create_related_work_contents
+    work_item_updated_at = convert_date(work_items.get("updated_at"))
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/paul/Downloads/prod/contact/action_utils.py", line 108, in convert_date
+    date_obj = parse(date_string, fuzzy=True)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/paul/miniconda3/envs/tfs/lib/python3.11/site-packages/dateutil/parser/_parser.py", line 1368, in parse
+    return DEFAULTPARSER.parse(timestr, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/paul/miniconda3/envs/tfs/lib/python3.11/site-packages/dateutil/parser/_parser.py", line 651, in parse
+    six.raise_from(ParserError(str(e) + ": %s", timestr), e)
+  File "<string>", line 3, in raise_from
+dateutil.parser._parser.ParserError: bad month number 18; must be 1-12: 18, 2016 2:52:50 PM
+
