@@ -5,6 +5,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 from selenium import webdriver
+from selenium.webdriver.common.by import By
 from selenium.webdriver.common.action_chains import ActionChains
 
 import config
@@ -58,6 +59,8 @@ def scrape_child_work_items(driver):
     while retry < config.MAX_RETRIES:
         title = get_input_value(driver, title_xpath)
 
+        time.sleep(2)
+
         if title:
             print("Open dialog box for ", title)
             dialog_box = find_element_by_xpath(driver, dialog_xpath)
@@ -83,12 +86,11 @@ def scrape_child_work_items(driver):
     for key, value in work_item_data.items():
         print(key, ":", value)
 
-    child_container = "//div[@class='la-group-title' and contains(text(), 'Child')]"
-    child_xpath = f".{child_container}/following-sibling::div"
+    child_container = "//div[@class='la-group-title' and contains(text(), 'Child')][1]"
     show_more(
         dialog_box, "//div[@class='la-group-title']/../..//div[@class='la-show-more']"
     )
-    child_work_items = find_elements_by_xpath(dialog_box, child_xpath)
+    child_work_items = driver.find_elements(By.XPATH, f"({dialog_xpath}{child_container}/following-sibling::div)[1]")
 
     if child_work_items:
         children = []
