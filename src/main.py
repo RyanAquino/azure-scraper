@@ -128,6 +128,7 @@ def scraper(
     work_items_ctr = default_start_index
 
     result_set = default_result_set if default_result_set else []
+    result_ids = [result["Task id"] for result in result_set if result.get("Task id")]
 
     while work_items_ctr < work_items_count:
         work_items = find_elements_by_xpath(driver, '//div[@aria-level="1"]')
@@ -152,7 +153,8 @@ def scraper(
 
             return work_items_ctr
 
-        result_set.append(work_item_data)
+        if work_item_data.get("Task id") not in result_ids:
+            result_set.append(work_item_data)
 
         work_items_ctr += 1
 
