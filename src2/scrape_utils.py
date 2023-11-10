@@ -526,23 +526,38 @@ def scrape_discussions(driver):
 def scrape_changesets(driver):
     results = []
 
-    files_changed = find_elements_by_xpath(driver, "//tr[@role='treeitem']")
+    files_changed = find_elements_by_xpath(
+        driver, "//div[@role='treeitem' and @aria-level='2']"
+    )
 
     for file in files_changed:
         file.click()
+
+        time.sleep(5)
 
         header_xpath = "//span[@role='heading']"
 
         result = {
             "File Name": get_text(driver, header_xpath),
             "Path": get_text(
-                driver, f"{header_xpath}/parent::span/following-sibling::span"
+                driver, f"{header_xpath}/parent::div/following-sibling::div"
             ),
             "content": get_text(
                 driver,
                 "(//div[contains(@class,'lines-content')])[last()]",
             ),
         }
+
+        if not result.get("content"):
+            result["content"] = get_text(
+                driver, "(//div[@class='vc-preview-content-container'])[last()]"
+            )
+
+        if not result.get("Path"):
+            span_label = find_element_by_xpath(
+                file, ".//span[@class='vc-sparse-files-tree-cell']/div"
+            )
+            result["Path"] = span_label.get_attribute("content")
 
         results.append(result)
     return results
@@ -551,9 +566,7 @@ def scrape_changesets(driver):
 def scrape_development(driver):
     results = []
     dialog_box = "//div[@role='dialog'][last()]"
-    development_section = (
-        "//span[@aria-label='Development section.']/ancestor::div[@class='grid-group']"
-    )
+    development_section = "//span[@aria-label='Collapse Development section.']/ancestor::div[@class='grid-group']"
     show_more(driver, f"{development_section}//div[@class='la-show-more']")
     development_items = find_elements_by_xpath(
         driver, f"{dialog_box}{development_section}//div[@class='la-item']"

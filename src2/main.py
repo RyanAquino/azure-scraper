@@ -5,8 +5,8 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 from selenium import webdriver
-from selenium.webdriver.common.by import By
 from selenium.webdriver.common.action_chains import ActionChains
+from selenium.webdriver.common.by import By
 
 import config
 from action_utils import (
@@ -90,7 +90,9 @@ def scrape_child_work_items(driver):
     show_more(
         dialog_box, "//div[@class='la-group-title']/../..//div[@class='la-show-more']"
     )
-    child_work_items = driver.find_elements(By.XPATH, f"({dialog_xpath}{child_container}/following-sibling::div)[1]")
+    child_work_items = driver.find_elements(
+        By.XPATH, f"({dialog_xpath}{child_container}/following-sibling::div)[1]"
+    )
 
     if child_work_items:
         children = []
