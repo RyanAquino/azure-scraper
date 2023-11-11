@@ -390,6 +390,11 @@ def scrape_related_work(driver, dialog_box):
         else:
             related_work_type = element.find("span").get_text(strip=True)
 
+            if related_work_type:
+                related_work_type = re.search(r'([^\(]+)', related_work_type)
+                related_work_type = related_work_type.group(1)
+                related_work_type = related_work_type.replace("\xa0", "")
+
             if related_work_type not in valid_labels:
                 related_work_type = None
                 continue
