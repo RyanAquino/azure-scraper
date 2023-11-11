@@ -75,14 +75,14 @@ def scrape_basic_fields(dialog_box):
     elif soup.find(attrs={"aria-label": "Resolution section."}):
         description_element = soup.find(attrs={"aria-label": "Description"})
         resolution_element = soup.find(attrs={"aria-label": "Resolution"})
-        description = f"* Description\n\t* {convert_to_markdown(description_element)}\n"
+        description = convert_to_markdown(description_element)
         resolution = f"* Repro Steps\n\t* {convert_to_markdown(resolution_element)}\n"
 
-        basic_fields["Description"] = description + resolution
+        basic_fields["Description"] = description + "\n" + resolution
 
     else:
         description_element = soup.find(attrs={"aria-label": "Description"})
-        description = f"* Description\n\t* {convert_to_markdown(description_element)}\n"
+        description = convert_to_markdown(description_element)
         basic_fields["Description"] = description
 
     return {
