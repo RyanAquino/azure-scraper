@@ -553,6 +553,29 @@ def scrape_changesets(driver):
             ),
         }
 
+        time.sleep(2)
+
+        content_container = find_element_by_xpath(driver, "(//div[contains(@class,'overflow-guard')])[last()]")
+
+        if content_container:
+            scroll_increment = 600
+            contents = None
+
+            while True:
+                c = get_text(driver, "(//div[contains(@class,'lines-content')])[last()]")
+
+                if not contents:
+                    contents = c
+                else:
+                    new_content = remove_longest_common_substring(contents, c)
+                    if new_content == contents:
+                        break
+                    contents = new_content
+
+                driver.execute_script('arguments[0].scrollTop += arguments[1];', content_container, scroll_increment)
+
+            result["content"] = contents
+
         if not result.get("content"):
             result["content"] = get_text(
                 driver, "(//div[@class='vc-preview-content-container'])[last()]"
@@ -566,6 +589,33 @@ def scrape_changesets(driver):
 
         results.append(result)
     return results
+
+
+def remove_longest_common_substring(str1, str2):
+    m = len(str1)
+    n = len(str2)
+    # Create a table to store the lengths of common substrings
+    dp = [[0] * (n + 1) for _ in range(m + 1)]
+    # Variables to store the length of the longest common substring
+    max_length = 0
+    end_index = 0
+    for i in range(1, m + 1):
+        for j in range(1, n + 1):
+            if str1[i - 1] == str2[j - 1]:
+                dp[i][j] = dp[i - 1][j - 1] + 1
+                # Update the length and ending index of the longest common substring
+                if dp[i][j] > max_length:
+                    max_length = dp[i][j]
+                    end_index = i - 1
+            else:
+                dp[i][j] = 0
+    # Extract the longest common substring
+    longest_substring = str1[end_index - max_length + 1: end_index + 1]
+    # Remove the longest common substring from the second string
+    modified_str2 = str2.replace(longest_substring, '', 1)
+    str1 += modified_str2
+
+    return str1
 
 
 def scrape_development(driver):
