@@ -558,11 +558,14 @@ def scrape_changesets(driver):
         content_container = find_element_by_xpath(driver, "(//div[contains(@class,'overflow-guard')])[last()]")
 
         if content_container:
-            scroll_increment = 600
+            scroll_increment = 550
             contents = None
 
             while True:
                 c = get_text(driver, "(//div[contains(@class,'lines-content')])[last()]")
+
+                if c:
+                    c = c.strip(" ")
 
                 if not contents:
                     contents = c
