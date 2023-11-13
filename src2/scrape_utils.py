@@ -532,7 +532,7 @@ def scrape_changesets(driver):
     results = []
 
     files_changed = find_elements_by_xpath(
-        driver, "//div[@role='treeitem' and @aria-level='2']"
+        driver, "//div[@role='treeitem']"
     )
 
     for file in files_changed:
