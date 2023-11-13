@@ -557,7 +557,7 @@ def scrape_changesets(driver):
 
         content_container = find_element_by_xpath(driver, "(//div[contains(@class,'overflow-guard')])[last()]")
 
-        if content_container:
+        if content_container and not result.get("content"):
             scroll_increment = 550
             contents = None
 
