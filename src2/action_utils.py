@@ -189,12 +189,11 @@ def convert_to_markdown(soup):
                 index += 1
                 markdown_ol += f"{indentation}{index}. {li.text}\n"
             elif indentation_level == 1:
-                if letters == 0:
-                    markdown_ol = markdown_ol.rstrip("\n") + "\\\n"
+                label = string.ascii_lowercase[letters % 26]
+                if letters >= 26:
+                    label = string.ascii_lowercase[(letters // 26) - 1] + label
                 letters += 1
-                markdown_ol += (
-                    f"{indentation}{string.ascii_lowercase[letters - 1]}. {li.text}\\\n"
-                )
+                markdown_ol += f"{indentation}{label}. {li.text}\\\n"
 
             elif indentation_level == 2:
                 if roman_numerals == 0:
