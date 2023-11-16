@@ -174,7 +174,7 @@ def scrape_attachments(driver):
         click_button_by_xpath(driver, details_tab)
 
         return attachments_data
-    except StaleElementReferenceException:
+    except (StaleElementReferenceException, AttributeError):
         return scrape_attachments(driver)
 
 
