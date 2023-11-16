@@ -62,14 +62,6 @@ def find_element_by_xpath(driver, xpath):
     return e
 
 
-def find_element_presence(driver, xpath):
-    e = WebDriverWait(driver, config.MAX_WAIT_TIME).until(
-        EC.presence_of_element_located((By.XPATH, xpath))
-    )
-
-    return e
-
-
 def get_input_value(driver, xpath):
     if element := find_element_by_xpath(driver, xpath):
         return element.get_attribute("value")
