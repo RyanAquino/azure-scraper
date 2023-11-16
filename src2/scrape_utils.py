@@ -4,6 +4,7 @@ import urllib.parse
 
 from bs4 import BeautifulSoup
 from dateutil.parser import ParserError
+from selenium.common.exceptions import StaleElementReferenceException
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
 
@@ -14,6 +15,7 @@ from action_utils import (
     convert_to_markdown,
     expand_collapsed_by_xpath,
     find_element_by_xpath,
+    find_element_presence,
     find_elements_by_xpath,
     get_input_value,
     get_text,
@@ -149,8 +151,13 @@ def scrape_attachments(driver):
         if not attachment_href:
             continue
 
+        try:
+            attachment_url = attachment_href.get_attribute("href")
+        except StaleElementReferenceException:
+            attachment_href = find_element_presence(grid_row, ".//a")
+            attachment_url = attachment_href.get_attribute("href")
+
         date_attached = find_element_by_xpath(grid_row, "./div[3]")
-        attachment_url = attachment_href.get_attribute("href")
         parsed_url = urllib.parse.urlparse(attachment_url)
         query_params = urllib.parse.parse_qs(parsed_url.query)
 
@@ -391,7 +398,7 @@ def scrape_related_work(driver, dialog_box):
             related_work_type = element.find("span").get_text(strip=True)
 
             if related_work_type:
-                related_work_type = re.search(r'([^\(]+)', related_work_type)
+                related_work_type = re.search(r"([^\(]+)", related_work_type)
                 related_work_type = related_work_type.group(1)
                 related_work_type = related_work_type.replace("\xa0", "")
 
@@ -531,9 +538,7 @@ def scrape_discussions(driver):
 def scrape_changesets(driver):
     results = []
 
-    files_changed = find_elements_by_xpath(
-        driver, "//div[@role='treeitem']"
-    )
+    files_changed = find_elements_by_xpath(driver, "//div[@role='treeitem']")
 
     for file in files_changed:
         file.click()
@@ -555,14 +560,18 @@ def scrape_changesets(driver):
 
         time.sleep(2)
 
-        content_container = find_element_by_xpath(driver, "(//div[contains(@class,'overflow-guard')])[last()]")
+        content_container = find_element_by_xpath(
+            driver, "(//div[contains(@class,'overflow-guard')])[last()]"
+        )
 
         if content_container and not result.get("content"):
             scroll_increment = 550
             contents = None
 
             while True:
-                c = get_text(driver, "(//div[contains(@class,'lines-content')])[last()]")
+                c = get_text(
+                    driver, "(//div[contains(@class,'lines-content')])[last()]"
+                )
 
                 if c:
                     c = c.strip(" ")
@@ -575,7 +584,11 @@ def scrape_changesets(driver):
                         break
                     contents = new_content
 
-                driver.execute_script('arguments[0].scrollTop += arguments[1];', content_container, scroll_increment)
+                driver.execute_script(
+                    "arguments[0].scrollTop += arguments[1];",
+                    content_container,
+                    scroll_increment,
+                )
 
             result["content"] = contents
 
@@ -613,9 +626,9 @@ def remove_longest_common_substring(str1, str2):
             else:
                 dp[i][j] = 0
     # Extract the longest common substring
-    longest_substring = str1[end_index - max_length + 1: end_index + 1]
+    longest_substring = str1[end_index - max_length + 1 : end_index + 1]
     # Remove the longest common substring from the second string
-    modified_str2 = str2.replace(longest_substring, '', 1)
+    modified_str2 = str2.replace(longest_substring, "", 1)
     str1 += modified_str2
 
     return str1
