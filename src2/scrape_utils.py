@@ -40,66 +40,70 @@ def scrape_basic_fields(dialog_box):
 
     basic_fields = {}
 
-    html = dialog_box.get_attribute("innerHTML")
-    soup = BeautifulSoup(html, "html.parser")
+    try:
+        html = dialog_box.get_attribute("innerHTML")
+        soup = BeautifulSoup(html, "html.parser")
 
-    for element in soup.find_all(attrs={"aria-label": True}):
-        attribute = element.get("aria-label")
+        for element in soup.find_all(attrs={"aria-label": True}):
+            attribute = element.get("aria-label")
 
-        if attribute in labels:
-            if attribute == "Assigned To Field":
-                element = element.find("span", {"class": "text-cursor"})
+            if attribute in labels:
+                if attribute == "Assigned To Field":
+                    element = element.find("span", {"class": "text-cursor"})
 
-            if element.name == "input":
-                value = element.get("value")
+                if element.name == "input":
+                    value = element.get("value")
 
-                if "value" not in element:
-                    input_xpath = f".//input[@aria-label='{attribute}']"
-                    value = get_input_value(dialog_box, input_xpath)
-            else:
-                value = element.text if element.text else None
+                    if "value" not in element:
+                        input_xpath = f".//input[@aria-label='{attribute}']"
+                        value = get_input_value(dialog_box, input_xpath)
+                else:
+                    value = element.text if element.text else None
 
-            basic_fields[attribute] = value
+                basic_fields[attribute] = value
 
-    if soup.find(attrs={"aria-label": "Repro Steps section."}):
-        repro_steps_element = soup.find(attrs={"aria-label": "Repro Steps"})
-        system_info_element = soup.find(attrs={"aria-label": "System Info"})
-        acceptance_element = soup.find(attrs={"aria-label": "Acceptance Criteria"})
+        if soup.find(attrs={"aria-label": "Repro Steps section."}):
+            repro_steps_element = soup.find(attrs={"aria-label": "Repro Steps"})
+            system_info_element = soup.find(attrs={"aria-label": "System Info"})
+            acceptance_element = soup.find(attrs={"aria-label": "Acceptance Criteria"})
 
-        retro = f"* Repro Steps\n** {convert_to_markdown(repro_steps_element)}\n"
-        system_info = f"* System Info\n** {convert_to_markdown(system_info_element)}\n"
-        acceptance = (
-            f"* Acceptance criteria \n** {convert_to_markdown(acceptance_element)}\n"
-        )
+            retro = f"* Repro Steps\n** {convert_to_markdown(repro_steps_element)}\n"
+            system_info = f"* System Info\n** {convert_to_markdown(system_info_element)}\n"
+            acceptance = (
+                f"* Acceptance criteria \n** {convert_to_markdown(acceptance_element)}\n"
+            )
 
-        basic_fields["Description"] = retro + system_info + acceptance
-    elif soup.find(attrs={"aria-label": "Resolution section."}):
-        description_element = soup.find(attrs={"aria-label": "Description"})
-        resolution_element = soup.find(attrs={"aria-label": "Resolution"})
-        description = convert_to_markdown(description_element)
-        resolution = f"* Repro Steps\n\t* {convert_to_markdown(resolution_element)}\n"
+            basic_fields["Description"] = retro + system_info + acceptance
+        elif soup.find(attrs={"aria-label": "Resolution section."}):
+            description_element = soup.find(attrs={"aria-label": "Description"})
+            resolution_element = soup.find(attrs={"aria-label": "Resolution"})
+            description = convert_to_markdown(description_element)
+            resolution = f"* Repro Steps\n\t* {convert_to_markdown(resolution_element)}\n"
 
-        basic_fields["Description"] = description + "\n" + resolution
+            basic_fields["Description"] = description + "\n" + resolution
 
-    else:
-        description_element = soup.find(attrs={"aria-label": "Description"})
-        description = convert_to_markdown(description_element)
-        basic_fields["Description"] = description
+        else:
+            description_element = soup.find(attrs={"aria-label": "Description"})
+            description = convert_to_markdown(description_element)
+            basic_fields["Description"] = description
 
-    return {
-        "Task id": basic_fields["ID Field"],
-        "User Name": basic_fields["Assigned To Field"],
-        "State": basic_fields["State Field"],
-        "Area": basic_fields["Area Path"],
-        "Iteration": basic_fields["Iteration Path"],
-        "Priority": basic_fields["Priority"],
-        "Remaining Work": basic_fields.get("Remaining Work"),
-        "Activity": basic_fields.get("Activity"),
-        "Blocked": basic_fields.get("Blocked"),
-        "Effort": basic_fields.get("Effort"),
-        "Severity": basic_fields.get("Severity"),
-        "description": basic_fields.get("Description"),
-    }
+        return {
+            "Task id": basic_fields["ID Field"],
+            "User Name": basic_fields["Assigned To Field"],
+            "State": basic_fields["State Field"],
+            "Area": basic_fields["Area Path"],
+            "Iteration": basic_fields["Iteration Path"],
+            "Priority": basic_fields["Priority"],
+            "Remaining Work": basic_fields.get("Remaining Work"),
+            "Activity": basic_fields.get("Activity"),
+            "Blocked": basic_fields.get("Blocked"),
+            "Effort": basic_fields.get("Effort"),
+            "Severity": basic_fields.get("Severity"),
+            "description": basic_fields.get("Description"),
+        }
+
+    except AttributeError:
+        return scrape_basic_fields(dialog_box)
 
 
 def scrape_attachments(driver):
