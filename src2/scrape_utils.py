@@ -62,16 +62,21 @@ def scrape_basic_fields(dialog_box):
 
                 basic_fields[attribute] = value
 
-        if soup.find(attrs={"aria-label": "Repro Steps section."}):
+        if soup.find(attrs={"aria-label": "Collapse Repro Steps section."}):
             repro_steps_element = soup.find(attrs={"aria-label": "Repro Steps"})
             system_info_element = soup.find(attrs={"aria-label": "System Info"})
             acceptance_element = soup.find(attrs={"aria-label": "Acceptance Criteria"})
 
-            retro = f"* Repro Steps\n** {convert_to_markdown(repro_steps_element)}\n"
-            system_info = f"* System Info\n** {convert_to_markdown(system_info_element)}\n"
-            acceptance = (
-                f"* Acceptance criteria \n** {convert_to_markdown(acceptance_element)}\n"
-            )
+            if retro := convert_to_markdown(repro_steps_element):
+                retro = f"* Repro Steps\n** {retro}\n"
+
+            if system_info := convert_to_markdown(system_info_element):
+                system_info = f"* System Info\n** {system_info}\n"
+
+            if acceptance := convert_to_markdown(acceptance_element):
+                acceptance = (
+                    f"* Acceptance criteria \n** {acceptance}\n"
+                )
 
             basic_fields["Description"] = retro + system_info + acceptance
         elif soup.find(attrs={"aria-label": "Resolution section."}):
@@ -636,47 +641,51 @@ def remove_longest_common_substring(str1, str2):
 
 
 def scrape_development(driver):
-    results = []
-    dialog_box = "//div[@role='dialog'][last()]"
-    development_section = "//span[@aria-label='Collapse Development section.']/ancestor::div[@class='grid-group']"
-    show_more(driver, f"{development_section}//div[@class='la-show-more']")
-    development_items = find_elements_by_xpath(
-        driver, f"{dialog_box}{development_section}//div[@class='la-item']"
-    )
+    try:
+        results = []
+        dialog_box = "//div[@role='dialog'][last()]"
+        development_section = "//span[@aria-label='Collapse Development section.']/ancestor::div[@class='grid-group']"
+        show_more(driver, f"{development_section}//div[@class='la-show-more']")
+        development_items = find_elements_by_xpath(
+            driver, f"{dialog_box}{development_section}//div[@class='la-item']"
+        )
 
-    original_window = driver.current_window_handle
-    print("Development items", development_items)
+        original_window = driver.current_window_handle
+        print("Development items", development_items)
 
-    failed_texts = [
-        ".//span[starts-with(text(), 'Integrated in build link can not be read.')]",
-        ".//span[@class='la-text build-failed']",
-        ".//div[starts-with(text(), 'Integrated in build')]",
-    ]
+        failed_texts = [
+            ".//span[starts-with(text(), 'Integrated in build link can not be read.')]",
+            ".//span[@class='la-text build-failed']",
+            ".//div[starts-with(text(), 'Integrated in build')]",
+        ]
 
-    if development_items:
-        for development_item in development_items:
-            failed = [get_text(development_item, text) for text in failed_texts]
+        if development_items:
+            for development_item in development_items:
+                failed = [get_text(development_item, text) for text in failed_texts]
 
-            if any(failed):
-                continue
+                if any(failed):
+                    continue
 
-            click_button_by_xpath(development_item, ".//a")
+                click_button_by_xpath(development_item, ".//a")
 
-            WebDriverWait(driver, config.MAX_WAIT_TIME).until(
-                EC.number_of_windows_to_be(2)
-            )
+                WebDriverWait(driver, config.MAX_WAIT_TIME).until(
+                    EC.number_of_windows_to_be(2)
+                )
 
-            driver.switch_to.window(driver.window_handles[-1])
-            result = {
-                "ID": driver.current_url.split("/")[-1],
-                "Title": driver.title,
-                "change_sets": scrape_changesets(driver),
-            }
-            results.append(result)
+                driver.switch_to.window(driver.window_handles[-1])
+                result = {
+                    "ID": driver.current_url.split("/")[-1],
+                    "Title": driver.title,
+                    "change_sets": scrape_changesets(driver),
+                }
+                results.append(result)
 
-            driver.close()
-            driver.switch_to.window(original_window)
-    return results
+                driver.close()
+                driver.switch_to.window(original_window)
+        return results
+
+    except StaleElementReferenceException:
+        return scrape_development(driver)
 
 
 def log_html(page_source, log_file_path="source.log"):
