@@ -137,7 +137,9 @@ def scrape_attachments(driver):
                 return
 
             retry += 1
-            print(f"Retrying to find attachment row items... {retry}/{config.MAX_RETRIES}")
+            print(
+                f"Retrying to find attachment row items... {retry}/{config.MAX_RETRIES}"
+            )
 
         retry = 0
         attachment_href = None
@@ -164,7 +166,9 @@ def scrape_attachments(driver):
 
             query_params["fileName"] = [new_file_name]
             updated_url = urllib.parse.urlunparse(
-                parsed_url._replace(query=urllib.parse.urlencode(query_params, doseq=True))
+                parsed_url._replace(
+                    query=urllib.parse.urlencode(query_params, doseq=True)
+                )
             )
             attachments_data.append({"url": updated_url, "filename": new_file_name})
 
@@ -553,48 +557,49 @@ def scrape_changesets(driver):
 
 
 def scrape_development(driver):
-    results = []
-    dialog_box = "//div[@role='dialog'][last()]"
-    development_section = (
-        "//span[@aria-label='Development section.']/ancestor::div[@class='grid-group']"
-    )
-    show_more(driver, f"{development_section}//div[@class='la-show-more']")
-    development_items = find_elements_by_xpath(
-        driver, f"{dialog_box}{development_section}//div[@class='la-item']"
-    )
+    try:
+        results = []
+        dialog_box = "//div[@role='dialog'][last()]"
+        development_section = "//span[@aria-label='Development section.']/ancestor::div[@class='grid-group']"
+        show_more(driver, f"{development_section}//div[@class='la-show-more']")
+        development_items = find_elements_by_xpath(
+            driver, f"{dialog_box}{development_section}//div[@class='la-item']"
+        )
 
-    original_window = driver.current_window_handle
-    print("Development items", development_items)
+        original_window = driver.current_window_handle
+        print("Development items", development_items)
 
-    failed_texts = [
-        ".//span[starts-with(text(), 'Integrated in build link can not be read.')]",
-        ".//span[@class='la-text build-failed']",
-    ]
+        failed_texts = [
+            ".//span[starts-with(text(), 'Integrated in build link can not be read.')]",
+            ".//span[@class='la-text build-failed']",
+        ]
 
-    if development_items:
-        for development_item in development_items:
-            failed = [get_text(development_item, text) for text in failed_texts]
+        if development_items:
+            for development_item in development_items:
+                failed = [get_text(development_item, text) for text in failed_texts]
 
-            if any(failed):
-                continue
+                if any(failed):
+                    continue
 
-            click_button_by_xpath(development_item, ".//a")
+                click_button_by_xpath(development_item, ".//a")
 
-            WebDriverWait(driver, config.MAX_WAIT_TIME).until(
-                EC.number_of_windows_to_be(2)
-            )
+                WebDriverWait(driver, config.MAX_WAIT_TIME).until(
+                    EC.number_of_windows_to_be(2)
+                )
 
-            driver.switch_to.window(driver.window_handles[-1])
-            result = {
-                "ID": driver.current_url.split("/")[-1],
-                "Title": driver.title,
-                "change_sets": scrape_changesets(driver),
-            }
-            results.append(result)
+                driver.switch_to.window(driver.window_handles[-1])
+                result = {
+                    "ID": driver.current_url.split("/")[-1],
+                    "Title": driver.title,
+                    "change_sets": scrape_changesets(driver),
+                }
+                results.append(result)
 
-            driver.close()
-            driver.switch_to.window(original_window)
-    return results
+                driver.close()
+                driver.switch_to.window(original_window)
+        return results
+    except StaleElementReferenceException:
+        return scrape_development(driver)
 
 
 def log_html(page_source, log_file_path="source.log"):

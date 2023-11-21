@@ -149,7 +149,9 @@ def scraper(
         except Exception as e:
             traceback.print_exception(e)
             err_msg = str(e)
-            work_item_id = result_ids[work_items_ctr] if work_items_ctr in result_ids else None
+            work_item_id = (
+                result_ids[work_items_ctr] if work_items_ctr in result_ids else None
+            )
             logging.error(err_msg)
             logging.error(work_items_ctr)
             logging.error(work_item_id)

@@ -74,16 +74,16 @@ def scrape_basic_fields(dialog_box):
                 system_info = f"* System Info\n** {system_info}\n"
 
             if acceptance := convert_to_markdown(acceptance_element):
-                acceptance = (
-                    f"* Acceptance criteria \n** {acceptance}\n"
-                )
+                acceptance = f"* Acceptance criteria \n** {acceptance}\n"
 
             basic_fields["Description"] = retro + system_info + acceptance
         elif soup.find(attrs={"aria-label": "Resolution section."}):
             description_element = soup.find(attrs={"aria-label": "Description"})
             resolution_element = soup.find(attrs={"aria-label": "Resolution"})
             description = convert_to_markdown(description_element)
-            resolution = f"* Repro Steps\n\t* {convert_to_markdown(resolution_element)}\n"
+            resolution = (
+                f"* Repro Steps\n\t* {convert_to_markdown(resolution_element)}\n"
+            )
 
             basic_fields["Description"] = description + "\n" + resolution
 
@@ -146,7 +146,9 @@ def scrape_attachments(driver):
                 return
 
             retry += 1
-            print(f"Retrying to find attachment row items... {retry}/{config.MAX_RETRIES}")
+            print(
+                f"Retrying to find attachment row items... {retry}/{config.MAX_RETRIES}"
+            )
 
         retry = 0
         attachment_href = None
@@ -173,7 +175,9 @@ def scrape_attachments(driver):
 
             query_params["fileName"] = [new_file_name]
             updated_url = urllib.parse.urlunparse(
-                parsed_url._replace(query=urllib.parse.urlencode(query_params, doseq=True))
+                parsed_url._replace(
+                    query=urllib.parse.urlencode(query_params, doseq=True)
+                )
             )
             attachments_data.append({"url": updated_url, "filename": new_file_name})
 
