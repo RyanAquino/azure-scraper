@@ -146,9 +146,12 @@ def scraper(
         except Exception as e:
             traceback.print_exception(e)
             err_msg = str(e)
+            work_item_id = result_ids[work_items_ctr]
             logging.error(err_msg)
             logging.error(work_items_ctr)
+            logging.error(work_item_id)
             print(f"Exception: {err_msg}")
+            print(f"Work item ID: {work_item_id}")
             save_json_file(file_path, result_set)
 
             return work_items_ctr
