@@ -4,6 +4,7 @@ import urllib.parse
 
 from bs4 import BeautifulSoup
 from dateutil.parser import ParserError
+from selenium.common.exceptions import StaleElementReferenceException
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
 
@@ -117,61 +118,64 @@ def scrape_attachments(driver):
     click_button_by_xpath(driver, attachments_tab)
 
     # Retrieve attachment links
-    attachments_data = []
-    retry = 0
-    grid_rows = []
+    try:
+        attachments_data = []
+        retry = 0
+        grid_rows = []
 
-    while retry < config.MAX_RETRIES:
-        grid_rows = find_elements_by_xpath(
-            driver,
-            f"({dialog_xpath}//div[@class='grid-content-spacer'])[last()]/parent::div//div[@role='row']",
-        )
+        while retry < config.MAX_RETRIES:
+            grid_rows = find_elements_by_xpath(
+                driver,
+                f"({dialog_xpath}//div[@class='grid-content-spacer'])[last()]/parent::div//div[@role='row']",
+            )
 
-        if grid_rows:
-            break
+            if grid_rows:
+                break
 
-        if retry == config.MAX_RETRIES:
-            print("Error: Unable to find history items!!")
-            return
+            if retry == config.MAX_RETRIES:
+                print("Error: Unable to find history items!!")
+                return
 
-        retry += 1
-        print(f"Retrying to find attachment row items... {retry}/{config.MAX_RETRIES}")
-
-    retry = 0
-    attachment_href = None
-
-    for grid_row in grid_rows:
-        while not attachment_href and retry < config.MAX_RETRIES:
-            attachment_href = find_element_by_xpath(grid_row, ".//a")
             retry += 1
-            print("Retrying attachment href...")
+            print(f"Retrying to find attachment row items... {retry}/{config.MAX_RETRIES}")
 
-        if not attachment_href:
-            continue
+        retry = 0
+        attachment_href = None
 
-        date_attached = find_element_by_xpath(grid_row, "./div[3]")
-        attachment_url = attachment_href.get_attribute("href")
-        parsed_url = urllib.parse.urlparse(attachment_url)
-        query_params = urllib.parse.parse_qs(parsed_url.query)
+        for grid_row in grid_rows:
+            while not attachment_href and retry < config.MAX_RETRIES:
+                attachment_href = find_element_by_xpath(grid_row, ".//a")
+                retry += 1
+                print("Retrying attachment href...")
 
-        updated_at = convert_date(date_attached.text, date_format="%d/%m/%Y %H:%M")
-        resource_id = parsed_url.path.split("/")[-1]
+            if not attachment_href:
+                continue
 
-        file_name = query_params.get("fileName")[0]
-        new_file_name = f"{updated_at}_{resource_id}_{file_name}"
+            date_attached = find_element_by_xpath(grid_row, "./div[3]")
+            attachment_url = attachment_href.get_attribute("href")
+            parsed_url = urllib.parse.urlparse(attachment_url)
+            query_params = urllib.parse.parse_qs(parsed_url.query)
 
-        query_params["fileName"] = [new_file_name]
-        updated_url = urllib.parse.urlunparse(
-            parsed_url._replace(query=urllib.parse.urlencode(query_params, doseq=True))
-        )
-        attachments_data.append({"url": updated_url, "filename": new_file_name})
+            updated_at = convert_date(date_attached.text, date_format="%d/%m/%Y %H:%M")
+            resource_id = parsed_url.path.split("/")[-1]
 
-        driver.get(updated_url)
+            file_name = query_params.get("fileName")[0]
+            new_file_name = f"{updated_at}_{resource_id}_{file_name}"
 
-    # Navigate back to details
-    click_button_by_xpath(driver, details_tab)
+            query_params["fileName"] = [new_file_name]
+            updated_url = urllib.parse.urlunparse(
+                parsed_url._replace(query=urllib.parse.urlencode(query_params, doseq=True))
+            )
+            attachments_data.append({"url": updated_url, "filename": new_file_name})
 
-    return attachments_data
+            driver.get(updated_url)
+
+        # Navigate back to details
+        click_button_by_xpath(driver, details_tab)
+
+        return attachments_data
+    except (StaleElementReferenceException, AttributeError):
+        return scrape_attachments(driver)
 
 
 def get_element_text(element):
