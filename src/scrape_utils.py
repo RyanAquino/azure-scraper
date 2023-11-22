@@ -66,11 +66,14 @@ def scrape_basic_fields(dialog_box):
         system_info_element = soup.find(attrs={"aria-label": "System Info"})
         acceptance_element = soup.find(attrs={"aria-label": "Acceptance Criteria"})
 
-        retro = f"* Repro Steps\n** {convert_to_markdown(repro_steps_element)}\n"
-        system_info = f"* System Info\n** {convert_to_markdown(system_info_element)}\n"
-        acceptance = (
-            f"* Acceptance criteria \n** {convert_to_markdown(acceptance_element)}\n"
-        )
+        if retro := convert_to_markdown(repro_steps_element):
+            retro = f"* Repro Steps\n** {retro}\n"
+
+        if system_info := convert_to_markdown(system_info_element):
+            system_info = f"* System Info\n** {system_info}\n"
+
+        if acceptance := convert_to_markdown(acceptance_element):
+            acceptance = f"* Acceptance criteria \n** {acceptance}\n"
 
         basic_fields["Description"] = retro + system_info + acceptance
     elif soup.find(attrs={"aria-label": "Resolution section."}):
@@ -83,7 +86,7 @@ def scrape_basic_fields(dialog_box):
 
     else:
         description_element = soup.find(attrs={"aria-label": "Description"})
-        description = f"* Description\n\t* {convert_to_markdown(description_element)}\n"
+        description = convert_to_markdown(description_element)
         basic_fields["Description"] = description
 
     return {
@@ -442,93 +445,96 @@ def scrape_discussion_attachments(driver, attachment, discussion_date):
 
 
 def scrape_discussions(driver):
-    results = []
-    dialog_xpath = "//div[@role='dialog'][last()]"
-    container_xpath = f"{dialog_xpath}//div[@class='comments-section']"
-    javascript_command = (
-        "arguments[0].dispatchEvent(new MouseEvent('mouseover', {'bubbles': true}));"
-    )
-    mouse_out_command = "arguments[0].parentNode.removeChild(arguments[0]);"
-
-    contains_discussions = None
-    retry = 0
-    while contains_discussions is None and retry < 3:
-        contains_discussions = find_element_by_xpath(
-            driver, f"({container_xpath}//div[@class='comment-header-left'])[1]"
+    try:
+        results = []
+        dialog_xpath = "//div[@role='dialog'][last()]"
+        container_xpath = f"{dialog_xpath}//div[@class='comments-section']"
+        javascript_command = (
+            "arguments[0].dispatchEvent(new MouseEvent('mouseover', {'bubbles': true}));"
         )
+        mouse_out_command = "arguments[0].parentNode.removeChild(arguments[0]);"
 
-        if contains_discussions:
-            break
-
-        retry += 1
-        time.sleep(1)
-        print("retrying discussion items...")
-
-    discussion_container = find_element_by_xpath(driver, container_xpath)
-
-    html = discussion_container.get_attribute("innerHTML")
-    soup = BeautifulSoup(html, "html.parser")
-
-    discussions = soup.find_all("div", class_="comment-item-right")
-
-    if discussions:
-        for index, discussion in enumerate(discussions):
-            index += 1
-            username = discussion.find("span", class_="user-display-name").text
-            discussion_content = discussion.find("div", class_="comment-content")
-            content = convert_to_markdown(discussion_content)
-            attachments = discussion.find_all("img")
-
-            comment_header_xpath = (
-                f"({container_xpath}//div[@class='comment-header-left'])[{index}]"
+        contains_discussions = None
+        retry = 0
+        while contains_discussions is None and retry < 3:
+            contains_discussions = find_element_by_xpath(
+                driver, f"({container_xpath}//div[@class='comment-header-left'])[1]"
             )
 
-            timestamp_xpath = (
-                f"({comment_header_xpath}//*[@class='comment-timestamp'])[1]"
-            )
-            comment_timestamp = find_element_by_xpath(driver, timestamp_xpath)
+            if contains_discussions:
+                break
 
-            date = None
-            retry_count = 0
-            while date is None and retry_count < config.MAX_RETRIES:
-                driver.execute_script(javascript_command, comment_timestamp)
-                date = get_text(driver, "//p[contains(@class, 'ms-Tooltip-subtext')]")
-                date_element = find_element_by_xpath(
-                    driver, "//p[contains(@class, 'ms-Tooltip-subtext')]"
+            retry += 1
+            time.sleep(1)
+            print("retrying discussion items...")
+
+        discussion_container = find_element_by_xpath(driver, container_xpath)
+
+        html = discussion_container.get_attribute("innerHTML")
+        soup = BeautifulSoup(html, "html.parser")
+
+        discussions = soup.find_all("div", class_="comment-item-right")
+
+        if discussions:
+            for index, discussion in enumerate(discussions):
+                index += 1
+                username = discussion.find("span", class_="user-display-name").text
+                discussion_content = discussion.find("div", class_="comment-content")
+                content = convert_to_markdown(discussion_content)
+                attachments = discussion.find_all("img")
+
+                comment_header_xpath = (
+                    f"({container_xpath}//div[@class='comment-header-left'])[{index}]"
                 )
 
-                if date_element:
-                    try:
-                        date = convert_date(date_element.text)
-                    except ParserError:
-                        raise
-                    driver.execute_script(mouse_out_command, date_element)
-                    break
-
-                retry_count += 1
-                print(
-                    f"Retrying hover on discussion date ... {retry_count}/{config.MAX_RETRIES}"
+                timestamp_xpath = (
+                    f"({comment_header_xpath}//*[@class='comment-timestamp'])[1]"
                 )
-                discussion_container.click()
-                time.sleep(3)
+                comment_timestamp = find_element_by_xpath(driver, timestamp_xpath)
 
-            result = {
-                "User": username,
-                "Content": content,
-                "Date": date,
-                "attachments": [],
-            }
+                date = None
+                retry_count = 0
+                while date is None and retry_count < config.MAX_RETRIES:
+                    driver.execute_script(javascript_command, comment_timestamp)
+                    date = get_text(driver, "//p[contains(@class, 'ms-Tooltip-subtext')]")
+                    date_element = find_element_by_xpath(
+                        driver, "//p[contains(@class, 'ms-Tooltip-subtext')]"
+                    )
 
-            for attachment in attachments or []:
-                attachment_data = scrape_discussion_attachments(
-                    driver, attachment, date
-                )
+                    if date_element:
+                        try:
+                            date = convert_date(date_element.text)
+                        except ParserError:
+                            raise
+                        driver.execute_script(mouse_out_command, date_element)
+                        break
 
-                if attachment_data:
-                    result["attachments"].append(attachment_data)
+                    retry_count += 1
+                    print(
+                        f"Retrying hover on discussion date ... {retry_count}/{config.MAX_RETRIES}"
+                    )
+                    discussion_container.click()
+                    time.sleep(3)
 
-            results.append(result)
-    return results
+                result = {
+                    "User": username,
+                    "Content": content,
+                    "Date": date,
+                    "attachments": [],
+                }
+
+                for attachment in attachments or []:
+                    attachment_data = scrape_discussion_attachments(
+                        driver, attachment, date
+                    )
+
+                    if attachment_data:
+                        result["attachments"].append(attachment_data)
+
+                results.append(result)
+        return results
+    except (StaleElementReferenceException, AttributeError):
+        return scrape_discussions(driver)
 
 
 def scrape_changesets(driver):
