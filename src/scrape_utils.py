@@ -449,9 +449,7 @@ def scrape_discussions(driver):
         results = []
         dialog_xpath = "//div[@role='dialog'][last()]"
         container_xpath = f"{dialog_xpath}//div[@class='comments-section']"
-        javascript_command = (
-            "arguments[0].dispatchEvent(new MouseEvent('mouseover', {'bubbles': true}));"
-        )
+        javascript_command = "arguments[0].dispatchEvent(new MouseEvent('mouseover', {'bubbles': true}));"
         mouse_out_command = "arguments[0].parentNode.removeChild(arguments[0]);"
 
         contains_discussions = None
@@ -496,7 +494,9 @@ def scrape_discussions(driver):
                 retry_count = 0
                 while date is None and retry_count < config.MAX_RETRIES:
                     driver.execute_script(javascript_command, comment_timestamp)
-                    date = get_text(driver, "//p[contains(@class, 'ms-Tooltip-subtext')]")
+                    date = get_text(
+                        driver, "//p[contains(@class, 'ms-Tooltip-subtext')]"
+                    )
                     date_element = find_element_by_xpath(
                         driver, "//p[contains(@class, 'ms-Tooltip-subtext')]"
                     )
