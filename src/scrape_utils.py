@@ -578,6 +578,7 @@ def scrape_development(driver):
         failed_texts = [
             ".//span[starts-with(text(), 'Integrated in build link can not be read.')]",
             ".//span[@class='la-text build-failed']",
+            ".//div[starts-with(text(), 'Integrated in build')]",
         ]
 
         if development_items:
