@@ -5,7 +5,10 @@ import string
 from datetime import datetime
 
 from dateutil.parser import parse
-from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import (
+    ElementClickInterceptedException,
+    TimeoutException,
+)
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
@@ -20,7 +23,7 @@ def click_button_by_id(driver, element_id):
     element.click()
 
 
-def click_button_by_xpath(driver, xpath, retry=0):
+def click_button_by_xpath(driver, xpath, retry=0, web_driver=None):
     while retry < config.MAX_RETRIES:
         try:
             element = WebDriverWait(driver, config.MAX_WAIT_TIME).until(
@@ -29,7 +32,12 @@ def click_button_by_xpath(driver, xpath, retry=0):
             return element.click()
 
         except TimeoutException:
-            print(f"Retrying click button xpath: {xpath}")
+            print(f"Retrying click button xpath: {xpath} {retry}/{config.MAX_RETRIES}")
+        except ElementClickInterceptedException:
+            element = WebDriverWait(driver, config.MAX_WAIT_TIME).until(
+                EC.element_to_be_clickable((By.XPATH, xpath))
+            )
+            return web_driver.execute_script("arguments[0].click();", element)
         retry += 1
 
 

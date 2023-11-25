@@ -513,7 +513,7 @@ def scrape_discussions(driver):
                     print(
                         f"Retrying hover on discussion date ... {retry_count}/{config.MAX_RETRIES}"
                     )
-                    discussion_container.click()
+                    driver.execute_script("arguments[0].click();", discussion_container)
                     time.sleep(3)
 
                 result = {
