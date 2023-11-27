@@ -4,7 +4,7 @@ import urllib.parse
 
 from bs4 import BeautifulSoup
 from dateutil.parser import ParserError
-from selenium.common.exceptions import StaleElementReferenceException
+from selenium.common.exceptions import StaleElementReferenceException, JavascriptException
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
 
@@ -312,110 +312,113 @@ def scrape_history(driver):
 
 
 def scrape_related_work(driver, dialog_box):
-    results = []
-    details_xpath = ".//li[@aria-label='Details']"
-    related_work_xpath = ".//li[@aria-label='Links']"
+    try:
+        results = []
+        details_xpath = ".//li[@aria-label='Details']"
+        related_work_xpath = ".//li[@aria-label='Links']"
 
-    # Navigate to related work tab
-    related_work_tab = find_element_by_xpath(dialog_box, related_work_xpath)
+        # Navigate to related work tab
+        related_work_tab = find_element_by_xpath(dialog_box, related_work_xpath)
 
-    if not related_work_tab.text:
-        return []
+        if not related_work_tab.text:
+            return []
 
-    related_work_tab.click()
+        related_work_tab.click()
 
-    grid_canvas_container_xpath = ".//div[@class='grid-canvas']"
-    grid_canvas_container = find_element_by_xpath(
-        dialog_box, grid_canvas_container_xpath
-    )
-    driver.execute_script(
-        "arguments[0].scrollTop = arguments[0].scrollHeight", grid_canvas_container
-    )
+        grid_canvas_container_xpath = ".//div[@class='grid-canvas']"
+        grid_canvas_container = find_element_by_xpath(
+            dialog_box, grid_canvas_container_xpath
+        )
+        driver.execute_script(
+            "arguments[0].scrollTop = arguments[0].scrollHeight", grid_canvas_container
+        )
 
-    related_work_items_xpath = f"{grid_canvas_container_xpath}//div[contains(@class, 'grid-row grid-row-normal') and @aria-level]"
-    related_work_items = find_elements_by_xpath(dialog_box, related_work_items_xpath)
+        related_work_items_xpath = f"{grid_canvas_container_xpath}//div[contains(@class, 'grid-row grid-row-normal') and @aria-level]"
+        related_work_items = find_elements_by_xpath(dialog_box, related_work_items_xpath)
 
-    # Click last work item to load all
-    related_work_items[-1].click()
+        # Click last work item to load all
+        related_work_items[-1].click()
 
-    related_work_items = find_elements_by_xpath(dialog_box, related_work_items_xpath)
-    related_work_items_elements = [
-        related_work_item for related_work_item in related_work_items
-    ]
+        related_work_items = find_elements_by_xpath(dialog_box, related_work_items_xpath)
+        related_work_items_elements = [
+            related_work_item for related_work_item in related_work_items
+        ]
 
-    soup = BeautifulSoup(dialog_box.get_attribute("innerHTML"), "html.parser")
-    soup = soup.find("div", {"class": "grid-canvas"})
-    related_work_type = None
-    related_work_data = {}
-    valid_labels = [
-        "Child",
-        "Duplicate",
-        "Duplicate Of",
-        "Predecessor",
-        "Related",
-        "Successor",
-        "Tested By",
-        "Tests",
-        "Parent",
-    ]
+        soup = BeautifulSoup(dialog_box.get_attribute("innerHTML"), "html.parser")
+        soup = soup.find("div", {"class": "grid-canvas"})
+        related_work_type = None
+        related_work_data = {}
+        valid_labels = [
+            "Child",
+            "Duplicate",
+            "Duplicate Of",
+            "Predecessor",
+            "Related",
+            "Successor",
+            "Tested By",
+            "Tests",
+            "Parent",
+        ]
 
-    for index, element in enumerate(soup.find_all("div", {"aria-level": True})):
-        is_label = element.get("aria-level") == "1"
+        for index, element in enumerate(soup.find_all("div", {"aria-level": True})):
+            is_label = element.get("aria-level") == "1"
 
-        if not is_label and related_work_type:
-            work_item = element.find("a")
+            if not is_label and related_work_type:
+                work_item = element.find("a")
 
-            work_item_url = work_item.get("href")
-            related_work_item_id = work_item_url.split("/")[-1]
-            related_work_title = validate_title(work_item.get_text())
+                work_item_url = work_item.get("href")
+                related_work_item_id = work_item_url.split("/")[-1]
+                related_work_title = validate_title(work_item.get_text())
 
-            updated_date = find_element_by_xpath(
-                related_work_items_elements[index],
-                ".//span[contains(text(), 'Updated')]",
-            )
+                updated_date = find_element_by_xpath(
+                    related_work_items_elements[index],
+                    ".//span[contains(text(), 'Updated')]",
+                )
 
-            if not updated_date:
-                continue
+                if not updated_date:
+                    continue
 
-            driver.execute_script(
-                "arguments[0].dispatchEvent(new MouseEvent('mouseover', {'bubbles': true}));",
-                updated_date,
-            )
-            updated_at_element = find_element_by_xpath(
-                driver,
-                "(.//div[contains(text(), 'Updated by') and contains(@class, 'popup-content-container')])[last()]",
-            )
-            updated_at = updated_at_element.text
+                driver.execute_script(
+                    "arguments[0].dispatchEvent(new MouseEvent('mouseover', {'bubbles': true}));",
+                    updated_date,
+                )
+                updated_at_element = find_element_by_xpath(
+                    driver,
+                    "(.//div[contains(text(), 'Updated by') and contains(@class, 'popup-content-container')])[last()]",
+                )
+                updated_at = updated_at_element.text
 
-            related_work_data[related_work_type].append(
-                {
-                    "filename_source": f"{related_work_item_id}_{related_work_title}",
-                    "link_target": f"{related_work_item_id}_{related_work_title}_update_{convert_date(updated_at)}_{related_work_type}",
-                    "updated_at": " ".join(updated_at.split(" ")[-4:]),
-                    "url": work_item_url,
-                }
-            )
-            driver.execute_script(
-                "arguments[0].parentNode.removeChild(arguments[0]);", updated_at_element
-            )
-        else:
-            related_work_type = element.find("span").get_text(strip=True)
+                related_work_data[related_work_type].append(
+                    {
+                        "filename_source": f"{related_work_item_id}_{related_work_title}",
+                        "link_target": f"{related_work_item_id}_{related_work_title}_update_{convert_date(updated_at)}_{related_work_type}",
+                        "updated_at": " ".join(updated_at.split(" ")[-4:]),
+                        "url": work_item_url,
+                    }
+                )
+                driver.execute_script(
+                    "arguments[0].parentNode.removeChild(arguments[0]);", updated_at_element
+                )
+            else:
+                related_work_type = element.find("span").get_text(strip=True)
 
-            if related_work_type not in valid_labels:
-                related_work_type = None
-                continue
+                if related_work_type not in valid_labels:
+                    related_work_type = None
+                    continue
 
-            related_work_type = re.search(r"^\w+", related_work_type).group()
-            related_work_data[related_work_type] = []
+                related_work_type = re.search(r"^\w+", related_work_type).group()
+                related_work_data[related_work_type] = []
 
-    # Format
-    for work_item_type, related_works in related_work_data.items():
-        results.append({"type": work_item_type, "related_work_items": related_works})
+        # Format
+        for work_item_type, related_works in related_work_data.items():
+            results.append({"type": work_item_type, "related_work_items": related_works})
 
-    # Navigate back to details tab
-    click_button_by_xpath(dialog_box, details_xpath)
+        # Navigate back to details tab
+        click_button_by_xpath(dialog_box, details_xpath)
 
-    return results
+        return results
+    except JavascriptException:
+        return scrape_related_work(driver, dialog_box)
 
 
 def scrape_discussion_attachments(driver, attachment, discussion_date):
