@@ -146,11 +146,9 @@ def scraper(
     )
 
     if config.UNPARENTED:
-        # element = find_element_by_xpath(
-        #     driver, "//span[text()='Unparented']//following-sibling::div"
-        # )
-        # element.click()
-        element = find_element_by_xpath(driver, "//span[@class='expand-icon bowtie-icon bowtie-toggle-expand']")
+        element = find_element_by_xpath(
+            driver, "//span[text()='Unparented']//following-sibling::div"
+        )
         element.click()
 
     work_items = find_elements_by_xpath(driver, work_item_selector)
