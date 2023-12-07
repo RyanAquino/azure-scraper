@@ -6,6 +6,7 @@ from urllib.parse import urlparse
 
 from selenium import webdriver
 from selenium.webdriver.common.action_chains import ActionChains
+from selenium.common.exceptions import TimeoutException, StaleElementReferenceException
 
 import config
 from action_utils import (
@@ -32,18 +33,25 @@ from scrape_utils import (
 
 def login(driver, url, email, password):
     # Navigate to the site and login
-    if config.ON_PREM:
-        scheme, domain, path = urlparse(url)[0:3]
-        driver.get(f"{scheme}://{email}:{password}@{domain}{path}")
-        driver.get(url)
-        return
+    try:
+        if config.ON_PREM:
+            scheme, domain, path = urlparse(url)[0:3]
+            driver.get(f"{scheme}://{email}:{password}@{domain}{path}")
+            driver.get(url)
+            return
 
-    driver.get(url)
-    send_keys_by_name(driver, "loginfmt", email)
-    click_button_by_id(driver, "idSIButton9")
-    send_keys_by_name(driver, "passwd", password)
-    click_button_by_id(driver, "idSIButton9")
-    click_button_by_id(driver, "idSIButton9")
+        driver.get(url)
+        send_keys_by_name(driver, "loginfmt", email)
+        click_button_by_id(driver, "idSIButton9")
+        send_keys_by_name(driver, "passwd", password)
+        click_button_by_id(driver, "idSIButton9")
+        click_button_by_id(driver, "idSIButton9")
+    except TimeoutException:
+        driver.get(url)
+        send_keys_by_name(driver, "loginfmt", email)
+        click_button_by_id(driver, "idSIButton9")
+    except StaleElementReferenceException:
+        login(driver, url, email, password)
 
 
 def scrape_child_work_items(driver):
@@ -112,6 +120,14 @@ def scrape_child_work_items(driver):
     return work_item_data
 
 
+def get_work_item_ids(work_items, work_item_ids):
+    for item in work_items:
+        if child := item.get("children"):
+            get_work_item_ids(child, work_item_ids)
+
+        work_item_ids.append(item.get("Task id"))
+
+
 def scraper(
     driver,
     url,
@@ -126,15 +142,28 @@ def scraper(
     logging.info("Done")
 
     # Find each work item
-    work_items = find_elements_by_xpath(driver, '//div[@aria-level="1"]')
+    work_item_selector = (
+        '//div[@class="grid-canvas ui-draggable"]//div[@aria-level="2"]'
+        if config.UNPARENTED
+        else '//div[@aria-level="1"]'
+    )
+
+    if config.UNPARENTED:
+        element = find_element_by_xpath(
+            driver, "//span[text()='Unparented']//following-sibling::div"
+        )
+        element.click()
+
+    work_items = find_elements_by_xpath(driver, work_item_selector)
     work_items_count = len(work_items)
     work_items_ctr = default_start_index
 
     result_set = default_result_set if default_result_set else []
-    result_ids = [result["Task id"] for result in result_set if result.get("Task id")]
+    result_ids = []
+    get_work_item_ids(result_set, result_ids)
 
     while work_items_ctr < work_items_count:
-        work_items = find_elements_by_xpath(driver, '//div[@aria-level="1"]')
+        work_items = find_elements_by_xpath(driver, work_item_selector)
         work_item = work_items[work_items_ctr]
 
         logging.info("Sleeping...")
