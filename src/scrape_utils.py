@@ -4,7 +4,10 @@ import urllib.parse
 
 from bs4 import BeautifulSoup
 from dateutil.parser import ParserError
-from selenium.common.exceptions import StaleElementReferenceException, JavascriptException
+from selenium.common.exceptions import (
+    StaleElementReferenceException,
+    JavascriptException,
+)
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
 
@@ -334,12 +337,16 @@ def scrape_related_work(driver, dialog_box):
         )
 
         related_work_items_xpath = f"{grid_canvas_container_xpath}//div[contains(@class, 'grid-row grid-row-normal') and @aria-level]"
-        related_work_items = find_elements_by_xpath(dialog_box, related_work_items_xpath)
+        related_work_items = find_elements_by_xpath(
+            dialog_box, related_work_items_xpath
+        )
 
         # Click last work item to load all
         related_work_items[-1].click()
 
-        related_work_items = find_elements_by_xpath(dialog_box, related_work_items_xpath)
+        related_work_items = find_elements_by_xpath(
+            dialog_box, related_work_items_xpath
+        )
         related_work_items_elements = [
             related_work_item for related_work_item in related_work_items
         ]
@@ -397,7 +404,8 @@ def scrape_related_work(driver, dialog_box):
                     }
                 )
                 driver.execute_script(
-                    "arguments[0].parentNode.removeChild(arguments[0]);", updated_at_element
+                    "arguments[0].parentNode.removeChild(arguments[0]);",
+                    updated_at_element,
                 )
             else:
                 related_work_type = element.find("span").get_text(strip=True)
@@ -411,7 +419,9 @@ def scrape_related_work(driver, dialog_box):
 
         # Format
         for work_item_type, related_works in related_work_data.items():
-            results.append({"type": work_item_type, "related_work_items": related_works})
+            results.append(
+                {"type": work_item_type, "related_work_items": related_works}
+            )
 
         # Navigate back to details tab
         click_button_by_xpath(dialog_box, details_xpath)
