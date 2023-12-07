@@ -152,15 +152,24 @@ def scraper(
         element.click()
 
     work_items = find_elements_by_xpath(driver, work_item_selector)
+    board_view = find_element_by_xpath(driver, "//div[@class='grid-canvas ui-draggable']")
     work_items_count = len(work_items)
     work_items_ctr = default_start_index
 
     result_set = default_result_set if default_result_set else []
     result_ids = []
     get_work_item_ids(result_set, result_ids)
+    item_height_size = work_items[0].size.get("height", 0) if work_items else 0
 
     while work_items_ctr < work_items_count:
-        work_items = find_elements_by_xpath(driver, work_item_selector)
+        work_items_temp = find_elements_by_xpath(driver, work_item_selector)
+
+        # Add new work items after scroll
+        for item in work_items_temp:
+            if item not in work_items:
+                work_items.append(item)
+                work_items_count += 1
+
         work_item = work_items[work_items_ctr]
 
         logging.info("Sleeping...")
@@ -191,6 +200,10 @@ def scraper(
             result_set.append(work_item_data)
 
         work_items_ctr += 1
+
+        # Adjust for next work item
+        item_height_size += item_height_size
+        driver.execute_script(f"arguments[0].scrollTo(0, {item_height_size});", board_view)
 
     logging.info(f"Saving result to {file_path}")
     save_json_file(file_path, result_set)
