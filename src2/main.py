@@ -102,6 +102,8 @@ def scrape_child_work_items(driver):
     )
 
     if child_work_items:
+        logging.info(f"Child work items for {work_item_data.get('Task id')}")
+        logging.info([i.text for i in child_work_items])
         children = []
         for work_item in child_work_items:
             click_button_by_xpath(work_item, ".//a", web_driver=driver)
