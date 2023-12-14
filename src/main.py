@@ -162,13 +162,13 @@ def scraper(
     item_height_size = work_items[0].size.get("height", 0) if work_items else 0
 
     while work_items_ctr < work_items_count:
-        work_items_temp = find_elements_by_xpath(driver, work_item_selector)
+        work_items = find_elements_by_xpath(driver, work_item_selector)
 
         # Add new work items after scroll
-        for item in work_items_temp:
-            if item not in work_items:
-                work_items.append(item)
-                work_items_count += 1
+        # for item in work_items_temp:
+        #     if item not in work_items:
+        #         work_items.append(item)
+        #         work_items_count += 1
 
         work_item = work_items[work_items_ctr]
 
@@ -202,8 +202,8 @@ def scraper(
         work_items_ctr += 1
 
         # Adjust for next work item
-        item_height_size += item_height_size
-        driver.execute_script(f"arguments[0].scrollTo(0, {item_height_size});", board_view)
+        # item_height_size += item_height_size
+        # driver.execute_script(f"arguments[0].scrollTo(0, {item_height_size});", board_view)
 
     logging.info(f"Saving result to {file_path}")
     save_json_file(file_path, result_set)
