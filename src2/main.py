@@ -165,7 +165,7 @@ def scraper(
     get_work_item_ids(result_set, result_ids)
 
     while work_items_ctr < work_items_count:
-        work_items = find_elements_by_xpath(driver, '//div[@aria-level="1"]')
+        work_items = find_elements_by_xpath(driver, work_item_selector)
         work_item = work_items[work_items_ctr]
 
         logging.info("Sleeping...")
