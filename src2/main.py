@@ -71,6 +71,8 @@ def scrape_child_work_items(driver):
         if title:
             print("Open dialog box for ", title)
             dialog_box = find_element_by_xpath(driver, dialog_xpath)
+
+        if dialog_box:
             break
 
         if retry == config.MAX_RETRIES:
@@ -79,16 +81,13 @@ def scrape_child_work_items(driver):
         retry += 1
         print(f"Retrying finding of dialog box ... {retry}/{config.MAX_RETRIES}")
 
-    try:
-        work_item_data = scrape_basic_fields(dialog_box)
-        work_item_data["Title"] = title
-        work_item_data["discussions"] = scrape_discussions(driver)
-        work_item_data["related_work"] = scrape_related_work(driver, dialog_box)
-        work_item_data["development"] = scrape_development(driver)
-        work_item_data["history"] = scrape_history(driver)
-        work_item_data["attachments"] = scrape_attachments(driver)
-    except Exception:
-        raise
+    work_item_data = scrape_basic_fields(dialog_box)
+    work_item_data["Title"] = title
+    work_item_data["discussions"] = scrape_discussions(driver)
+    work_item_data["related_work"] = scrape_related_work(driver, dialog_box)
+    work_item_data["development"] = scrape_development(driver)
+    work_item_data["history"] = scrape_history(driver)
+    work_item_data["attachments"] = scrape_attachments(driver)
 
     for key, value in work_item_data.items():
         print(key, ":", value)

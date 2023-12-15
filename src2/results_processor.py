@@ -105,7 +105,7 @@ def create_directory_hierarchy(
                             )
 
                             if os.path.exists(source):
-                                shutil.move(source, destination)
+                                shutil.copy(source, destination)
 
         if d.get("attachments"):
             for attachment in d["attachments"]:
@@ -113,7 +113,7 @@ def create_directory_hierarchy(
                 destination = Path(work_item_attachments_path, attachment["filename"])
 
                 if os.path.exists(source):
-                    shutil.move(source, destination)
+                    shutil.copy(source, destination)
 
         with open(Path(dir_path, "description.md"), "w", encoding="utf-8") as file:
             if d["description"]:
@@ -215,5 +215,5 @@ def post_process_results(save_file, downloads_directory):
         create_related_work_contents(scrape_result)
 
         # Clean downloads directory after post process
-        if downloads_directory.exists() and downloads_directory.is_dir():
-            shutil.rmtree(downloads_directory)
+        # if downloads_directory.exists() and downloads_directory.is_dir():
+        #     shutil.rmtree(downloads_directory)
