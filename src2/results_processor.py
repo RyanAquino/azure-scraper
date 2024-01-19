@@ -56,6 +56,9 @@ def create_directory_hierarchy(
 
     for d in dicts:
         dir_name = f"{d['Task id']}_{validate_title(d['Title'])}"
+        if os.path.exists(path / dir_name):
+            logging.info(f"Skipping existing directory: {dir_name}")
+            continue
         dir_path = Path(path, dir_name)
         history_path = Path(dir_path, "history")
         discussion_path = Path(dir_path, "discussion")
@@ -184,6 +187,9 @@ def create_related_work_contents(scrape_results, path: Path = Path("data")):
                     continue
 
                 work_item_path = work_item_path[0]
+                if os.path.exists(target_path):
+                    logging.info(f"Skipping existing related work: {target_path}")
+                    continue
                 create_symlink(work_item_path, target_path)
 
                 related_md_filename = Path(related_dir, f"{work_item_target}.md")
