@@ -1,5 +1,6 @@
 import json
 import shutil
+import time
 
 from selenium import webdriver
 from selenium.common.exceptions import StaleElementReferenceException
@@ -60,4 +61,5 @@ if __name__ == "__main__":
 
     with webdriver.Chrome(**chrome_config) as init_driver:
         login(init_driver, config.BASE_URL, config.EMAIL, config.PASSWORD)
+        time.sleep(5)
         main(init_driver, init_result_ids, init_result_set)
