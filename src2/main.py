@@ -129,6 +129,18 @@ def get_work_item_ids(work_items, work_item_ids):
         work_item_ids.append(item.get("Task id"))
 
 
+def validate_children(work_items, result_ids):
+    for work_item in work_items:
+        if child := work_item.get("children"):
+            if validate_children(child, result_ids) is False:
+                return False
+        else:
+            if work_item.get('Task id') not in result_ids:
+                logging.info(f"Skipped ID: {work_item.get('Task id')}")
+                return False
+    return True
+
+
 def scraper(
     driver,
     url,
@@ -191,7 +203,11 @@ def scraper(
 
             return work_items_ctr
 
-        if work_item_data.get("Task id") not in result_ids:
+        parent_work_item_id = work_item_data.get("Task id")
+        if parent_work_item_id not in result_ids:
+            result_set.append(work_item_data)
+        elif not validate_children([work_item_data], result_ids):
+            result_set = list(filter(lambda x: x.get("Task id") != parent_work_item_id, result_set))
             result_set.append(work_item_data)
 
         work_items_ctr += 1
