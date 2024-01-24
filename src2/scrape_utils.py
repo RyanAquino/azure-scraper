@@ -23,7 +23,7 @@ from action_utils import (
 )
 
 
-def scrape_basic_fields(dialog_box):
+def scrape_basic_fields(dialog_box, driver):
     labels = [
         "ID Field",
         "Assigned To Field",
@@ -43,6 +43,8 @@ def scrape_basic_fields(dialog_box):
     try:
         html = dialog_box.get_attribute("innerHTML")
         soup = BeautifulSoup(html, "html.parser")
+        description_element = None
+        img_urls = []
 
         for element in soup.find_all(attrs={"aria-label": True}):
             attribute = element.get("aria-label")
@@ -92,6 +94,24 @@ def scrape_basic_fields(dialog_box):
             description = convert_to_markdown(description_element)
             basic_fields["Description"] = description
 
+        if description_element and description_element.img:
+            img_atts = description_element.find_all("img")
+            for att in img_atts:
+                if img_src := att.get("src"):
+                    parsed_url = urllib.parse.urlparse(img_src)
+                    query_params = urllib.parse.parse_qs(parsed_url.query)
+                    resource_id = parsed_url.path.split("/")[-1]
+                    new_file_name = f"{resource_id}_{query_params.get('fileName')[0]}"
+                    query_params["fileName"] = [new_file_name]
+                    query_params["download"] = "true"
+                    updated_url = urllib.parse.urlunparse(
+                        parsed_url._replace(
+                            query=urllib.parse.urlencode(query_params, doseq=True)
+                        )
+                    )
+                    img_urls.append({"url": updated_url, "filename": new_file_name})
+                    driver.get(updated_url)
+
         return {
             "Task id": basic_fields["ID Field"],
             "User Name": basic_fields["Assigned To Field"],
@@ -105,10 +125,10 @@ def scrape_basic_fields(dialog_box):
             "Effort": basic_fields.get("Effort"),
             "Severity": basic_fields.get("Severity"),
             "description": basic_fields.get("Description"),
-        }
+        }, img_urls
 
     except AttributeError:
-        return scrape_basic_fields(dialog_box)
+        return scrape_basic_fields(dialog_box, driver)
 
 
 def scrape_attachments(driver):

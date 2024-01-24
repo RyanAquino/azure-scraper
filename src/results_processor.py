@@ -57,9 +57,6 @@ def create_directory_hierarchy(
 
     for d in dicts:
         dir_name = f"{d['Task id']}_{validate_title(d['Title'])}"
-        if os.path.exists(path / dir_name):
-            logging.info(f"Skipping existing directory: {dir_name}")
-            continue
         dir_path = Path(path, dir_name)
         history_path = Path(dir_path, "history")
         discussion_path = Path(dir_path, "discussion")
@@ -109,6 +106,7 @@ def create_directory_hierarchy(
                             file.write(
                                 f"  * [{attachment['filename']}]({destination})\n"
                             )
+                            logging.info(f"Discussion Attachment: {attachment['filename']}")
 
                             if os.path.exists(source):
                                 shutil.move(source, destination)
@@ -117,6 +115,7 @@ def create_directory_hierarchy(
             for attachment in d["attachments"]:
                 source = Path(attachments_path, attachment["filename"])
                 destination = Path(work_item_attachments_path, attachment["filename"])
+                logging.info(f"Attachment: {attachment['filename']}")
 
                 if os.path.exists(source):
                     shutil.move(source, destination)
@@ -125,6 +124,7 @@ def create_directory_hierarchy(
             for attachment in d["img_description"]:
                 source = Path(attachments_path, attachment["filename"])
                 destination = Path(work_item_img_description_path, attachment["filename"])
+                logging.info(f"Image description Attachment: {attachment['filename']}")
 
                 if os.path.exists(source):
                     shutil.move(source, destination)
