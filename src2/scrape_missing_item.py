@@ -165,6 +165,8 @@ def run_single(default_result_set, save_file, driver):
         if chrome_downloads.exists() and chrome_downloads.is_dir():
             shutil.rmtree(chrome_downloads)
 
+        return json.load(file)
+
 
 if __name__ == "__main__":
     save_file_location = "data/scrape_result.json"
@@ -176,7 +178,7 @@ if __name__ == "__main__":
             init_driver, config.BASE_URL, config.EMAIL, config.PASSWORD, init_result_set
         )
         logging.info(f"Missed items: {missed_items}")
-        # missed_items = [{"id": "50", "ctr": 7}]
+        # missed_items = [{"id": "1", "ctr": 0}, {"id": "50", "ctr": 8}]
         # login(init_driver, config.BASE_URL, config.EMAIL, config.PASSWORD)
 
         for item in missed_items:
@@ -187,4 +189,4 @@ if __name__ == "__main__":
             )
             work_item = work_items[work_item_ctr]
             work_item.click()
-            run_single(init_result_set, save_file_location, init_driver)
+            init_result_set = run_single(init_result_set, save_file_location, init_driver)
