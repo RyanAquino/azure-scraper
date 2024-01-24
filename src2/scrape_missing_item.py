@@ -145,25 +145,22 @@ def missed_scraper(
 
 
 def run_single(default_result_set, save_file, driver):
-    with open(save_file, "r", encoding="utf-8") as file:
-        scrape_result = json.load(file)
-
-        work_item_data = main_scrape_child_work_items(driver)
-        default_result_set = list(
-            filter(
-                lambda x: x.get("Task id") != work_item_data.get("Task id"),
-                default_result_set,
-            )
+    work_item_data = main_scrape_child_work_items(driver)
+    default_result_set = list(
+        filter(
+            lambda x: x.get("Task id") != work_item_data.get("Task id"),
+            default_result_set,
         )
-        default_result_set.append(work_item_data)
-        save_json_file(save_file, default_result_set)
+    )
+    default_result_set.append(work_item_data)
+    save_json_file(save_file, default_result_set)
 
-        create_directory_hierarchy(default_result_set)
-        create_related_work_contents(default_result_set)
+    create_directory_hierarchy(default_result_set)
+    create_related_work_contents(default_result_set)
 
-        # Clean downloads directory after post process
-        if chrome_downloads.exists() and chrome_downloads.is_dir():
-            shutil.rmtree(chrome_downloads)
+    # Clean downloads directory after post process
+    if chrome_downloads.exists() and chrome_downloads.is_dir():
+        shutil.rmtree(chrome_downloads)
 
     with open(save_file, "r", encoding="utf-8") as updated_file:
         return json.load(updated_file)
@@ -175,12 +172,12 @@ if __name__ == "__main__":
     chrome_config, chrome_downloads = chrome_settings_init()
 
     with webdriver.Chrome(**chrome_config) as init_driver:
-        # missed_items = missed_scraper(
-        #     init_driver, config.BASE_URL, config.EMAIL, config.PASSWORD, init_result_set
-        # )
-        # logging.info(f"Missed items: {missed_items}")
-        missed_items = [{'id': '1', 'ctr': 0}, {'id': '53', 'ctr': 8}]
-        login(init_driver, config.BASE_URL, config.EMAIL, config.PASSWORD)
+        missed_items = missed_scraper(
+            init_driver, config.BASE_URL, config.EMAIL, config.PASSWORD, init_result_set
+        )
+        logging.info(f"Missed items: {missed_items}")
+        # missed_items = [{'id': '1', 'ctr': 0}, {'id': '53', 'ctr': 8}]
+        # login(init_driver, config.BASE_URL, config.EMAIL, config.PASSWORD)
 
         for item in missed_items:
             work_item_ctr = item.get("ctr")
