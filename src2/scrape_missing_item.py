@@ -175,12 +175,12 @@ if __name__ == "__main__":
     chrome_config, chrome_downloads = chrome_settings_init()
 
     with webdriver.Chrome(**chrome_config) as init_driver:
-        # missed_items = missed_scraper(
-        #     init_driver, config.BASE_URL, config.EMAIL, config.PASSWORD, init_result_set
-        # )
-        # logging.info(f"Missed items: {missed_items}")
-        missed_items = [{'id': '1', 'ctr': 0}, {'id': '53', 'ctr': 8}]
-        login(init_driver, config.BASE_URL, config.EMAIL, config.PASSWORD)
+        missed_items = missed_scraper(
+            init_driver, config.BASE_URL, config.EMAIL, config.PASSWORD, init_result_set
+        )
+        logging.info(f"Missed items: {missed_items}")
+        # missed_items = [{'id': '1', 'ctr': 0}, {'id': '53', 'ctr': 8}]
+        # login(init_driver, config.BASE_URL, config.EMAIL, config.PASSWORD)
 
         for item in missed_items:
             work_item_ctr = item.get("ctr")
