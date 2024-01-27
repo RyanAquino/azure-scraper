@@ -101,8 +101,8 @@ def scrape_basic_fields(dialog_box, driver):
                 parsed_url = urllib.parse.urlparse(img_src)
                 query_params = urllib.parse.parse_qs(parsed_url.query)
                 resource_id = parsed_url.path.split("/")[-1]
-                new_file_name = f"{resource_id}_{query_params.get('fileName')[0]}"
-                query_params["fileName"] = [new_file_name]
+                new_file_name = f"{resource_id}_{query_params.get('FileName')[0]}"
+                query_params["FileName"] = [new_file_name]
                 query_params["download"] = "true"
                 updated_url = urllib.parse.urlunparse(
                     parsed_url._replace(
@@ -456,7 +456,7 @@ def scrape_discussion_attachments(driver, attachment, discussion_date):
     query_params = urllib.parse.parse_qs(parsed_url.query)
     resource_id = parsed_url.path.split("/")[-1]
 
-    file_name = query_params.get("fileName")
+    file_name = query_params.get("FileName")
 
     if not file_name:
         return {}
@@ -464,7 +464,7 @@ def scrape_discussion_attachments(driver, attachment, discussion_date):
     file_name = file_name[0]
     new_file_name = f"{discussion_date}_{resource_id}_{file_name}"
 
-    query_params["fileName"] = [new_file_name]
+    query_params["FileName"] = [new_file_name]
 
     if "download" not in query_params:
         query_params["download"] = "True"
@@ -474,7 +474,7 @@ def scrape_discussion_attachments(driver, attachment, discussion_date):
     )
     driver.get(updated_url)
 
-    return {"url": updated_url, "filename": query_params["fileName"][0]}
+    return {"url": updated_url, "filename": new_file_name}
 
 
 def scrape_discussions(driver):
