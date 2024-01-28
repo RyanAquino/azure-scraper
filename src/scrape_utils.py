@@ -469,7 +469,7 @@ def scrape_discussion_attachments(driver, attachment, discussion_date):
     file_name = file_name[0]
     new_file_name = f"{discussion_date}_{resource_id}_{file_name}"
 
-    query_params["FileName"] = [new_file_name]
+    query_params["fileName"] = [new_file_name]
 
     if "download" not in query_params:
         query_params["download"] = "True"
