@@ -461,7 +461,7 @@ def scrape_discussion_attachments(driver, attachment, discussion_date):
     query_params = urllib.parse.parse_qs(parsed_url.query)
     resource_id = parsed_url.path.split("/")[-1]
 
-    file_name = query_params.get("FileName")
+    file_name = query_params.get("fileName")
 
     if not file_name:
         return {}
