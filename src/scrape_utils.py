@@ -1,6 +1,9 @@
+import os
 import re
 import time
 import urllib.parse
+from pathlib import Path
+from uuid import uuid4
 
 from bs4 import BeautifulSoup
 from dateutil.parser import ParserError
@@ -26,7 +29,7 @@ from action_utils import (
 )
 
 
-def scrape_basic_fields(dialog_box, driver):
+def scrape_basic_fields(dialog_box, request_session):
     labels = [
         "ID Field",
         "Assigned To Field",
@@ -95,22 +98,24 @@ def scrape_basic_fields(dialog_box, driver):
         basic_fields["Description"] = description
 
     if description_element and description_element.img:
+        attachments_path = Path(Path.cwd(), "data", "attachments")
+        os.makedirs(attachments_path, exist_ok=True)
         img_atts = description_element.find_all("img")
         for att in img_atts:
             if img_src := att.get("src"):
                 parsed_url = urllib.parse.urlparse(img_src)
                 query_params = urllib.parse.parse_qs(parsed_url.query)
-                resource_id = parsed_url.path.split("/")[-1]
-                new_file_name = f"{resource_id}_{query_params.get('FileName')[0]}"
-                query_params["FileName"] = [new_file_name]
-                query_params["download"] = "true"
-                updated_url = urllib.parse.urlunparse(
-                    parsed_url._replace(
-                        query=urllib.parse.urlencode(query_params, doseq=True)
-                    )
-                )
-                img_urls.append({"url": updated_url, "filename": new_file_name})
-                driver.get(updated_url)
+                orig_file_name = query_params.get('FileName')[0]
+
+                response = request_session.get(img_src)
+                if response.status_code != 200:
+                    continue
+
+                file_name = f"{uuid4()}_{orig_file_name}"
+                img_urls.append({"filename": file_name})
+
+                with open(attachments_path / file_name, 'wb') as f:
+                    f.write(response.content)
 
     return {
         "Task id": basic_fields["ID Field"],

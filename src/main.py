@@ -1,6 +1,7 @@
 import json
 import time
 import traceback
+import requests
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -54,7 +55,7 @@ def login(driver, url, email, password):
         login(driver, url, email, password)
 
 
-def scrape_child_work_items(driver):
+def scrape_child_work_items(driver, request_session):
     dialog_xpath = "//div[@role='dialog'][last()]"
     title_xpath = f"{dialog_xpath}//input[@aria-label='Title Field']"
     close_xpath = ".//button[contains(@class, 'ui-button')]"
@@ -78,7 +79,7 @@ def scrape_child_work_items(driver):
         print(f"Retrying finding of dialog box ... {retry}/{config.MAX_RETRIES}")
 
     try:
-        work_item_data, desc_att = scrape_basic_fields(dialog_box, driver)
+        work_item_data, desc_att = scrape_basic_fields(dialog_box, request_session)
         work_item_data["img_description"] = desc_att
         work_item_data["Title"] = title
         work_item_data["discussions"] = scrape_discussions(driver)
@@ -108,7 +109,7 @@ def scrape_child_work_items(driver):
             actions.move_by_offset(0, 0)
             actions.perform()
 
-            child_data = scrape_child_work_items(driver)
+            child_data = scrape_child_work_items(driver, request_session)
             children.append(child_data)
 
         work_item_data["children"] = children
@@ -139,6 +140,13 @@ def scraper(
     login(driver, url, email, password)
     logging.info("Done")
 
+    request_session = requests.Session()
+    selenium_user_agent = driver.execute_script("return navigator.userAgent;")
+    request_session.headers.update({"user-agent": selenium_user_agent})
+
+    for cookie in driver.get_cookies():
+        request_session.cookies.set(cookie['name'], cookie['value'], domain=cookie['domain'])
+
     # Find each work item
     work_item_selector = (
         '//div[@class="grid-canvas ui-draggable"]//div[@aria-level="2"]'
@@ -153,14 +161,14 @@ def scraper(
         element.click()
 
     work_items = find_elements_by_xpath(driver, work_item_selector)
-    board_view = find_element_by_xpath(driver, "//div[@class='grid-canvas ui-draggable']")
+    # board_view = find_element_by_xpath(driver, "//div[@class='grid-canvas ui-draggable']")
     work_items_count = len(work_items)
     work_items_ctr = default_start_index
 
     result_set = default_result_set if default_result_set else []
     result_ids = []
     get_work_item_ids(result_set, result_ids)
-    item_height_size = work_items[0].size.get("height", 0) if work_items else 0
+    # item_height_size = work_items[0].size.get("height", 0) if work_items else 0
 
     while work_items_ctr < work_items_count:
         work_items = find_elements_by_xpath(driver, work_item_selector)
@@ -181,7 +189,7 @@ def scraper(
 
         # Scrape Child Items
         try:
-            work_item_data = scrape_child_work_items(driver)
+            work_item_data = scrape_child_work_items(driver, request_session)
         except Exception as e:
             traceback.print_exception(e)
             err_msg = str(e)
