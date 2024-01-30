@@ -248,34 +248,47 @@ def scrape_history(driver):
         retry += 1
         print(f"Retrying to find history items... {retry}/{config.MAX_RETRIES}")
 
-    for history in history_items:
-        history.click()
+    try:
+        for history in history_items:
+            driver.execute_script("arguments[0].click();", history)
 
-        details_xpath = f"{dialog_box_xpath}//div[@class='history-item-viewer']"
-        details = find_element_by_xpath(driver, details_xpath)
+            details_xpath = f"{dialog_box_xpath}//div[@class='history-item-viewer']"
+            details = find_element_by_xpath(driver, details_xpath)
 
-        soup = BeautifulSoup(details.get_attribute("innerHTML"), "html.parser")
-        username = soup.find("span", {"class": "history-item-name-changed-by"}).text
-        date = soup.find("span", {"class": "history-item-date"}).text
-        summary = soup.find("div", {"class": "history-item-summary-text"}).text
+            soup = BeautifulSoup(details.get_attribute("innerHTML"), "html.parser")
+            username = soup.find("span", {"class": "history-item-name-changed-by"}).text
+            date = soup.find("span", {"class": "history-item-date"}).text
+            summary = soup.find("div", {"class": "history-item-summary-text"}).text
 
-        result = {
-            "User": username,
-            "Date": date,
-            "Title": summary,
-            "Links": [],
-            "Fields": [],
-        }
+            result = {
+                "User": username,
+                "Date": date,
+                "Title": summary,
+                "Links": [],
+                "Fields": [],
+            }
 
-        if history_fields := soup.find("div", class_="fields"):
-            fields = history_fields.find_all("div", class_="field-name")
+            if history_fields := soup.find("div", class_="fields"):
+                fields = history_fields.find_all("div", class_="field-name")
 
-            for field in fields:
-                field_name = field.span.text
-                field_value = field.find_next_sibling("div", class_="field-values")
+                for field in fields:
+                    field_name = field.span.text
+                    field_value = field.find_next_sibling("div", class_="field-values")
 
-                new_value = field_value.find("span", class_="field-new-value")
-                old_value = field_value.find("span", class_="field-old-value")
+                    new_value = field_value.find("span", class_="field-new-value")
+                    old_value = field_value.find("span", class_="field-old-value")
+                    result["Fields"].append(
+                        {
+                            "name": field_name,
+                            "old_value": get_element_text(old_value),
+                            "new_value": get_element_text(new_value),
+                        }
+                    )
+            if html_field := soup.find("div", class_="html-field"):
+                field_name = html_field.find("div", {"class": "html-field-name"}).text
+                old_value = html_field.find("div", class_="html-field-old-value-container")
+                new_value = html_field.find("div", class_="html-field-new-value-container")
+
                 result["Fields"].append(
                     {
                         "name": field_name,
@@ -283,61 +296,51 @@ def scrape_history(driver):
                         "new_value": get_element_text(new_value),
                     }
                 )
-        if html_field := soup.find("div", class_="html-field"):
-            field_name = html_field.find("div", {"class": "html-field-name"}).text
-            old_value = html_field.find("div", class_="html-field-old-value-container")
-            new_value = html_field.find("div", class_="html-field-new-value-container")
 
-            result["Fields"].append(
-                {
-                    "name": field_name,
-                    "old_value": get_element_text(old_value),
-                    "new_value": get_element_text(new_value),
-                }
-            )
+            if added_comment := soup.find("div", {"class": "history-item-comment"}):
+                result["Fields"].append(
+                    {
+                        "name": "Comments",
+                        "old_value": None,
+                        "new_value": added_comment.text,
+                    }
+                )
 
-        if added_comment := soup.find("div", {"class": "history-item-comment"}):
-            result["Fields"].append(
-                {
-                    "name": "Comments",
-                    "old_value": None,
-                    "new_value": added_comment.text,
-                }
-            )
+            if editted_comments := soup.find(
+                "div", {"class": "history-item-comment-edited"}
+            ):
+                old_comment = editted_comments.find("div", class_="old-comment")
+                new_comment = editted_comments.find("div", class_="new-comment")
 
-        if editted_comments := soup.find(
-            "div", {"class": "history-item-comment-edited"}
-        ):
-            old_comment = editted_comments.find("div", class_="old-comment")
-            new_comment = editted_comments.find("div", class_="new-comment")
+                result["Fields"].append(
+                    {
+                        "name": "Comments",
+                        "old_value": old_comment.text,
+                        "new_value": new_comment.text,
+                    }
+                )
 
-            result["Fields"].append(
-                {
-                    "name": "Comments",
-                    "old_value": old_comment.text,
-                    "new_value": new_comment.text,
-                }
-            )
+            # Get Links
+            if link := soup.find("div", class_="history-links"):
+                display_name = link.find("span", class_="link-display-name").text
+                link = link.find("span", class_="link-text")
 
-        # Get Links
-        if link := soup.find("div", class_="history-links"):
-            display_name = link.find("span", class_="link-display-name").text
-            link = link.find("span", class_="link-text")
+                result["Links"].append(
+                    {
+                        "Type": display_name,
+                        "Link to item file": link.a.get("href") if link.a else None,
+                        "Title": link.span.text.lstrip(": ") if link.span else None,
+                    }
+                )
 
-            result["Links"].append(
-                {
-                    "Type": display_name,
-                    "Link to item file": link.a.get("href") if link.a else None,
-                    "Title": link.span.text.lstrip(": ") if link.span else None,
-                }
-            )
+            results.append(result)
 
-        results.append(result)
+        # Navigate back to details tab
+        click_button_by_xpath(driver, details_tab_xpath)
 
-    # Navigate back to details tab
-    click_button_by_xpath(driver, details_tab_xpath)
-
-    return results
+        return results
+    except StaleElementReferenceException:
+        return scrape_history(driver)
 
 
 def scrape_related_work(driver, dialog_box):
