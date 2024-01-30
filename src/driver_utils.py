@@ -14,7 +14,7 @@ def chrome_settings_init():
     language_code = "en-GB"
 
     chrome_options = ChromeOptions()
-    # chrome_options.add_argument("--headless=new")
+    chrome_options.add_argument("--headless=new")
     chrome_options.accept_insecure_certs = True
     chrome_options.add_argument("--start-maximized")
     chrome_options.add_argument("--incognito")
