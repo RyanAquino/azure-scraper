@@ -52,7 +52,7 @@ def create_directory_hierarchy(
         "history",
         "attachments",
         "development",
-        "img_description"
+        "img_description",
     ]
 
     for d in dicts:
@@ -106,7 +106,9 @@ def create_directory_hierarchy(
                             file.write(
                                 f"  * [{attachment['filename']}]({destination})\n"
                             )
-                            logging.info(f"Discussion Attachment: {attachment['filename']}")
+                            logging.info(
+                                f"Discussion Attachment: {attachment['filename']}"
+                            )
 
                             if os.path.exists(source):
                                 shutil.move(source, destination)
@@ -123,7 +125,9 @@ def create_directory_hierarchy(
         if d.get("img_description"):
             for attachment in d["img_description"]:
                 source = Path(attachments_path, attachment["filename"])
-                destination = Path(work_item_img_description_path, attachment["filename"])
+                destination = Path(
+                    work_item_img_description_path, attachment["filename"]
+                )
                 logging.info(f"Image description Attachment: {attachment['filename']}")
 
                 if os.path.exists(source):

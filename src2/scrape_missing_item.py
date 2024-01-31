@@ -187,4 +187,6 @@ if __name__ == "__main__":
             )
             work_item = work_items[work_item_ctr]
             work_item.click()
-            init_result_set = run_single(init_result_set, save_file_location, init_driver)
+            init_result_set = run_single(
+                init_result_set, save_file_location, init_driver
+            )

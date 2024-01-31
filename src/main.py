@@ -1,13 +1,13 @@
 import json
 import time
 import traceback
-import requests
 from pathlib import Path
 from urllib.parse import urlparse
 
+import requests
 from selenium import webdriver
+from selenium.common.exceptions import StaleElementReferenceException, TimeoutException
 from selenium.webdriver.common.action_chains import ActionChains
-from selenium.common.exceptions import TimeoutException, StaleElementReferenceException
 
 import config
 from action_utils import (
@@ -145,7 +145,9 @@ def scraper(
     request_session.headers.update({"user-agent": selenium_user_agent})
 
     for cookie in driver.get_cookies():
-        request_session.cookies.set(cookie['name'], cookie['value'], domain=cookie['domain'])
+        request_session.cookies.set(
+            cookie["name"], cookie["value"], domain=cookie["domain"]
+        )
 
     # Find each work item
     work_item_selector = (

@@ -5,6 +5,7 @@ import urllib.parse
 from bs4 import BeautifulSoup
 from dateutil.parser import ParserError
 from selenium.common.exceptions import StaleElementReferenceException
+from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
 
@@ -545,6 +546,9 @@ def scrape_discussions(driver):
                         f"Retrying hover on discussion date ... {retry_count}/{config.MAX_RETRIES}"
                     )
                     driver.execute_script("arguments[0].click();", discussion_container)
+                    actions = ActionChains(driver)
+                    actions.move_to_element(comment_timestamp)
+                    actions.perform()
                     time.sleep(3)
 
                 result = {

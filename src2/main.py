@@ -5,8 +5,8 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 from selenium import webdriver
+from selenium.common.exceptions import StaleElementReferenceException, TimeoutException
 from selenium.webdriver.common.action_chains import ActionChains
-from selenium.common.exceptions import TimeoutException, StaleElementReferenceException
 
 import config
 from action_utils import (
@@ -95,7 +95,8 @@ def scrape_child_work_items(driver):
 
     child_container = f"({dialog_xpath}//div[@class='la-group-title' and contains(text(), 'Child')])[1]"
     show_more(
-        dialog_box, f"{child_container}/../following-sibling::div//div[@class='la-show-more']"
+        dialog_box,
+        f"{child_container}/../following-sibling::div//div[@class='la-show-more']",
     )
     child_work_items = find_elements_by_xpath(
         dialog_box, f"{child_container}/following-sibling::div"
@@ -136,7 +137,7 @@ def validate_children(work_items, result_ids):
             if validate_children(child, result_ids) is False:
                 return False
         else:
-            if work_item.get('Task id') not in result_ids:
+            if work_item.get("Task id") not in result_ids:
                 logging.info(f"Skipped ID: {work_item.get('Task id')}")
                 return False
     return True
@@ -168,7 +169,14 @@ def scraper(
         )
         element.click()
 
-    work_items = find_elements_by_xpath(driver, work_item_selector)
+    work_items = None
+    retry_ctr = 0
+
+    while not work_items or retry_ctr < config.MAX_RETRIES:
+        work_items = find_elements_by_xpath(driver, work_item_selector)
+        retry_ctr += 1
+        time.sleep(3)
+
     work_items_count = len(work_items)
     work_items_ctr = default_start_index
 
@@ -208,7 +216,9 @@ def scraper(
         if parent_work_item_id not in result_ids:
             result_set.append(work_item_data)
         elif not validate_children([work_item_data], result_ids):
-            result_set = list(filter(lambda x: x.get("Task id") != parent_work_item_id, result_set))
+            result_set = list(
+                filter(lambda x: x.get("Task id") != parent_work_item_id, result_set)
+            )
             result_set.append(work_item_data)
 
         work_items_ctr += 1

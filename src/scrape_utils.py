@@ -8,14 +8,14 @@ from uuid import uuid4
 from bs4 import BeautifulSoup
 from dateutil.parser import ParserError
 from selenium.common.exceptions import (
-    StaleElementReferenceException,
     JavascriptException,
+    StaleElementReferenceException,
 )
+from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
 
 import config
-from selenium.webdriver.common.action_chains import ActionChains
 from action_utils import (
     click_button_by_xpath,
     convert_date,
@@ -115,7 +115,7 @@ def scrape_basic_fields(dialog_box, request_session):
                 file_name = f"{uuid4()}_{orig_file_name}"
                 img_urls.append({"filename": file_name})
 
-                with open(attachments_path / file_name, 'wb') as f:
+                with open(attachments_path / file_name, "wb") as f:
                     f.write(response.content)
 
     return {
@@ -286,8 +286,12 @@ def scrape_history(driver):
                     )
             if html_field := soup.find("div", class_="html-field"):
                 field_name = html_field.find("div", {"class": "html-field-name"}).text
-                old_value = html_field.find("div", class_="html-field-old-value-container")
-                new_value = html_field.find("div", class_="html-field-new-value-container")
+                old_value = html_field.find(
+                    "div", class_="html-field-old-value-container"
+                )
+                new_value = html_field.find(
+                    "div", class_="html-field-new-value-container"
+                )
 
                 result["Fields"].append(
                     {
