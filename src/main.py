@@ -166,6 +166,7 @@ def scraper(
     while not work_items or retry_ctr < config.MAX_RETRIES:
         work_items = find_elements_by_xpath(driver, work_item_selector)
         retry_ctr += 1
+        time.sleep(3)
 
     # board_view = find_element_by_xpath(driver, "//div[@class='grid-canvas ui-draggable']")
     work_items_count = len(work_items)
