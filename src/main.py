@@ -106,7 +106,8 @@ def scrape_child_work_items(driver, request_session):
             click_button_by_xpath(work_item, ".//a", web_driver=driver)
 
             actions = ActionChains(driver)
-            actions.move_by_offset(0, 0)
+            # actions.move_by_offset(0, 0)
+            actions.move_to_element(dialog_box)
             actions.perform()
 
             child_data = scrape_child_work_items(driver, request_session)
