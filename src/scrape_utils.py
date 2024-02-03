@@ -184,9 +184,10 @@ def scrape_attachments(driver):
             )
 
         retry = 0
-        attachment_href = None
 
         for grid_row in grid_rows:
+            attachment_href = find_element_by_xpath(grid_row, ".//a")
+
             while not attachment_href and retry < config.MAX_RETRIES:
                 attachment_href = find_element_by_xpath(grid_row, ".//a")
                 retry += 1
