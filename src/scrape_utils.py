@@ -534,8 +534,8 @@ def scrape_discussions(driver):
                 index += 1
                 username = discussion.find("span", class_="user-display-name").text
                 discussion_content = discussion.find("div", class_="comment-content")
-                content = convert_to_markdown(discussion_content)
                 attachments = discussion.find_all("img")
+                content = convert_to_markdown(discussion_content)
 
                 comment_header_xpath = (
                     f"({container_xpath}//div[@class='comment-header-left'])[{index}]"
