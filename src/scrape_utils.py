@@ -29,7 +29,7 @@ from action_utils import (
     show_more,
     validate_title,
 )
-from src.driver_utils import session_re_authenticate
+from driver_utils import session_re_authenticate
 
 
 def scrape_basic_fields(dialog_box, driver, request_session):
