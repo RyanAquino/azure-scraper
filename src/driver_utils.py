@@ -43,3 +43,10 @@ def chrome_settings_init():
         os.makedirs(download_directory)
 
     return chrome_settings, download_directory
+
+
+def session_re_authenticate(request_session, driver):
+    for cookie in driver.get_cookies():
+        request_session.cookies.set(
+            cookie["name"], cookie["value"], domain=cookie["domain"]
+        )

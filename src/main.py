@@ -79,7 +79,7 @@ def scrape_child_work_items(driver, request_session):
         print(f"Retrying finding of dialog box ... {retry}/{config.MAX_RETRIES}")
 
     try:
-        work_item_data, desc_att = scrape_basic_fields(dialog_box, request_session)
+        work_item_data, desc_att = scrape_basic_fields(dialog_box, driver, request_session)
         work_item_data["img_description"] = desc_att
         work_item_data["Title"] = title
         work_item_data["discussions"] = scrape_discussions(driver)
@@ -165,8 +165,9 @@ def scraper(
 
     work_items = None
     retry_ctr = 0
+    time.sleep(5)
 
-    while not work_items or retry_ctr < config.MAX_RETRIES:
+    while not work_items and retry_ctr < config.MAX_RETRIES:
         work_items = find_elements_by_xpath(driver, work_item_selector)
         retry_ctr += 1
         time.sleep(3)

@@ -1,3 +1,4 @@
+import logging
 import os
 import re
 import time
@@ -28,9 +29,10 @@ from action_utils import (
     show_more,
     validate_title,
 )
+from src.driver_utils import session_re_authenticate
 
 
-def scrape_basic_fields(dialog_box, request_session):
+def scrape_basic_fields(dialog_box, driver, request_session):
     labels = [
         "ID Field",
         "Assigned To Field",
@@ -49,7 +51,7 @@ def scrape_basic_fields(dialog_box, request_session):
 
     html = dialog_box.get_attribute("innerHTML")
     soup = BeautifulSoup(html, "html.parser")
-    description_element = None
+    description_images = None
     img_urls = []
 
     for element in soup.find_all(attrs={"aria-label": True}):
@@ -88,6 +90,7 @@ def scrape_basic_fields(dialog_box, request_session):
     elif soup.find(attrs={"aria-label": "Resolution section."}):
         description_element = soup.find(attrs={"aria-label": "Description"})
         resolution_element = soup.find(attrs={"aria-label": "Resolution"})
+        description_images = description_element.find_all("img")
         description = f"* Description\n\t* {convert_to_markdown(description_element)}\n"
         resolution = f"* Repro Steps\n\t* {convert_to_markdown(resolution_element)}\n"
 
@@ -95,13 +98,14 @@ def scrape_basic_fields(dialog_box, request_session):
 
     else:
         description_element = soup.find(attrs={"aria-label": "Description"})
+        description_images = description_element.find_all("img")
         description = convert_to_markdown(description_element)
         basic_fields["Description"] = description
 
-    if description_element and description_element.img:
+    if description_images:
         attachments_path = Path(Path.cwd(), "data", "attachments")
         os.makedirs(attachments_path, exist_ok=True)
-        img_atts = description_element.find_all("img")
+        img_atts = description_images
         for att in img_atts:
             if img_src := att.get("src"):
                 parsed_url = urllib.parse.urlparse(img_src)
@@ -109,7 +113,12 @@ def scrape_basic_fields(dialog_box, request_session):
                 orig_file_name = query_params.get('FileName')[0]
 
                 response = request_session.get(img_src)
+
+                if response.status_code == 203:
+                    session_re_authenticate(request_session, driver)
+
                 if response.status_code != 200:
+                    logging.info(f"Error downloading image description: {response.status_code}: {str(response.content)}")
                     continue
 
                 file_name = f"{uuid4()}_{orig_file_name}"
