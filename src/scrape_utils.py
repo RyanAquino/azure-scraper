@@ -116,6 +116,7 @@ def scrape_basic_fields(dialog_box, driver, request_session):
 
                 if response.status_code == 203:
                     session_re_authenticate(request_session, driver)
+                    response = request_session.get(img_src)
 
                 if response.status_code != 200:
                     logging.info(f"Error downloading image description: {response.status_code}: {str(response.content)}")
