@@ -11,7 +11,7 @@ from action_utils import add_line_break, convert_date, create_symlink, validate_
 from logger import logging
 
 
-def create_history_metadata(history, history_path):
+def create_history_metadata(history, history_path, attachments_path):
     characters = string.ascii_letters + string.digits
 
     for item in history:
@@ -21,6 +21,10 @@ def create_history_metadata(history, history_path):
         user = "_".join(item['User'].split(" "))
         filename = f"{formatted_date}_{uuid_randomizer}_{user}_{title}.md"
         path = Path(history_path, filename)
+
+        history_attachments_path = Path(history_path, "attachments")
+        os.makedirs(history_attachments_path, exist_ok=True)
+
         with open(path, "w", encoding="utf-8") as file:
             file.write(f"* Date: {item['Date']}\n")
             file.write(f"   * User: {item['User']}\n")
@@ -36,18 +40,23 @@ def create_history_metadata(history, history_path):
                     file.write(f"           * New Value: {field['new_value']}\n")
 
                     if old_atts := field.get("old_attachments"):
-                        file.write(f"       * Old Attachments\n")
+                        file.write(f"           * Old Attachments\n")
                         for old_att in old_atts:
-                            file.write(f"           * Change Type: {old_att['Change Type']}\n")
-                            file.write(f"           * Image URL: {old_att['image_url']}\n")
-                            file.write(f"           * File Name: {old_att['File Name']}\n")
+                            file.write(f"               * File Name: {old_att['File Name']}\n")
 
                     if new_atts := field.get("new_attachments"):
-                        file.write(f"       * New Attachments\n")
+                        file.write(f"           * New Attachments\n")
                         for new_att in new_atts:
-                            file.write(f"           * Change Type: {new_att['Change Type']}\n")
-                            file.write(f"           * Image URL: {new_att['image_url']}\n")
-                            file.write(f"           * File Name: {new_att['File Name']}\n")
+                            att_file_name = new_att['File Name']
+                            source = Path(attachments_path, att_file_name)
+                            destination = Path(
+                                history_attachments_path, att_file_name
+                            )
+                            file.write(f"               * File Name: {att_file_name}\n")
+                            file.write(f"               * Absolute link to attachment:  [{att_file_name}]({destination})\n")
+
+                            if os.path.exists(source):
+                                shutil.move(source, destination)
 
             if links := item.get("Links"):
                 for link in links:
@@ -106,7 +115,7 @@ def create_directory_hierarchy(
         os.makedirs(work_item_img_description_path, exist_ok=True)
 
         if "history" in d and d["history"]:
-            create_history_metadata(d.pop("history"), history_path)
+            create_history_metadata(d.pop("history"), history_path, attachments_path)
 
         if "discussions" in d and d["discussions"]:
             for discussion in d.pop("discussions"):
