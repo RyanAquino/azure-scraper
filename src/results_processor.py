@@ -23,7 +23,9 @@ def create_history_metadata(history, history_path, attachments_path):
         path = Path(history_path, filename)
 
         history_attachments_path = Path(history_path, "attachments")
+        history_deleted_attachments_path = Path(history_path, "removed_attachments")
         os.makedirs(history_attachments_path, exist_ok=True)
+        os.makedirs(history_deleted_attachments_path, exist_ok=True)
 
         with open(path, "w", encoding="utf-8") as file:
             file.write(f"* Date: {item['Date']}\n")
@@ -42,7 +44,15 @@ def create_history_metadata(history, history_path, attachments_path):
                     if old_atts := field.get("old_attachments"):
                         file.write(f"           * Old Attachments\n")
                         for old_att in old_atts:
+                            att_file_name = old_att['File Name']
+                            source = Path(attachments_path, att_file_name)
+                            destination = Path(
+                                history_deleted_attachments_path, att_file_name
+                            )
                             file.write(f"               * File Name: {old_att['File Name']}\n")
+                            file.write(f"               * Absolute link to attachment:  [{att_file_name}]({destination})\n")
+                            if os.path.exists(source):
+                                shutil.move(source, destination)
 
                     if new_atts := field.get("new_attachments"):
                         file.write(f"           * New Attachments\n")

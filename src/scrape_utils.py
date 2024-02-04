@@ -302,7 +302,8 @@ def scrape_history(driver):
                 new_value = html_field.find(
                     "div", class_="html-field-new-value-container"
                 )
-                new_value_text = new_value.find_all("span")[-1]
+                new_value_text = new_value.find_all("span")[-1] if new_value else None
+
                 old_value = html_field.find(
                     "div", class_="html-field-old-value-container"
                 )
@@ -313,24 +314,39 @@ def scrape_history(driver):
                     old_value = old_value.find_all("span")[-1]
 
                     for image_url in old_image_urls:
+                        image_url = image_url.get("href")
+                        parsed_url = urllib.parse.urlparse(image_url)
+                        query_params = urllib.parse.parse_qs(parsed_url.query)
+                        resource_id = parsed_url.path.split("/")[-1]
+                        orig_file_name = query_params.get("FileName")[0]
+
+                        new_file_name = f"{uuid4()}_{resource_id}_{orig_file_name}"
+
+                        query_params["FileName"] = [new_file_name]
+                        query_params["download"] = "True"
+
+                        updated_url = urllib.parse.urlunparse(
+                            parsed_url._replace(query=urllib.parse.urlencode(query_params, doseq=True))
+                        )
+                        driver.get(updated_url)
+
                         old_value_images.append({
-                            "File Name": image_url.img.get("alt")
+                            "File Name": new_file_name
                         })
 
                 new_value_images = []
 
-                if image_urls := new_value.find_all("a"):
-
+                if new_value and (image_urls := new_value.find_all("a")):
                     for image_url in image_urls:
                         image_url = image_url.get("href")
                         parsed_url = urllib.parse.urlparse(image_url)
                         query_params = urllib.parse.parse_qs(parsed_url.query)
                         resource_id = parsed_url.path.split("/")[-1]
-                        orig_file_name = query_params.get("fileName")[0]
+                        orig_file_name = query_params.get("FileName")[0]
 
-                        new_file_name = f"{resource_id}_{orig_file_name}"
+                        new_file_name = f"{uuid4()}_{resource_id}_{orig_file_name}"
 
-                        query_params["fileName"] = [new_file_name]
+                        query_params["FileName"] = [new_file_name]
                         query_params["download"] = "True"
 
                         updated_url = urllib.parse.urlunparse(
@@ -352,7 +368,7 @@ def scrape_history(driver):
                     }
                 )
 
-            if added_comment := soup.find("div", {"class": "history-item-comment"}):
+            if (added_comment := soup.find("div", {"class": "history-item-comment"})) and "Added a comment" in summary:
                 img_discussion_attachments = []
                 if image_urls := added_comment.find_all("a"):
                     for image_url in image_urls:
@@ -362,7 +378,7 @@ def scrape_history(driver):
                         resource_id = parsed_url.path.split("/")[-1]
                         orig_file_name = query_params.get("fileName")[0]
 
-                        new_file_name = f"{resource_id}_{orig_file_name}"
+                        new_file_name = f"{uuid4()}_{resource_id}_{orig_file_name}"
 
                         query_params["fileName"] = [new_file_name]
                         query_params["download"] = "True"
@@ -403,7 +419,7 @@ def scrape_history(driver):
                         resource_id = parsed_url.path.split("/")[-1]
                         orig_file_name = query_params.get("fileName")[0]
 
-                        new_file_name = f"{resource_id}_{orig_file_name}"
+                        new_file_name = f"{uuid4()}_{resource_id}_{orig_file_name}"
 
                         query_params["fileName"] = [new_file_name]
                         query_params["download"] = "True"
@@ -426,7 +442,7 @@ def scrape_history(driver):
                         resource_id = parsed_url.path.split("/")[-1]
                         orig_file_name = query_params.get("fileName")[0]
 
-                        new_file_name = f"{resource_id}_{orig_file_name}"
+                        new_file_name = f"{uuid4()}_{resource_id}_{orig_file_name}"
 
                         query_params["fileName"] = [new_file_name]
                         query_params["download"] = "True"
