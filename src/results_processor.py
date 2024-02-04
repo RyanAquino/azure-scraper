@@ -34,10 +34,17 @@ def create_history_metadata(history, history_path):
                 for link in links:
                     file.write("   * Links\n")
                     file.write(f"       * Type: {link['Type']}\n")
+                    file.write(f"       * Change Type: {link['Change Type']}\n")
                     file.write(
                         f"       * Link to item file: {link['Link to item file']}\n"
                     )
                     file.write(f"       * Title: {link['Title']}\n")
+
+            if attachments := item.get("Attachments"):
+                for attachment in attachments:
+                    file.write("   * Attachment\n")
+                    file.write(f"       * Change Type: {attachment['Change Type']}\n")
+                    file.write(f"       * File Name: {attachment['File Name']}\n")
 
 
 def create_directory_hierarchy(

@@ -262,6 +262,7 @@ def scrape_history(driver):
     try:
         for history in history_items:
             driver.execute_script("arguments[0].click();", history)
+            time.sleep(1)
 
             details_xpath = f"{dialog_box_xpath}//div[@class='history-item-viewer']"
             details = find_element_by_xpath(driver, details_xpath)
@@ -277,6 +278,7 @@ def scrape_history(driver):
                 "Title": summary,
                 "Links": [],
                 "Fields": [],
+                "Attachments": []
             }
 
             if history_fields := soup.find("div", class_="fields"):
@@ -339,18 +341,37 @@ def scrape_history(driver):
                 )
 
             # Get Links
-            if link := soup.find("div", class_="history-links"):
-                display_name = link.find("span", class_="link-display-name").text
-                link = link.find("span", class_="link-text")
+            if links := soup.find("div", class_="history-links"):
+                links = links.find_all("div", class_="link")
 
-                result["Links"].append(
-                    {
-                        "Type": display_name,
-                        "Link to item file": link.a.get("href") if link.a else None,
-                        "Title": link.span.text.lstrip(": ") if link.span else None,
-                    }
-                )
+                for link in links:
+                    is_deleted = "Deleted" if "link-delete" in link.get("class") else "Added"
+                    display_name = link.find("span", class_="link-display-name").text
+                    link = link.find("span", class_="link-text")
 
+                    result["Links"].append(
+                        {
+                            "Change Type": is_deleted,
+                            "Type": display_name,
+                            "Link to item file": link.a.get("href"),
+                            "Title": link.a.text.lstrip(": "),
+                        }
+                    )
+
+            # Attachments
+            if attachments := soup.find("div", class_="history-attachments"):
+                attachments = attachments.find_all("div", class_="attachment")
+
+                for attachment in attachments:
+                    attachment_file_name = attachment.find("span", class_="attachment-text")
+                    is_deleted = attachment.find("del")
+                    attachment_change_type = "Deleted" if is_deleted else "Added"
+                    result["Attachments"].append(
+                        {
+                            "Change Type": attachment_change_type,
+                            "File Name": get_element_text(attachment_file_name),
+                        }
+                    )
             results.append(result)
 
         # Navigate back to details tab
