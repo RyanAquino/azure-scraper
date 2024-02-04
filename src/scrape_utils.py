@@ -302,18 +302,46 @@ def scrape_history(driver):
                 new_value = html_field.find(
                     "div", class_="html-field-new-value-container"
                 )
-                new_value = new_value.find_all("span")[-1]
+                new_value_text = new_value.find_all("span")[-1]
                 old_value = html_field.find(
                     "div", class_="html-field-old-value-container"
                 )
+                old_value_images = []
+
                 if old_value:
+                    old_image_urls = old_value.find_all("a")
+                    has_removed = old_value.find("del")
                     old_value = old_value.find_all("span")[-1]
+                    has_removed = "Deleted" if has_removed else "Added"
+
+                    for image_url in old_image_urls:
+
+                        old_value_images.append({
+                            "Change Type": has_removed,
+                            "image_url": image_url.get("href"),
+                            "File Name": image_url.img.get("alt")
+                        })
+
+                new_value_images = []
+
+                if image_urls := new_value.find_all("a"):
+                    has_added = new_value.find("ins")
+                    has_added = "Added" if has_added else "Deleted"
+
+                    for image_url in image_urls:
+                        new_value_images.append({
+                            "Change Type": has_added,
+                            "image_url": image_url.get("href"),
+                            "File Name": image_url.img.get("alt")
+                        })
 
                 result["Fields"].append(
                     {
                         "name": field_name,
                         "old_value": get_element_text(old_value),
-                        "new_value": get_element_text(new_value),
+                        "old_attachments": old_value_images,
+                        "new_value": get_element_text(new_value_text),
+                        "new_attachments": new_value_images
                     }
                 )
 
