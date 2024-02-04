@@ -13,7 +13,8 @@ def create_history_metadata(history, history_path):
     for item in history:
         formatted_date = convert_date(item["Date"], date_format="%a %d/%m/%Y %H:%M")
         title = validate_title(item["Title"])
-        filename = f"{formatted_date}_{item['User']}_{title}.md"
+        user = "_".join(item['User'].split(" "))
+        filename = f"{formatted_date}_{user}_{title}.md"
         path = Path(history_path, filename)
         with open(path, "w", encoding="utf-8") as file:
             file.write(f"* Date: {item['Date']}\n")
