@@ -40,7 +40,8 @@ def chrome_settings_init():
     # Clean attachments directory
     if os.path.isdir(download_directory) and not os.listdir(download_directory):
         shutil.rmtree(download_directory)
-        os.makedirs(download_directory)
+
+    os.makedirs(download_directory, exist_ok=True)
 
     return chrome_settings, download_directory
 
