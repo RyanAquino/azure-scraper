@@ -373,8 +373,12 @@ def scrape_history(driver, request_session, chrome_downloads):
                         parsed_url = urllib.parse.urlparse(image_url)
                         query_params = urllib.parse.parse_qs(parsed_url.query)
                         resource_id = parsed_url.path.split("/")[-1]
-                        orig_file_name = query_params.get("fileName")[0]
+                        orig_file_name = query_params.get("fileName")
 
+                        if not orig_file_name:
+                            continue
+
+                        orig_file_name = orig_file_name[0]
                         new_file_name = f"{uuid4()}_{resource_id}_{orig_file_name}"
 
                         query_params["fileName"] = [new_file_name]
@@ -414,8 +418,12 @@ def scrape_history(driver, request_session, chrome_downloads):
                         parsed_url = urllib.parse.urlparse(image_url)
                         query_params = urllib.parse.parse_qs(parsed_url.query)
                         resource_id = parsed_url.path.split("/")[-1]
-                        orig_file_name = query_params.get("fileName")[0]
+                        orig_file_name = query_params.get("fileName")
 
+                        if not orig_file_name:
+                            continue
+
+                        orig_file_name = orig_file_name[0]
                         new_file_name = f"{uuid4()}_{resource_id}_{orig_file_name}"
 
                         query_params["fileName"] = [new_file_name]
@@ -437,8 +445,12 @@ def scrape_history(driver, request_session, chrome_downloads):
                         parsed_url = urllib.parse.urlparse(image_url)
                         query_params = urllib.parse.parse_qs(parsed_url.query)
                         resource_id = parsed_url.path.split("/")[-1]
-                        orig_file_name = query_params.get("fileName")[0]
+                        orig_file_name = query_params.get("fileName")
 
+                        if not orig_file_name:
+                            continue
+
+                        orig_file_name = orig_file_name[0]
                         new_file_name = f"{uuid4()}_{resource_id}_{orig_file_name}"
 
                         query_params["fileName"] = [new_file_name]
