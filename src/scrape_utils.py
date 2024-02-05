@@ -32,7 +32,7 @@ from action_utils import (
 from driver_utils import session_re_authenticate
 
 
-def scrape_basic_fields(dialog_box, driver, request_session):
+def scrape_basic_fields(dialog_box, driver, request_session, chrome_downloads):
     labels = [
         "ID Field",
         "Assigned To Field",
@@ -103,10 +103,7 @@ def scrape_basic_fields(dialog_box, driver, request_session):
         basic_fields["Description"] = description
 
     if description_images:
-        attachments_path = Path(Path.cwd(), "data", "attachments")
-        os.makedirs(attachments_path, exist_ok=True)
-        img_atts = description_images
-        for att in img_atts:
+        for att in description_images:
             if img_src := att.get("src"):
                 parsed_url = urllib.parse.urlparse(img_src)
                 query_params = urllib.parse.parse_qs(parsed_url.query)
@@ -125,7 +122,7 @@ def scrape_basic_fields(dialog_box, driver, request_session):
                 file_name = f"{uuid4()}_{orig_file_name}"
                 img_urls.append({"filename": file_name})
 
-                with open(attachments_path / file_name, "wb") as f:
+                with open(chrome_downloads / file_name, "wb") as f:
                     f.write(response.content)
 
     return {
@@ -230,7 +227,7 @@ def get_element_text(element):
         return element.text
 
 
-def scrape_history(driver):
+def scrape_history(driver, request_session, chrome_downloads):
     results = []
     dialog_box_xpath = "//div[@role='dialog'][last()]"
     details_tab_xpath = f"{dialog_box_xpath}//li[@aria-label='Details']"
@@ -328,7 +325,7 @@ def scrape_history(driver):
                         updated_url = urllib.parse.urlunparse(
                             parsed_url._replace(query=urllib.parse.urlencode(query_params, doseq=True))
                         )
-                        driver.get(updated_url)
+                        request_download_image(request_session, updated_url, driver, chrome_downloads / new_file_name)
 
                         old_value_images.append({
                             "File Name": new_file_name
@@ -352,7 +349,7 @@ def scrape_history(driver):
                         updated_url = urllib.parse.urlunparse(
                             parsed_url._replace(query=urllib.parse.urlencode(query_params, doseq=True))
                         )
-                        driver.get(updated_url)
+                        request_download_image(request_session, updated_url, driver, chrome_downloads / new_file_name)
 
                         new_value_images.append({
                             "File Name": new_file_name
@@ -386,7 +383,7 @@ def scrape_history(driver):
                         updated_url = urllib.parse.urlunparse(
                             parsed_url._replace(query=urllib.parse.urlencode(query_params, doseq=True))
                         )
-                        driver.get(updated_url)
+                        request_download_image(request_session, updated_url, driver, chrome_downloads / new_file_name)
 
                         img_discussion_attachments.append({
                             "File Name": new_file_name
@@ -427,7 +424,7 @@ def scrape_history(driver):
                         updated_url = urllib.parse.urlunparse(
                             parsed_url._replace(query=urllib.parse.urlencode(query_params, doseq=True))
                         )
-                        driver.get(updated_url)
+                        request_download_image(request_session, updated_url, driver, chrome_downloads / new_file_name)
 
                         old_comment_atts.append({
                             "File Name": new_file_name
@@ -450,7 +447,7 @@ def scrape_history(driver):
                         updated_url = urllib.parse.urlunparse(
                             parsed_url._replace(query=urllib.parse.urlencode(query_params, doseq=True))
                         )
-                        driver.get(updated_url)
+                        request_download_image(request_session, updated_url, driver, chrome_downloads / new_file_name)
 
                         new_comment_atts.append({
                             "File Name": new_file_name
@@ -475,12 +472,22 @@ def scrape_history(driver):
                     display_name = link.find("span", class_="link-display-name").text
                     link = link.find("span", class_="link-text")
 
+                    try:
+                        title = link.a.text.lstrip(": ")
+                    except AttributeError:
+                        title = link.text
+
+                    try:
+                        link_item_file = link.a.get("href")
+                    except AttributeError:
+                        link_item_file = link.text
+
                     result["Links"].append(
                         {
                             "Change Type": is_deleted,
                             "Type": display_name,
-                            "Link to item file": link.a.get("href"),
-                            "Title": link.a.text.lstrip(": "),
+                            "Link to item file": link_item_file,
+                            "Title": title,
                         }
                     )
 
@@ -505,7 +512,7 @@ def scrape_history(driver):
 
         return results
     except StaleElementReferenceException:
-        return scrape_history(driver)
+        return scrape_history(driver, request_session, chrome_downloads)
 
 
 def scrape_related_work(driver, dialog_box):
@@ -822,3 +829,19 @@ def scrape_development(driver):
 def log_html(page_source, log_file_path="source.log"):
     with open(log_file_path, "w", encoding="utf-8") as file:
         file.write(page_source)
+
+
+def request_download_image(request_session, img_src, driver, file_path):
+    response = request_session.get(img_src)
+
+    if response.status_code == 203:
+        session_re_authenticate(request_session, driver)
+        response = request_session.get(img_src)
+
+    if response.status_code != 200:
+        logging.info(f"Error downloading image description: {response.status_code}: {str(response.content)}")
+
+    with open(file_path, "wb") as f:
+        f.write(response.content)
+
+    return response

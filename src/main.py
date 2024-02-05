@@ -55,7 +55,7 @@ def login(driver, url, email, password):
         login(driver, url, email, password)
 
 
-def scrape_child_work_items(driver, request_session):
+def scrape_child_work_items(driver, request_session, chrome_downloads):
     dialog_xpath = "//div[@role='dialog'][last()]"
     title_xpath = f"{dialog_xpath}//input[@aria-label='Title Field']"
     close_xpath = ".//button[contains(@class, 'ui-button')]"
@@ -79,13 +79,13 @@ def scrape_child_work_items(driver, request_session):
         print(f"Retrying finding of dialog box ... {retry}/{config.MAX_RETRIES}")
 
     try:
-        work_item_data, desc_att = scrape_basic_fields(dialog_box, driver, request_session)
+        work_item_data, desc_att = scrape_basic_fields(dialog_box, driver, request_session, chrome_downloads)
         work_item_data["img_description"] = desc_att
         work_item_data["Title"] = title
         work_item_data["discussions"] = scrape_discussions(driver)
         work_item_data["related_work"] = scrape_related_work(driver, dialog_box)
         work_item_data["development"] = scrape_development(driver)
-        work_item_data["history"] = scrape_history(driver)
+        work_item_data["history"] = scrape_history(driver, request_session, chrome_downloads)
         work_item_data["attachments"] = scrape_attachments(driver)
     except Exception:
         raise
@@ -134,6 +134,7 @@ def scraper(
     email,
     password,
     file_path,
+    chrome_downloads,
     default_result_set=None,
     default_start_index=0,
 ):
@@ -200,7 +201,7 @@ def scraper(
 
         # Scrape Child Items
         try:
-            work_item_data = scrape_child_work_items(driver, request_session)
+            work_item_data = scrape_child_work_items(driver, request_session, chrome_downloads)
         except Exception as e:
             traceback.print_exception(e)
             err_msg = str(e)
@@ -259,6 +260,7 @@ def main(default_start_index):
             config.EMAIL,
             config.PASSWORD,
             save_file,
+            chrome_downloads,
             default_result_set,
             default_start_index,
         )
