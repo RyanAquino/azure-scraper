@@ -107,7 +107,7 @@ def scrape_basic_fields(dialog_box, driver, request_session, chrome_downloads):
             if img_src := att.get("src"):
                 parsed_url = urllib.parse.urlparse(img_src)
                 query_params = urllib.parse.parse_qs(parsed_url.query)
-                orig_file_name = query_params.get('FileName')[0]
+                orig_file_name = query_params.get("FileName")[0]
 
                 response = request_session.get(img_src)
 
@@ -315,7 +315,12 @@ def scrape_history(driver, request_session, chrome_downloads):
                         parsed_url = urllib.parse.urlparse(image_url)
                         query_params = urllib.parse.parse_qs(parsed_url.query)
                         resource_id = parsed_url.path.split("/")[-1]
-                        orig_file_name = query_params.get("FileName")[0]
+                        orig_file_name = query_params.get("FileName")
+
+                        if not orig_file_name:
+                            continue
+
+                        orig_file_name = orig_file_name[0]
 
                         new_file_name = f"{uuid4()}_{resource_id}_{orig_file_name}"
 
@@ -339,7 +344,12 @@ def scrape_history(driver, request_session, chrome_downloads):
                         parsed_url = urllib.parse.urlparse(image_url)
                         query_params = urllib.parse.parse_qs(parsed_url.query)
                         resource_id = parsed_url.path.split("/")[-1]
-                        orig_file_name = query_params.get("FileName")[0]
+                        orig_file_name = query_params.get("FileName")
+
+                        if not orig_file_name:
+                            continue
+
+                        orig_file_name = orig_file_name[0]
 
                         new_file_name = f"{uuid4()}_{resource_id}_{orig_file_name}"
 
