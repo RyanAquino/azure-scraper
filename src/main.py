@@ -110,7 +110,7 @@ def scrape_child_work_items(driver, request_session, chrome_downloads):
             actions.move_to_element(dialog_box)
             actions.perform()
 
-            child_data = scrape_child_work_items(driver, request_session)
+            child_data = scrape_child_work_items(driver, request_session, chrome_downloads)
             children.append(child_data)
 
         work_item_data["children"] = children
