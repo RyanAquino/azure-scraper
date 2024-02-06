@@ -184,9 +184,16 @@ def scrape_attachments(driver):
                 f"Retrying to find attachment row items... {retry}/{config.MAX_RETRIES}"
             )
 
+        grid_rows_ctr = 0
         retry = 0
 
-        for grid_row in grid_rows:
+        while grid_rows_ctr < len(grid_rows):
+            grid_rows = find_elements_by_xpath(
+                driver,
+                f"({dialog_xpath}//div[@class='grid-content-spacer'])[last()]/parent::div//div[@role='row']",
+            )
+
+            grid_row = grid_rows[grid_rows_ctr]
             attachment_href = find_element_by_xpath(grid_row, ".//a")
 
             while not attachment_href and retry < config.MAX_RETRIES:
@@ -195,6 +202,7 @@ def scrape_attachments(driver):
                 print("Retrying attachment href...")
 
             if not attachment_href:
+                grid_rows_ctr += 1
                 continue
 
             date_attached = find_element_by_xpath(grid_row, "./div[3]")
@@ -222,6 +230,7 @@ def scrape_attachments(driver):
             attachments_data.append({"url": updated_url, "filename": new_file_name})
 
             driver.get(updated_url)
+            grid_rows_ctr += 1
 
         # Navigate back to details
         click_button_by_xpath(driver, details_tab)
