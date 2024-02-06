@@ -1,8 +1,8 @@
 import json
-import string
 import os
-import shutil
 import random
+import shutil
+import string
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -15,10 +15,10 @@ def create_history_metadata(history, history_path, attachments_path):
     characters = string.ascii_letters + string.digits
 
     for item in history:
-        uuid_randomizer = ''.join(random.choices(characters, k=2))
+        uuid_randomizer = "".join(random.choices(characters, k=2))
         formatted_date = convert_date(item["Date"], date_format="%a %d/%m/%Y %H:%M")
         title = validate_title(item["Title"])
-        user = "_".join(item['User'].split(" "))
+        user = "_".join(item["User"].split(" "))
         filename = f"{formatted_date}_{uuid_randomizer}_{user}_{title}.md"
         path = Path(history_path, filename)
 
@@ -44,26 +44,30 @@ def create_history_metadata(history, history_path, attachments_path):
                     if old_atts := field.get("old_attachments"):
                         file.write(f"           * Old Attachments\n")
                         for old_att in old_atts:
-                            att_file_name = old_att['File Name']
+                            att_file_name = old_att["File Name"]
                             source = Path(attachments_path, att_file_name)
                             destination = Path(
                                 history_deleted_attachments_path, att_file_name
                             )
-                            file.write(f"               * File Name: {old_att['File Name']}\n")
-                            file.write(f"               * Absolute link to attachment:  [{att_file_name}]({destination})\n")
+                            file.write(
+                                f"               * File Name: {old_att['File Name']}\n"
+                            )
+                            file.write(
+                                f"               * Absolute link to attachment:  [{att_file_name}]({destination})\n"
+                            )
                             if os.path.exists(source):
                                 shutil.move(source, destination)
 
                     if new_atts := field.get("new_attachments"):
                         file.write(f"           * New Attachments\n")
                         for new_att in new_atts:
-                            att_file_name = new_att['File Name']
+                            att_file_name = new_att["File Name"]
                             source = Path(attachments_path, att_file_name)
-                            destination = Path(
-                                history_attachments_path, att_file_name
-                            )
+                            destination = Path(history_attachments_path, att_file_name)
                             file.write(f"               * File Name: {att_file_name}\n")
-                            file.write(f"               * Absolute link to attachment:  [{att_file_name}]({destination})\n")
+                            file.write(
+                                f"               * Absolute link to attachment:  [{att_file_name}]({destination})\n"
+                            )
 
                             if os.path.exists(source):
                                 shutil.move(source, destination)

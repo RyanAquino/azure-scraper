@@ -1,9 +1,7 @@
 import logging
-import os
 import re
 import time
 import urllib.parse
-from pathlib import Path
 from uuid import uuid4
 
 from bs4 import BeautifulSoup
@@ -120,7 +118,9 @@ def scrape_basic_fields(dialog_box, driver, request_session, chrome_downloads):
                     response = request_session.get(img_src)
 
                 if response.status_code != 200:
-                    logging.info(f"Error downloading image description: {response.status_code}: {str(response.content)}")
+                    logging.info(
+                        f"Error downloading image description: {response.status_code}: {str(response.content)}"
+                    )
                     continue
 
                 file_name = f"{uuid4()}_{orig_file_name}"
@@ -284,7 +284,7 @@ def scrape_history(driver, request_session, chrome_downloads):
                 "Title": summary,
                 "Links": [],
                 "Fields": [],
-                "Attachments": []
+                "Attachments": [],
             }
 
             if history_fields := soup.find("div", class_="fields"):
@@ -341,13 +341,18 @@ def scrape_history(driver, request_session, chrome_downloads):
                         query_params["download"] = "True"
 
                         updated_url = urllib.parse.urlunparse(
-                            parsed_url._replace(query=urllib.parse.urlencode(query_params, doseq=True))
+                            parsed_url._replace(
+                                query=urllib.parse.urlencode(query_params, doseq=True)
+                            )
                         )
-                        request_download_image(request_session, updated_url, driver, chrome_downloads / new_file_name)
+                        request_download_image(
+                            request_session,
+                            updated_url,
+                            driver,
+                            chrome_downloads / new_file_name,
+                        )
 
-                        old_value_images.append({
-                            "File Name": new_file_name
-                        })
+                        old_value_images.append({"File Name": new_file_name})
 
                 new_value_images = []
 
@@ -374,13 +379,18 @@ def scrape_history(driver, request_session, chrome_downloads):
                         query_params["download"] = "True"
 
                         updated_url = urllib.parse.urlunparse(
-                            parsed_url._replace(query=urllib.parse.urlencode(query_params, doseq=True))
+                            parsed_url._replace(
+                                query=urllib.parse.urlencode(query_params, doseq=True)
+                            )
                         )
-                        request_download_image(request_session, updated_url, driver, chrome_downloads / new_file_name)
+                        request_download_image(
+                            request_session,
+                            updated_url,
+                            driver,
+                            chrome_downloads / new_file_name,
+                        )
 
-                        new_value_images.append({
-                            "File Name": new_file_name
-                        })
+                        new_value_images.append({"File Name": new_file_name})
 
                 result["Fields"].append(
                     {
@@ -388,11 +398,13 @@ def scrape_history(driver, request_session, chrome_downloads):
                         "old_value": get_element_text(old_value),
                         "old_attachments": old_value_images,
                         "new_value": get_element_text(new_value_text),
-                        "new_attachments": new_value_images
+                        "new_attachments": new_value_images,
                     }
                 )
 
-            if (added_comment := soup.find("div", {"class": "history-item-comment"})) and "Added a comment" in summary:
+            if (
+                added_comment := soup.find("div", {"class": "history-item-comment"})
+            ) and "Added a comment" in summary:
                 img_discussion_attachments = []
                 if image_urls := added_comment.find_all("a"):
                     for image_url in image_urls:
@@ -416,20 +428,25 @@ def scrape_history(driver, request_session, chrome_downloads):
                         query_params["download"] = "True"
 
                         updated_url = urllib.parse.urlunparse(
-                            parsed_url._replace(query=urllib.parse.urlencode(query_params, doseq=True))
+                            parsed_url._replace(
+                                query=urllib.parse.urlencode(query_params, doseq=True)
+                            )
                         )
-                        request_download_image(request_session, updated_url, driver, chrome_downloads / new_file_name)
+                        request_download_image(
+                            request_session,
+                            updated_url,
+                            driver,
+                            chrome_downloads / new_file_name,
+                        )
 
-                        img_discussion_attachments.append({
-                            "File Name": new_file_name
-                        })
+                        img_discussion_attachments.append({"File Name": new_file_name})
 
                 result["Fields"].append(
                     {
                         "name": "Comments",
                         "old_value": None,
                         "new_value": added_comment.text,
-                        "new_attachments": img_discussion_attachments
+                        "new_attachments": img_discussion_attachments,
                     }
                 )
 
@@ -443,7 +460,6 @@ def scrape_history(driver, request_session, chrome_downloads):
                 old_comment_atts = []
 
                 if image_urls := old_comment.find_all("a"):
-
                     for image_url in image_urls:
                         image_url = image_url.get("href")
                         parsed_url = urllib.parse.urlparse(image_url)
@@ -465,16 +481,20 @@ def scrape_history(driver, request_session, chrome_downloads):
                         query_params["download"] = "True"
 
                         updated_url = urllib.parse.urlunparse(
-                            parsed_url._replace(query=urllib.parse.urlencode(query_params, doseq=True))
+                            parsed_url._replace(
+                                query=urllib.parse.urlencode(query_params, doseq=True)
+                            )
                         )
-                        request_download_image(request_session, updated_url, driver, chrome_downloads / new_file_name)
+                        request_download_image(
+                            request_session,
+                            updated_url,
+                            driver,
+                            chrome_downloads / new_file_name,
+                        )
 
-                        old_comment_atts.append({
-                            "File Name": new_file_name
-                        })
+                        old_comment_atts.append({"File Name": new_file_name})
 
                 if image_urls := new_comment.find_all("a"):
-
                     for image_url in image_urls:
                         image_url = image_url.get("href")
                         parsed_url = urllib.parse.urlparse(image_url)
@@ -496,21 +516,30 @@ def scrape_history(driver, request_session, chrome_downloads):
                         query_params["download"] = "True"
 
                         updated_url = urllib.parse.urlunparse(
-                            parsed_url._replace(query=urllib.parse.urlencode(query_params, doseq=True))
+                            parsed_url._replace(
+                                query=urllib.parse.urlencode(query_params, doseq=True)
+                            )
                         )
-                        request_download_image(request_session, updated_url, driver, chrome_downloads / new_file_name)
+                        request_download_image(
+                            request_session,
+                            updated_url,
+                            driver,
+                            chrome_downloads / new_file_name,
+                        )
 
-                        new_comment_atts.append({
-                            "File Name": new_file_name
-                        })
+                        new_comment_atts.append({"File Name": new_file_name})
 
                 result["Fields"].append(
                     {
                         "name": "Comments",
-                        "old_value": old_comment.find("div", class_="history-item-comment").text,
-                        "new_value": new_comment.find("div", class_="history-item-comment").text,
+                        "old_value": old_comment.find(
+                            "div", class_="history-item-comment"
+                        ).text,
+                        "new_value": new_comment.find(
+                            "div", class_="history-item-comment"
+                        ).text,
                         "old_attachments": old_comment_atts,
-                        "new_attachments": new_comment_atts
+                        "new_attachments": new_comment_atts,
                     }
                 )
 
@@ -519,7 +548,9 @@ def scrape_history(driver, request_session, chrome_downloads):
                 links = links.find_all("div", class_="link")
 
                 for link in links:
-                    is_deleted = "Deleted" if "link-delete" in link.get("class") else "Added"
+                    is_deleted = (
+                        "Deleted" if "link-delete" in link.get("class") else "Added"
+                    )
                     display_name = link.find("span", class_="link-display-name").text
                     link = link.find("span", class_="link-text")
 
@@ -547,7 +578,9 @@ def scrape_history(driver, request_session, chrome_downloads):
                 attachments = attachments.find_all("div", class_="attachment")
 
                 for attachment in attachments:
-                    attachment_file_name = attachment.find("span", class_="attachment-text")
+                    attachment_file_name = attachment.find(
+                        "span", class_="attachment-text"
+                    )
                     is_deleted = attachment.find("del")
                     attachment_change_type = "Deleted" if is_deleted else "Added"
                     result["Attachments"].append(
@@ -893,7 +926,9 @@ def request_download_image(request_session, img_src, driver, file_path):
         response = request_session.get(img_src)
 
     if response.status_code != 200:
-        logging.info(f"Error downloading image description: {response.status_code}: {str(response.content)}")
+        logging.info(
+            f"Error downloading image description: {response.status_code}: {str(response.content)}"
+        )
 
     with open(file_path, "wb") as f:
         f.write(response.content)
