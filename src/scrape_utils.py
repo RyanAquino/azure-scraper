@@ -107,8 +107,12 @@ def scrape_basic_fields(dialog_box, driver, request_session, chrome_downloads):
             if img_src := att.get("src"):
                 parsed_url = urllib.parse.urlparse(img_src)
                 query_params = urllib.parse.parse_qs(parsed_url.query)
-                orig_file_name = query_params.get("FileName")[0]
+                orig_file_name = query_params.get("fileName")
 
+                if not orig_file_name:
+                    orig_file_name = query_params.get("FileName")
+
+                orig_file_name = orig_file_name[0]
                 response = request_session.get(img_src)
 
                 if response.status_code == 203:
@@ -319,8 +323,8 @@ def scrape_history(driver, request_session, chrome_downloads):
                         image_url = image_url.get("href")
                         parsed_url = urllib.parse.urlparse(image_url)
                         query_params = urllib.parse.parse_qs(parsed_url.query)
-                        resource_id = parsed_url.path.split("/")[-1]
-                        orig_file_name = query_params.get("FileName")
+                        key = "fileName"
+                        orig_file_name = query_params.get(key)
 
                         if not orig_file_name:
                             key = "FileName"
@@ -333,7 +337,7 @@ def scrape_history(driver, request_session, chrome_downloads):
 
                         new_file_name = f"{uuid4()}_{orig_file_name}"
 
-                        query_params["FileName"] = [new_file_name]
+                        query_params[key] = [new_file_name]
                         query_params["download"] = "True"
 
                         updated_url = urllib.parse.urlunparse(
@@ -352,8 +356,12 @@ def scrape_history(driver, request_session, chrome_downloads):
                         image_url = image_url.get("href")
                         parsed_url = urllib.parse.urlparse(image_url)
                         query_params = urllib.parse.parse_qs(parsed_url.query)
-                        resource_id = parsed_url.path.split("/")[-1]
-                        orig_file_name = query_params.get("FileName")
+                        key = "fileName"
+                        orig_file_name = query_params.get(key)
+
+                        if not orig_file_name:
+                            key = "FileName"
+                            orig_file_name = query_params.get(key)
 
                         if not orig_file_name:
                             continue
@@ -362,7 +370,7 @@ def scrape_history(driver, request_session, chrome_downloads):
 
                         new_file_name = f"{uuid4()}_{orig_file_name}"
 
-                        query_params["FileName"] = [new_file_name]
+                        query_params[key] = [new_file_name]
                         query_params["download"] = "True"
 
                         updated_url = urllib.parse.urlunparse(
