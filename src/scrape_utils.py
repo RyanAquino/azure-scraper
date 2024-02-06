@@ -199,12 +199,17 @@ def scrape_attachments(driver):
             query_params = urllib.parse.parse_qs(parsed_url.query)
 
             updated_at = convert_date(date_attached.text, date_format="%d/%m/%Y %H:%M")
-            resource_id = parsed_url.path.split("/")[-1]
+            key = "fileName"
+            file_name = query_params.get(key)
 
-            file_name = query_params.get("fileName")[0]
-            new_file_name = f"{updated_at}_{resource_id}_{file_name}"
+            if not file_name:
+                key = "FileName"
+                file_name = query_params.get(key)
 
-            query_params["fileName"] = [new_file_name]
+            file_name = file_name[0]
+            new_file_name = f"{updated_at}_{uuid4()}_{file_name}"
+
+            query_params[key] = [new_file_name]
             updated_url = urllib.parse.urlunparse(
                 parsed_url._replace(
                     query=urllib.parse.urlencode(query_params, doseq=True)
@@ -318,11 +323,15 @@ def scrape_history(driver, request_session, chrome_downloads):
                         orig_file_name = query_params.get("FileName")
 
                         if not orig_file_name:
+                            key = "FileName"
+                            orig_file_name = query_params.get(key)
+
+                        if not orig_file_name:
                             continue
 
                         orig_file_name = orig_file_name[0]
 
-                        new_file_name = f"{uuid4()}_{resource_id}_{orig_file_name}"
+                        new_file_name = f"{uuid4()}_{orig_file_name}"
 
                         query_params["FileName"] = [new_file_name]
                         query_params["download"] = "True"
@@ -351,7 +360,7 @@ def scrape_history(driver, request_session, chrome_downloads):
 
                         orig_file_name = orig_file_name[0]
 
-                        new_file_name = f"{uuid4()}_{resource_id}_{orig_file_name}"
+                        new_file_name = f"{uuid4()}_{orig_file_name}"
 
                         query_params["FileName"] = [new_file_name]
                         query_params["download"] = "True"
@@ -382,16 +391,20 @@ def scrape_history(driver, request_session, chrome_downloads):
                         image_url = image_url.get("href")
                         parsed_url = urllib.parse.urlparse(image_url)
                         query_params = urllib.parse.parse_qs(parsed_url.query)
-                        resource_id = parsed_url.path.split("/")[-1]
-                        orig_file_name = query_params.get("fileName")
+                        key = "fileName"
+                        orig_file_name = query_params.get(key)
+
+                        if not orig_file_name:
+                            key = "FileName"
+                            orig_file_name = query_params.get(key)
 
                         if not orig_file_name:
                             continue
 
                         orig_file_name = orig_file_name[0]
-                        new_file_name = f"{uuid4()}_{resource_id}_{orig_file_name}"
+                        new_file_name = f"{uuid4()}_{orig_file_name}"
 
-                        query_params["fileName"] = [new_file_name]
+                        query_params[key] = [new_file_name]
                         query_params["download"] = "True"
 
                         updated_url = urllib.parse.urlunparse(
@@ -427,16 +440,20 @@ def scrape_history(driver, request_session, chrome_downloads):
                         image_url = image_url.get("href")
                         parsed_url = urllib.parse.urlparse(image_url)
                         query_params = urllib.parse.parse_qs(parsed_url.query)
-                        resource_id = parsed_url.path.split("/")[-1]
-                        orig_file_name = query_params.get("fileName")
+                        key = "fileName"
+                        orig_file_name = query_params.get(key)
+
+                        if not orig_file_name:
+                            key = "FileName"
+                            orig_file_name = query_params.get(key)
 
                         if not orig_file_name:
                             continue
 
                         orig_file_name = orig_file_name[0]
-                        new_file_name = f"{uuid4()}_{resource_id}_{orig_file_name}"
+                        new_file_name = f"{uuid4()}_{orig_file_name}"
 
-                        query_params["fileName"] = [new_file_name]
+                        query_params[key] = [new_file_name]
                         query_params["download"] = "True"
 
                         updated_url = urllib.parse.urlunparse(
@@ -454,16 +471,20 @@ def scrape_history(driver, request_session, chrome_downloads):
                         image_url = image_url.get("href")
                         parsed_url = urllib.parse.urlparse(image_url)
                         query_params = urllib.parse.parse_qs(parsed_url.query)
-                        resource_id = parsed_url.path.split("/")[-1]
-                        orig_file_name = query_params.get("fileName")
+                        key = "fileName"
+                        orig_file_name = query_params.get(key)
+
+                        if not orig_file_name:
+                            key = "FileName"
+                            orig_file_name = query_params.get(key)
 
                         if not orig_file_name:
                             continue
 
                         orig_file_name = orig_file_name[0]
-                        new_file_name = f"{uuid4()}_{resource_id}_{orig_file_name}"
+                        new_file_name = f"{uuid4()}_{orig_file_name}"
 
-                        query_params["fileName"] = [new_file_name]
+                        query_params[key] = [new_file_name]
                         query_params["download"] = "True"
 
                         updated_url = urllib.parse.urlunparse(
@@ -657,17 +678,20 @@ def scrape_related_work(driver, dialog_box):
 def scrape_discussion_attachments(driver, attachment, discussion_date):
     parsed_url = urllib.parse.urlparse(attachment.get("src"))
     query_params = urllib.parse.parse_qs(parsed_url.query)
-    resource_id = parsed_url.path.split("/")[-1]
+    key = "fileName"
+    file_name = query_params.get(key)
 
-    file_name = query_params.get("fileName")
+    if not file_name:
+        key = "FileName"
+        file_name = query_params.get(key)
 
     if not file_name:
         return {}
 
     file_name = file_name[0]
-    new_file_name = f"{discussion_date}_{resource_id}_{file_name}"
+    new_file_name = f"{discussion_date}_{uuid4()}_{file_name}"
 
-    query_params["fileName"] = [new_file_name]
+    query_params[key] = [new_file_name]
 
     if "download" not in query_params:
         query_params["download"] = "True"
