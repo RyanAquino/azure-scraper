@@ -1,4 +1,5 @@
 import json
+import argparse
 import time
 import traceback
 from pathlib import Path
@@ -279,5 +280,9 @@ def main(default_start_index):
 
 
 if __name__ == "__main__":
-    start_index = input("Start work item index: ")
+    parser = argparse.ArgumentParser(description="sample argument parser")
+    parser.add_argument("--index", type=int, default=0)
+    args = parser.parse_args()
+    # start_index = input("Start work item index: ")
+    start_index = args.index
     main(int(start_index))
