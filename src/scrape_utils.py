@@ -145,7 +145,7 @@ def scrape_basic_fields(dialog_box, driver, request_session, chrome_downloads):
     }, img_urls
 
 
-def scrape_attachments(driver):
+def scrape_attachments(request_session, driver, chrome_downloads):
     dialog_xpath = "//div[@role='dialog'][last()]"
     attachments_tab = f"{dialog_xpath}//li[@aria-label='Attachments']"
     details_tab = f"{dialog_xpath}//li[@aria-label='Details']"
@@ -154,10 +154,11 @@ def scrape_attachments(driver):
     attachments_count = get_text(driver, f"{attachments_tab}/span[2]")
 
     if attachments_count is None:
-        print("No attachments:", attachments_count)
+        print("No attachments found for this work item:", attachments_count)
         return
 
     # Navigate to attachments page
+    print("Navigating to attachments tab")
     click_button_by_xpath(driver, attachments_tab)
 
     # Retrieve attachment links
@@ -173,10 +174,11 @@ def scrape_attachments(driver):
             )
 
             if grid_rows:
+                print(f"# of attachments found: {len(grid_rows)}")
                 break
 
             if retry == config.MAX_RETRIES:
-                print("Error: Unable to find history items!!")
+                print("Error: Unable to find attachment items!!")
                 return
 
             retry += 1
@@ -187,21 +189,25 @@ def scrape_attachments(driver):
         grid_rows_ctr = 0
         retry = 0
 
+        print(f"Initial # of attachment found: {len(grid_rows)}")
+
         while grid_rows_ctr < len(grid_rows):
             grid_row = grid_rows[grid_rows_ctr]
             attachment_href = find_element_by_xpath(grid_row, ".//a")
 
             while not attachment_href and retry < config.MAX_RETRIES:
+                print("Retrying attachment href...")
                 grid_rows = find_elements_by_xpath(
                     driver,
                     f"({dialog_xpath}//div[@class='grid-content-spacer'])[last()]/parent::div//div[@role='row']",
                 )
+                print(f"# attachments re-found: {len(grid_rows)}")
                 grid_row = grid_rows[grid_rows_ctr]
                 attachment_href = find_element_by_xpath(grid_row, ".//a")
                 retry += 1
-                print("Retrying attachment href...")
 
             if not attachment_href:
+                print(f"attachment not found")
                 grid_rows_ctr += 1
                 continue
 
@@ -218,6 +224,10 @@ def scrape_attachments(driver):
                 key = "FileName"
                 file_name = query_params.get(key)
 
+            if not file_name:
+                print(f"File name not found on attachment: {attachment_url}")
+                continue
+
             file_name = file_name[0]
             new_file_name = f"{updated_at}_{uuid4()}_{file_name}"
 
@@ -229,7 +239,10 @@ def scrape_attachments(driver):
             )
             attachments_data.append({"url": updated_url, "filename": new_file_name})
 
+            print(f"Downloading attachment: {updated_url}")
             driver.get(updated_url)
+            request_download_image(request_session, updated_url, driver, chrome_downloads / new_file_name)
+
             grid_rows_ctr += 1
 
         # Navigate back to details
@@ -237,7 +250,7 @@ def scrape_attachments(driver):
 
         return attachments_data
     except (StaleElementReferenceException, AttributeError):
-        return scrape_attachments(driver)
+        return scrape_attachments(request_session, driver, chrome_downloads)
 
 
 def get_element_text(element):

@@ -90,7 +90,7 @@ def scrape_child_work_items(driver, request_session, chrome_downloads):
         work_item_data["history"] = scrape_history(
             driver, request_session, chrome_downloads
         )
-        work_item_data["attachments"] = scrape_attachments(driver)
+        work_item_data["attachments"] = scrape_attachments(request_session, driver, chrome_downloads)
     except Exception:
         raise
 
