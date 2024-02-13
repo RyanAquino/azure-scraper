@@ -16,8 +16,11 @@ def chrome_settings_init():
     chrome_options = ChromeOptions()
     chrome_options.add_argument("--headless=new")
     chrome_options.accept_insecure_certs = True
+    chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--start-maximized")
     chrome_options.add_argument("--incognito")
+    user_agent = 'Mozilla/5.0 (X11; Linux Mint x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36'
+    chrome_options.add_argument(f'user-agent={user_agent}')
     chrome_options.add_experimental_option(
         "prefs",
         {
