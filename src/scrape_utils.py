@@ -630,6 +630,14 @@ def scrape_related_work(driver, dialog_box):
         # Navigate to related work tab
         related_work_tab = find_element_by_xpath(dialog_box, related_work_xpath)
 
+        retry = 0
+
+        while not related_work_tab and retry < config.MAX_RETRIES:
+            related_work_tab = find_element_by_xpath(dialog_box, related_work_xpath)
+            print("Retrying related work tab...")
+            time.sleep(1)
+            retry += 1
+
         if not related_work_tab.text:
             return []
 
