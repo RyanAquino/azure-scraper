@@ -22,6 +22,7 @@ def chrome_settings_init():
     user_agent = 'Mozilla/5.0 (X11; Linux Mint x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36'
     chrome_options.add_argument(f'user-agent={user_agent}')
     chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("--window-size=1900,1080")
     chrome_options.add_experimental_option(
         "prefs",
         {
