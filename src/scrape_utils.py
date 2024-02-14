@@ -634,7 +634,7 @@ def scrape_related_work(driver, dialog_box):
 
         while not related_work_tab and retry < config.MAX_RETRIES:
             related_work_tab = find_element_by_xpath(dialog_box, related_work_xpath)
-            print("Retrying related work tab...")
+            print(f"Retrying related work tab... {retry}/{config.MAX_RETRIES}")
             time.sleep(1)
             retry += 1
 
