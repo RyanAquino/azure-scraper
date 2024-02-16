@@ -92,6 +92,8 @@ def scrape_child_work_items(driver, request_session, chrome_downloads):
         )
         work_item_data["attachments"] = scrape_attachments(request_session, driver, chrome_downloads)
     except Exception:
+        from uuid import uuid4
+        driver.get_screenshot_as_file(f"error-{uuid4()}.png")
         raise
 
     for key, value in work_item_data.items():
