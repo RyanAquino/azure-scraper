@@ -110,6 +110,9 @@ def scrape_basic_fields(dialog_box, driver, request_session, chrome_downloads):
                 if not orig_file_name:
                     orig_file_name = query_params.get("FileName")
 
+                if not orig_file_name:
+                    continue
+
                 orig_file_name = orig_file_name[0]
                 response = request_session.get(img_src)
 
