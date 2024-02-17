@@ -84,7 +84,7 @@ def scrape_child_work_items(driver, request_session, chrome_downloads):
         )
         work_item_data["img_description"] = desc_att
         work_item_data["Title"] = title
-        work_item_data["discussions"] = scrape_discussions(driver)
+        work_item_data["discussions"] = scrape_discussions(driver, request_session, chrome_downloads)
         work_item_data["related_work"] = scrape_related_work(driver, dialog_box)
         work_item_data["development"] = scrape_development(driver)
         work_item_data["history"] = scrape_history(
@@ -178,6 +178,7 @@ def scraper(
     while not work_items and retry_ctr < config.MAX_RETRIES:
         work_items = find_elements_by_xpath(driver, work_item_selector)
         retry_ctr += 1
+        print("Retrying finding works items...")
         time.sleep(3)
 
     # board_view = find_element_by_xpath(driver, "//div[@class='grid-canvas ui-draggable']")

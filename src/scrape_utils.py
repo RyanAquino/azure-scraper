@@ -749,7 +749,7 @@ def scrape_related_work(driver, dialog_box):
         return scrape_related_work(driver, dialog_box)
 
 
-def scrape_discussion_attachments(driver, attachment, discussion_date):
+def scrape_discussion_attachments(driver, attachment, discussion_date, request_session, chrome_downloads):
     parsed_url = urllib.parse.urlparse(attachment.get("src"))
     query_params = urllib.parse.parse_qs(parsed_url.query)
     key = "fileName"
@@ -773,12 +773,17 @@ def scrape_discussion_attachments(driver, attachment, discussion_date):
     updated_url = urllib.parse.urlunparse(
         parsed_url._replace(query=urllib.parse.urlencode(query_params, doseq=True))
     )
-    driver.get(updated_url)
+    request_download_image(
+        request_session,
+        updated_url,
+        driver,
+        chrome_downloads / new_file_name,
+    )
 
     return {"url": updated_url, "filename": new_file_name}
 
 
-def scrape_discussions(driver):
+def scrape_discussions(driver, request_session, chrome_downloads):
     try:
         results = []
         dialog_xpath = "//div[@role='dialog'][last()]"
@@ -862,7 +867,7 @@ def scrape_discussions(driver):
 
                 for attachment in attachments or []:
                     attachment_data = scrape_discussion_attachments(
-                        driver, attachment, date
+                        driver, attachment, date, request_session, chrome_downloads
                     )
 
                     if attachment_data:
@@ -871,7 +876,7 @@ def scrape_discussions(driver):
                 results.append(result)
         return results
     except (StaleElementReferenceException, AttributeError):
-        return scrape_discussions(driver)
+        return scrape_discussions(driver, request_session, chrome_downloads)
 
 
 def scrape_changesets(driver):
