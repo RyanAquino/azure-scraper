@@ -244,7 +244,6 @@ def scrape_attachments(request_session, driver, chrome_downloads):
 
             print(f"Downloading attachment: {updated_url}")
             driver.get(updated_url)
-            request_download_image(request_session, updated_url, driver, chrome_downloads / new_file_name)
 
             grid_rows_ctr += 1
 

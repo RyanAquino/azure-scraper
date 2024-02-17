@@ -50,6 +50,9 @@ def chrome_settings_init():
 
 
 def session_re_authenticate(request_session, driver):
+    selenium_user_agent = driver.execute_script("return navigator.userAgent;")
+    request_session.headers.update({"user-agent": selenium_user_agent})
+
     for cookie in driver.get_cookies():
         request_session.cookies.set(
             cookie["name"], cookie["value"], domain=cookie["domain"]
