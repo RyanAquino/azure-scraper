@@ -2,6 +2,7 @@ import logging
 import re
 import time
 import urllib.parse
+from pathlib import Path
 from uuid import uuid4
 
 from bs4 import BeautifulSoup
@@ -243,7 +244,7 @@ def scrape_attachments(request_session, driver, chrome_downloads):
             attachments_data.append({"url": updated_url, "filename": new_file_name})
 
             print(f"Downloading attachment: {updated_url}")
-            driver.get(updated_url)
+            request_download_image(request_session, updated_url, driver, chrome_downloads / new_file_name)
 
             grid_rows_ctr += 1
 
@@ -878,6 +879,40 @@ def scrape_discussions(driver, request_session, chrome_downloads):
         return scrape_discussions(driver, request_session, chrome_downloads)
 
 
+def download_changeset_version(driver, chrome_downloads):
+    files = list(chrome_downloads.iterdir())
+    downloaded_ctr = len(files) + 1
+
+    # Download artifacts
+    click_button_by_xpath(driver, "//a[@aria-roledescription='link']")
+    click_button_by_xpath(driver, "//button[@aria-label='More actions']")
+    click_button_by_xpath(driver, "//div[@id='__bolt-download-text']")
+
+    while len(files) != downloaded_ctr:
+        print("Waiting for download to finish...")
+        files = list(chrome_downloads.iterdir())
+
+        if not files:
+            time.sleep(2)
+            continue
+
+        latest_file = Path(chrome_downloads, max(files, key=lambda f: f.stat().st_mtime))
+
+        while "crdownload" in latest_file.name:
+            files = list(chrome_downloads.iterdir())
+            latest_file = Path(chrome_downloads, max(files, key=lambda f: f.stat().st_mtime))
+            print("File downloaded. waiting to be saved on disk")
+            time.sleep(1)
+        time.sleep(2)
+
+    latest_file = Path(chrome_downloads, max(files, key=lambda f: f.stat().st_mtime))
+    new_file_name = f"{uuid4()}_{latest_file.name}"
+    new_file_path = Path(latest_file.parent, new_file_name)
+    latest_file.rename(new_file_path)
+
+    return new_file_name
+
+
 def scrape_changesets(driver):
     results = []
 
@@ -892,18 +927,14 @@ def scrape_changesets(driver):
             "File Name": get_text(driver, header_xpath),
             "Path": get_text(
                 driver, f"{header_xpath}/parent::span/following-sibling::span"
-            ),
-            "content": get_text(
-                driver,
-                "(//div[contains(@class,'lines-content')])[last()]",
-            ),
+            )
         }
 
         results.append(result)
     return results
 
 
-def scrape_development(driver):
+def scrape_development(driver, chrome_downloads):
     try:
         results = []
         dialog_box = "//div[@role='dialog'][last()]"
@@ -940,6 +971,7 @@ def scrape_development(driver):
                     "ID": driver.current_url.split("/")[-1],
                     "Title": driver.title,
                     "change_sets": scrape_changesets(driver),
+                    "artifacts_file_name": download_changeset_version(driver, chrome_downloads)
                 }
                 results.append(result)
 
@@ -947,7 +979,7 @@ def scrape_development(driver):
                 driver.switch_to.window(original_window)
         return results
     except StaleElementReferenceException:
-        return scrape_development(driver)
+        return scrape_development(driver, chrome_downloads)
 
 
 def log_html(page_source, log_file_path="source.log"):
