@@ -52,6 +52,7 @@ def scrape_basic_fields(dialog_box, driver, request_session, chrome_downloads):
     soup = BeautifulSoup(html, "html.parser")
     description_images = None
     img_urls = []
+    description_element = soup.find(attrs={"aria-label": "Description"}) or soup.find(attrs={"aria-label": "Steps"})
 
     for element in soup.find_all(attrs={"aria-label": True}):
         attribute = element.get("aria-label")
@@ -95,7 +96,7 @@ def scrape_basic_fields(dialog_box, driver, request_session, chrome_downloads):
 
         basic_fields["Description"] = description + resolution
 
-    elif description_element := soup.find(attrs={"aria-label": "Description"}):
+    elif description_element:
         description_images = description_element.find_all("img")
         description = convert_to_markdown(description_element)
         basic_fields["Description"] = description
@@ -151,6 +152,7 @@ def scrape_basic_fields(dialog_box, driver, request_session, chrome_downloads):
 def scrape_attachments(request_session, driver, chrome_downloads):
     dialog_xpath = "//div[@role='dialog'][last()]"
     attachments_tab = f"{dialog_xpath}//li[@aria-label='Attachments']"
+    steps_xpath = f"{dialog_xpath}//li[@aria-label='Steps']"
     details_tab = f"{dialog_xpath}//li[@aria-label='Details']"
 
     # Attachment count
@@ -248,7 +250,10 @@ def scrape_attachments(request_session, driver, chrome_downloads):
             grid_rows_ctr += 1
 
         # Navigate back to details
-        click_button_by_xpath(driver, details_tab)
+        if find_element_by_xpath(driver, details_tab):
+            click_button_by_xpath(driver, details_tab)
+        else:
+            click_button_by_xpath(driver, steps_xpath)
 
         return attachments_data
     except (StaleElementReferenceException, AttributeError):
@@ -264,6 +269,7 @@ def scrape_history(driver, request_session, chrome_downloads):
     results = []
     dialog_box_xpath = "//div[@role='dialog'][last()]"
     details_tab_xpath = f"{dialog_box_xpath}//li[@aria-label='Details']"
+    steps_tab_xpath = f"{dialog_box_xpath}//li[@aria-label='Steps']"
     history_xpath = f"{dialog_box_xpath}//li[@aria-label='History']"
     history_items_xpath = f"{dialog_box_xpath}//div[@class='history-item-summary' or contains(@class, 'history-item-selected')]"
 
@@ -616,7 +622,10 @@ def scrape_history(driver, request_session, chrome_downloads):
             results.append(result)
 
         # Navigate back to details tab
-        click_button_by_xpath(driver, details_tab_xpath)
+        if find_element_by_xpath(driver, details_tab_xpath):
+            click_button_by_xpath(driver, details_tab_xpath)
+        else:
+            click_button_by_xpath(driver, steps_tab_xpath)
 
         return results
     except StaleElementReferenceException:
@@ -628,6 +637,7 @@ def scrape_related_work(driver, dialog_box):
         results = []
         details_xpath = ".//li[@aria-label='Details']"
         related_work_xpath = ".//li[@aria-label='Links']"
+        steps_xpath = ".//li[@aria-label='Steps']"
 
         # Navigate to related work tab
         related_work_tab = find_element_by_xpath(dialog_box, related_work_xpath)
@@ -743,7 +753,10 @@ def scrape_related_work(driver, dialog_box):
             )
 
         # Navigate back to details tab
-        click_button_by_xpath(dialog_box, details_xpath)
+        if find_elements_by_xpath(dialog_box, details_xpath):
+            click_button_by_xpath(dialog_box, details_xpath)
+        else:
+            click_button_by_xpath(dialog_box, steps_xpath)
 
         return results
     except JavascriptException:
