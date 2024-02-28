@@ -95,8 +95,7 @@ def scrape_basic_fields(dialog_box, driver, request_session, chrome_downloads):
 
         basic_fields["Description"] = description + resolution
 
-    else:
-        description_element = soup.find(attrs={"aria-label": "Description"})
+    elif description_element := soup.find(attrs={"aria-label": "Description"}):
         description_images = description_element.find_all("img")
         description = convert_to_markdown(description_element)
         basic_fields["Description"] = description
@@ -134,12 +133,12 @@ def scrape_basic_fields(dialog_box, driver, request_session, chrome_downloads):
                     f.write(response.content)
 
     return {
-        "Task id": basic_fields["ID Field"],
-        "User Name": basic_fields["Assigned To Field"],
-        "State": basic_fields["State Field"],
-        "Area": basic_fields["Area Path"],
-        "Iteration": basic_fields["Iteration Path"],
-        "Priority": basic_fields["Priority"],
+        "Task id": basic_fields.get("ID Field"),
+        "User Name": basic_fields.get("Assigned To Field"),
+        "State": basic_fields.get("State Field"),
+        "Area": basic_fields.get("Area Path"),
+        "Iteration": basic_fields.get("Iteration Path"),
+        "Priority": basic_fields.get("Priority"),
         "Remaining Work": basic_fields.get("Remaining Work"),
         "Activity": basic_fields.get("Activity"),
         "Blocked": basic_fields.get("Blocked"),
@@ -650,9 +649,11 @@ def scrape_related_work(driver, dialog_box):
         grid_canvas_container = find_element_by_xpath(
             dialog_box, grid_canvas_container_xpath
         )
-        driver.execute_script(
-            "arguments[0].scrollTop = arguments[0].scrollHeight", grid_canvas_container
-        )
+
+        if grid_canvas_container:
+            driver.execute_script(
+                "arguments[0].scrollTop = arguments[0].scrollHeight", grid_canvas_container
+            )
 
         related_work_items_xpath = f"{grid_canvas_container_xpath}//div[contains(@class, 'grid-row grid-row-normal') and @aria-level]"
         related_work_items = find_elements_by_xpath(
