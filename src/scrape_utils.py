@@ -53,6 +53,8 @@ def scrape_basic_fields(dialog_box, driver, request_session, chrome_downloads):
     description_images = None
     img_urls = []
     description_element = soup.find(attrs={"aria-label": "Description"}) or soup.find(attrs={"aria-label": "Steps"})
+    summary_xpath = f".//li[@aria-label='Summary']"
+    steps_xpath = f".//li[@aria-label='Steps']"
 
     for element in soup.find_all(attrs={"aria-label": True}):
         attribute = element.get("aria-label")
@@ -97,9 +99,18 @@ def scrape_basic_fields(dialog_box, driver, request_session, chrome_downloads):
         basic_fields["Description"] = description + resolution
 
     elif description_element:
+        if desc := find_element_by_xpath(driver, summary_xpath):
+            driver.execute_script("arguments[0].click();", desc)
+            html = dialog_box.get_attribute("innerHTML")
+            soup = BeautifulSoup(html, "html.parser")
+            description_element = soup.find(attrs={"aria-label": "Description"})
+
         description_images = description_element.find_all("img")
         description = convert_to_markdown(description_element)
         basic_fields["Description"] = description
+
+        if steps := find_element_by_xpath(driver, steps_xpath):
+            driver.execute_script("arguments[0].click();", steps)
 
     if description_images:
         for att in description_images:
