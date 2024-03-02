@@ -52,7 +52,6 @@ def scrape_basic_fields(dialog_box, driver, request_session, chrome_downloads):
     soup = BeautifulSoup(html, "html.parser")
     description_images = None
     img_urls = []
-    description_element = soup.find(attrs={"aria-label": "Description"}) or soup.find(attrs={"aria-label": "Steps"})
     summary_xpath = f".//li[@aria-label='Summary']"
     steps_xpath = f".//li[@aria-label='Steps']"
 
@@ -98,19 +97,33 @@ def scrape_basic_fields(dialog_box, driver, request_session, chrome_downloads):
 
         basic_fields["Description"] = description + resolution
 
-    elif description_element:
+    elif description_element := soup.find(attrs={"aria-label": "Description"}):
+        description_images = description_element.find_all("img")
+        description = convert_to_markdown(description_element)
+        basic_fields["Description"] = description
+
+    elif soup.find(attrs={"aria-label": "Steps"}):
+        steps_content = soup.find("div", {"class": "test-steps-list"})
+        steps_content = steps_content.find("div", {"class": "grid-canvas", "role": "presentation"}).find_all("p")
+        steps_content = [i.text for i in steps_content[:-3]]
+        description = ""
+
+        for idx in range(0, len(steps_content), 3):
+            description += f"{steps_content[idx]} \t {steps_content[idx+1]} \t {steps_content[idx+2]}\n"
+
         if desc := find_element_by_xpath(driver, summary_xpath):
             driver.execute_script("arguments[0].click();", desc)
             html = dialog_box.get_attribute("innerHTML")
             soup = BeautifulSoup(html, "html.parser")
             description_element = soup.find(attrs={"aria-label": "Description"})
 
-        description_images = description_element.find_all("img")
-        description = convert_to_markdown(description_element)
-        basic_fields["Description"] = description
+            description_images = description_element.find_all("img")
+            description += convert_to_markdown(description_element)
 
-        if steps := find_element_by_xpath(driver, steps_xpath):
-            driver.execute_script("arguments[0].click();", steps)
+        if steps_tab := find_element_by_xpath(driver, steps_xpath):
+            driver.execute_script("arguments[0].click();", steps_tab)
+
+        basic_fields["Description"] = description
 
     if description_images:
         for att in description_images:
