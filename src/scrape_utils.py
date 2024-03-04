@@ -104,12 +104,28 @@ def scrape_basic_fields(dialog_box, driver, request_session, chrome_downloads):
 
     elif soup.find(attrs={"aria-label": "Steps"}):
         steps_content = soup.find("div", {"class": "test-steps-list"})
-        steps_content = steps_content.find("div", {"class": "grid-canvas", "role": "presentation"}).find_all("p")
-        steps_content = [i.text for i in steps_content[:-3]]
+        steps_content = steps_content.find("div", {"class": "grid-canvas", "role": "presentation"})
         description = ""
+        temp_steps = []
 
-        for idx in range(0, len(steps_content), 3):
-            description += f"{steps_content[idx]} \t {steps_content[idx+1]} \t {steps_content[idx+2]}\n"
+        for step in steps_content.select('div[class*="grid-row grid-row-normal"]')[:-1]:
+            temp_steps += step.find_all("p")
+
+            temp_step_att = BeautifulSoup("<a></a>", features="html.parser").a
+
+            if steps_att := step.find_all("a"):
+                combined_steps_att = ""
+
+                for step_att in steps_att:
+                    combined_steps_att += f"{step_att.text.split(' ')[0]} "
+
+                temp_steps.append(BeautifulSoup("<p><br/></p>", features="html.parser").p)  # Adding for consistency
+                temp_step_att = BeautifulSoup(f"<div>{combined_steps_att}</div>", features="html.parser").div
+
+            temp_steps.append(temp_step_att)
+
+        for idx in range(0, len(temp_steps), 4):
+            description += f"{temp_steps[idx].text} \t {temp_steps[idx+1].text} \t {temp_steps[idx+2].text} \t {temp_steps[idx+3].text}\n"
 
         if desc := find_element_by_xpath(driver, summary_xpath):
             driver.execute_script("arguments[0].click();", desc)
