@@ -1,5 +1,5 @@
-import json
 import argparse
+import json
 import time
 import traceback
 from pathlib import Path
@@ -84,15 +84,22 @@ def scrape_child_work_items(driver, request_session, chrome_downloads):
         )
         work_item_data["img_description"] = desc_att
         work_item_data["Title"] = title
-        work_item_data["discussions"] = scrape_discussions(driver, request_session, chrome_downloads)
+        work_item_data["discussions"] = scrape_discussions(
+            driver, request_session, chrome_downloads
+        )
         work_item_data["related_work"] = scrape_related_work(driver, dialog_box)
-        work_item_data["development"] = scrape_development(driver, chrome_downloads)
+        work_item_data["development"] = scrape_development(
+            driver, chrome_downloads, request_session
+        )
         work_item_data["history"] = scrape_history(
             driver, request_session, chrome_downloads
         )
-        work_item_data["attachments"] = scrape_attachments(request_session, driver, chrome_downloads)
+        work_item_data["attachments"] = scrape_attachments(
+            request_session, driver, chrome_downloads
+        )
     except Exception:
         from uuid import uuid4
+
         driver.get_screenshot_as_file(f"error-{uuid4()}.png")
         raise
 

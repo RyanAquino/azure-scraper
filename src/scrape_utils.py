@@ -5,6 +5,7 @@ import urllib.parse
 from pathlib import Path
 from uuid import uuid4
 
+import selenium.common.exceptions
 from bs4 import BeautifulSoup
 from dateutil.parser import ParserError
 from selenium.common.exceptions import (
@@ -104,7 +105,9 @@ def scrape_basic_fields(dialog_box, driver, request_session, chrome_downloads):
 
     elif soup.find(attrs={"aria-label": "Steps"}):
         steps_content = soup.find("div", {"class": "test-steps-list"})
-        steps_content = steps_content.find("div", {"class": "grid-canvas", "role": "presentation"})
+        steps_content = steps_content.find(
+            "div", {"class": "grid-canvas", "role": "presentation"}
+        )
         description = ""
         temp_steps = []
 
@@ -119,8 +122,12 @@ def scrape_basic_fields(dialog_box, driver, request_session, chrome_downloads):
                 for step_att in steps_att:
                     combined_steps_att += f"{step_att.text.split(' ')[0]} "
 
-                temp_steps.append(BeautifulSoup("<p><br/></p>", features="html.parser").p)  # Adding for consistency
-                temp_step_att = BeautifulSoup(f"<div>{combined_steps_att}</div>", features="html.parser").div
+                temp_steps.append(
+                    BeautifulSoup("<p><br/></p>", features="html.parser").p
+                )  # Adding for consistency
+                temp_step_att = BeautifulSoup(
+                    f"<div>{combined_steps_att}</div>", features="html.parser"
+                ).div
 
             temp_steps.append(temp_step_att)
 
@@ -285,7 +292,9 @@ def scrape_attachments(request_session, driver, chrome_downloads):
             attachments_data.append({"url": updated_url, "filename": new_file_name})
 
             print(f"Downloading attachment: {updated_url}")
-            request_download_image(request_session, updated_url, driver, chrome_downloads / new_file_name)
+            request_download_image(
+                request_session, updated_url, driver, chrome_downloads / new_file_name
+            )
 
             grid_rows_ctr += 1
 
@@ -702,7 +711,8 @@ def scrape_related_work(driver, dialog_box):
 
         if grid_canvas_container:
             driver.execute_script(
-                "arguments[0].scrollTop = arguments[0].scrollHeight", grid_canvas_container
+                "arguments[0].scrollTop = arguments[0].scrollHeight",
+                grid_canvas_container,
             )
 
         related_work_items_xpath = f"{grid_canvas_container_xpath}//div[contains(@class, 'grid-row grid-row-normal') and @aria-level]"
@@ -803,7 +813,9 @@ def scrape_related_work(driver, dialog_box):
         return scrape_related_work(driver, dialog_box)
 
 
-def scrape_discussion_attachments(driver, attachment, discussion_date, request_session, chrome_downloads):
+def scrape_discussion_attachments(
+    driver, attachment, discussion_date, request_session, chrome_downloads
+):
     parsed_url = urllib.parse.urlparse(attachment.get("src"))
     query_params = urllib.parse.parse_qs(parsed_url.query)
     key = "fileName"
@@ -933,62 +945,99 @@ def scrape_discussions(driver, request_session, chrome_downloads):
         return scrape_discussions(driver, request_session, chrome_downloads)
 
 
-def download_changeset_version(driver, chrome_downloads):
+def scrape_changesets(driver, chrome_downloads, request_session):
+    results = []
+    files_changed = find_elements_by_xpath(driver, "//tr[@role='treeitem']")
+
     files = list(chrome_downloads.iterdir())
     downloaded_ctr = len(files) + 1
 
-    # Download artifacts
-    click_button_by_xpath(driver, "//a[@aria-roledescription='link']")
-    click_button_by_xpath(driver, "//button[@aria-label='More actions']")
-    click_button_by_xpath(driver, "//div[@id='__bolt-download-text']")
-
-    while len(files) != downloaded_ctr:
-        print("Waiting for download to finish...")
-        files = list(chrome_downloads.iterdir())
-
-        if not files:
-            time.sleep(2)
-            continue
-
-        latest_file = Path(chrome_downloads, max(files, key=lambda f: f.stat().st_mtime))
-
-        while "crdownload" in latest_file.name:
-            files = list(chrome_downloads.iterdir())
-            latest_file = Path(chrome_downloads, max(files, key=lambda f: f.stat().st_mtime))
-            print("File downloaded. waiting to be saved on disk")
-            time.sleep(1)
-        time.sleep(2)
-
-    latest_file = Path(chrome_downloads, max(files, key=lambda f: f.stat().st_mtime))
-    new_file_name = f"{uuid4()}_{latest_file.name}"
-    new_file_path = Path(latest_file.parent, new_file_name)
-    latest_file.rename(new_file_path)
-
-    return new_file_name
-
-
-def scrape_changesets(driver):
-    results = []
-
-    files_changed = find_elements_by_xpath(driver, "//tr[@role='treeitem']")
-
-    for file in files_changed:
+    for idx, file in enumerate(files_changed, start=1):
         driver.execute_script("arguments[0].click();", file)
+        file.click()
 
         header_xpath = "//span[@role='heading']"
+        file_name = get_text(driver, header_xpath)
+
+        pattern = r"^\d+ changed files$"
+        match = re.match(pattern, file_name)
+
+        if match:
+            continue
+
+        more_options_btn = file.find_element(
+            "xpath",
+            f"//tr[@role='treeitem'][{idx}]//td[@role='gridcell']/div/div[last()]",
+        )
+        more_options_btn.click()
+
+        download_btn = find_element_by_xpath(
+            more_options_btn, "//tr[@id='__bolt-file-download']"
+        )
+        driver.execute_script("arguments[0].click();", download_btn)
+
+        try:
+            WebDriverWait(driver, 3).until_not(EC.number_of_windows_to_be(3))
+        except selenium.common.exceptions.TimeoutException:
+            pass
+
+        while len(files) != downloaded_ctr:
+            print("Waiting for download to finish...")
+            files = list(chrome_downloads.iterdir())
+
+            if len(driver.window_handles) == 2:
+                if not files:
+                    time.sleep(2)
+                    continue
+
+                latest_file = Path(
+                    chrome_downloads, max(files, key=lambda f: f.stat().st_mtime)
+                )
+
+                while "crdownload" in latest_file.name:
+                    files = list(chrome_downloads.iterdir())
+                    latest_file = Path(
+                        chrome_downloads, max(files, key=lambda f: f.stat().st_mtime)
+                    )
+                    print("File downloaded. waiting to be saved on disk")
+                    time.sleep(1)
+
+            if len(driver.window_handles) == 3:
+                original_window = driver.current_window_handle
+                driver.switch_to.window(driver.window_handles[-1])
+                url = driver.current_url
+                request_download_image(
+                    request_session, url, driver, Path(chrome_downloads, file_name)
+                )
+                files.append(Path(chrome_downloads, file_name))
+                driver.close()
+                driver.switch_to.window(original_window)
+                print("File downloaded")
+
+            time.sleep(2)
+
+        latest_file = Path(
+            chrome_downloads, max(files, key=lambda f: f.stat().st_mtime)
+        )
+        new_file_name = f"{uuid4()}_{latest_file.name}"
+        new_file_path = Path(latest_file.parent, new_file_name)
+        latest_file.rename(new_file_path)
+        downloaded_ctr += 1
 
         result = {
-            "File Name": get_text(driver, header_xpath),
+            "File Name": file_name,
             "Path": get_text(
                 driver, f"{header_xpath}/parent::span/following-sibling::span"
-            )
+            ),
+            "artifact_file_name": new_file_name,
         }
 
         results.append(result)
+
     return results
 
 
-def scrape_development(driver, chrome_downloads):
+def scrape_development(driver, chrome_downloads, request_session):
     try:
         results = []
         dialog_box = "//div[@role='dialog'][last()]"
@@ -1024,8 +1073,9 @@ def scrape_development(driver, chrome_downloads):
                 result = {
                     "ID": driver.current_url.split("/")[-1],
                     "Title": driver.title,
-                    "change_sets": scrape_changesets(driver),
-                    "artifacts_file_name": download_changeset_version(driver, chrome_downloads)
+                    "change_sets": scrape_changesets(
+                        driver, chrome_downloads, request_session
+                    ),
                 }
                 results.append(result)
 

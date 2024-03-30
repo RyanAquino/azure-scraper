@@ -202,17 +202,21 @@ def create_directory_hierarchy(
             file_name = f"changeset_{development['ID']}"
             dev_item_path = Path(development_path, file_name)
             os.makedirs(dev_item_path, exist_ok=True)
-            change_filename = Path(
-                dev_item_path, f"{file_name}.md"
-            )
+            change_filename = Path(dev_item_path, f"{file_name}.md")
             with open(change_filename, "w", encoding="utf-8") as file:
                 if change_sets := development["change_sets"]:
                     for change_set in change_sets:
-                        file.write(f"* 'File Name': {change_set['File Name']}\n")
-                        file.write(f"* 'Path': {change_set['Path']}\n")
+                        changed_file_name = change_set.get("artifact_file_name")
+                        artifacts_file = Path(attachments_path, changed_file_name)
+                        shutil.move(artifacts_file, dev_item_path)
 
-            artifacts_file = Path(attachments_path, development.get("artifacts_file_name"))
-            shutil.move(artifacts_file, dev_item_path)
+                        file.write(
+                            f"* 'Original File Name': {change_set['File Name']}\n"
+                        )
+                        file.write(f"* 'Path': {change_set['Path']}\n")
+                        file.write(
+                            f"* 'Downloaded Artifact File Name': {changed_file_name}\n"
+                        )
 
         if "children" in d:
             create_directory_hierarchy(d["children"], dir_path, indent=indent + 2)
