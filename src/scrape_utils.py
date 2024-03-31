@@ -971,6 +971,10 @@ def scrape_changesets(driver, chrome_downloads, request_session):
         )
         more_options_btn.click()
 
+        actions = ActionChains(driver)
+        actions.move_to_element(file)
+        actions.perform()
+
         download_btn = find_element_by_xpath(
             more_options_btn, "//tr[@id='__bolt-file-download']"
         )
