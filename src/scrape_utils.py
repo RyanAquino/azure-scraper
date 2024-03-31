@@ -959,7 +959,7 @@ def scrape_changesets(driver, chrome_downloads, request_session):
         header_xpath = "//span[@role='heading']"
         file_name = get_text(driver, header_xpath)
 
-        pattern = r"^\d+ changed files$"
+        pattern = r"^\d+ changed files?$"
         match = re.match(pattern, file_name)
 
         if match:
