@@ -7,9 +7,9 @@ from zipfile import ZipFile
 from selenium import webdriver
 
 import config
-from src.action_utils import find_element_by_xpath, find_elements_by_xpath
-from src.driver_utils import chrome_settings_init
-from src.main import login
+from action_utils import find_element_by_xpath, find_elements_by_xpath
+from driver_utils import chrome_settings_init
+from main import login
 
 
 def download_changeset(driver):
