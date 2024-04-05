@@ -64,43 +64,38 @@ def get_changeset_urls(driver):
     return changeset_urls
 
 
-def scrape_changeset(driver, chrome_downloads):
-    files = list(chrome_downloads.iterdir())
+def scrape_changeset(driver, changeset_downloads):
+    files = list(changeset_downloads.iterdir())
     downloaded_ctr = len(files) + 1
     changeset_urls = get_changeset_urls(driver)
 
     for changeset_url in changeset_urls:
         driver.get(changeset_url)
         download_changeset(driver)
-        files = wait_for_download(chrome_downloads, downloaded_ctr)
+        files = wait_for_download(changeset_downloads, downloaded_ctr)
         latest_file = Path(
-            chrome_downloads, max(files, key=lambda f: f.stat().st_mtime)
+            changeset_downloads, max(files, key=lambda f: f.stat().st_mtime)
         )
 
         with ZipFile(latest_file, "r") as zObject:
-            zObject.extractall(path=latest_file.parent.parent)
+            zObject.extractall(path=Path(latest_file.parent.parent, "changesets"))
 
         os.remove(latest_file)
 
 
 def main():
     chrome_config, _ = chrome_settings_init()
-    default_download_loc = (
-        chrome_config.get("options")
-        .experimental_options.get("prefs")
-        .get("download.default_directory")
-    )
-    os.makedirs(f"{default_download_loc}/changesets", exist_ok=True)
-    chrome_downloads = f"{default_download_loc}/changesets"
+    changeset_downloads = f"{Path.cwd()}/changesets_download"
+    os.makedirs(changeset_downloads, exist_ok=True)
     chrome_config.get("options").experimental_options["prefs"][
         "download.default_directory"
-    ] = chrome_downloads
+    ] = changeset_downloads
 
     with webdriver.Chrome(**chrome_config) as driver:
         login(driver, config.CHANGESET_URL, config.EMAIL, config.PASSWORD)
         time.sleep(5)
-        scrape_changeset(driver, Path(chrome_downloads))
-        shutil.rmtree(Path(chrome_downloads), ignore_errors=True)
+        scrape_changeset(driver, Path(changeset_downloads))
+        shutil.rmtree(Path(changeset_downloads), ignore_errors=True)
 
 
 if __name__ == "__main__":
