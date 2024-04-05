@@ -80,8 +80,7 @@ def scrape_changeset(driver, chrome_downloads):
         with ZipFile(latest_file, "r") as zObject:
             zObject.extractall(path=latest_file.parent.parent)
 
-        downloaded_ctr = len(files) + 1
-        shutil.rmtree(latest_file)
+        os.remove(latest_file)
 
 
 def main():
@@ -101,7 +100,7 @@ def main():
         login(driver, config.CHANGESET_URL, config.EMAIL, config.PASSWORD)
         time.sleep(5)
         scrape_changeset(driver, Path(chrome_downloads))
-        shutil.rmtree(Path(chrome_downloads))
+        shutil.rmtree(Path(chrome_downloads), ignore_errors=True)
 
 
 if __name__ == "__main__":
