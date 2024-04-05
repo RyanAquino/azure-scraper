@@ -16,3 +16,4 @@ max2 = os.getenv("max_wait_time")
 MAX_WAIT_TIME = int(0 if max2 is None else max2)
 ON_PREM = os.getenv("on_prem", "false").lower() == "true"
 UNPARENTED = os.getenv("unparented", "false").lower() == "true"
+CHANGESET_URL = os.getenv("changeset_url")
