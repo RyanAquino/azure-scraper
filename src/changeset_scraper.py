@@ -97,6 +97,7 @@ def get_valid_paths(driver):
 
 
 def clean_extract(latest_file, _id):
+    print("Extracting ", latest_file)
     extract_path = Path(latest_file.parent.parent, "changesets", _id)
     with ZipFile(latest_file, "r") as zObject:
         zObject.extractall(path=extract_path)
@@ -110,8 +111,10 @@ def scrape_changeset(driver, changeset_downloads):
     files = list(changeset_downloads.iterdir())
     downloaded_ctr = len(files) + 1
     changeset_urls = get_changeset_urls(driver)
+    print(changeset_urls)
 
     for changeset_url in changeset_urls:
+        print("Scraping ", changeset_url)
         driver.get(changeset_url)
         _id = changeset_url.split("/")[-2]
 
