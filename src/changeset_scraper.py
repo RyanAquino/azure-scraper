@@ -43,11 +43,13 @@ def wait_for_download(chrome_downloads, downloaded_ctr):
             chrome_downloads, max(files, key=lambda f: f.stat().st_mtime)
         )
 
+        print(latest_file.name)
         while "crdownload" in latest_file.name:
             files = list(chrome_downloads.iterdir())
             latest_file = Path(
                 chrome_downloads, max(files, key=lambda f: f.stat().st_mtime)
             )
+            print("Waiting file to be saved on disk...")
             time.sleep(1)
         time.sleep(2)
     else:
