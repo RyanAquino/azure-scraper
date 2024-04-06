@@ -15,7 +15,9 @@ from driver_utils import chrome_settings_init
 from main import login
 
 
-def download_changeset(driver, changeset_downloads, downloaded_ctr):
+def download_changeset(driver, changeset_downloads):
+    orig_file_ctr = list(changeset_downloads.iterdir())
+
     browse_files = find_element_by_xpath(driver, "//a[@id='__bolt-browse-files']")
     driver.execute_script("arguments[0].click();", browse_files)
 
@@ -25,15 +27,17 @@ def download_changeset(driver, changeset_downloads, downloaded_ctr):
     download_btn = find_element_by_xpath(driver, "//div[@id='__bolt-download-text']")
     driver.execute_script("arguments[0].click();", download_btn)
 
-    return wait_for_download(changeset_downloads, downloaded_ctr)
+    return wait_for_download(changeset_downloads)
 
 
-def wait_for_download(chrome_downloads, downloaded_ctr):
+def wait_for_download(chrome_downloads):
     files = list(chrome_downloads.iterdir())
+    print("Initial", files)
 
-    while len(files) != downloaded_ctr:
+    while len(files) != 1:
         print("Waiting for download to finish...")
         files = list(chrome_downloads.iterdir())
+        print("While ", files)
 
         if not files:
             time.sleep(2)
@@ -55,6 +59,7 @@ def wait_for_download(chrome_downloads, downloaded_ctr):
     else:
         print("File downloaded")
 
+    print("Downloads ", os.listdir(chrome_downloads))
     latest_file = Path(chrome_downloads, max(files, key=lambda f: f.stat().st_mtime))
 
     return latest_file
@@ -110,8 +115,7 @@ def clean_extract(latest_file, _id):
 
 
 def scrape_changeset(driver, changeset_downloads):
-    files = list(changeset_downloads.iterdir())
-    downloaded_ctr = len(files) + 1
+    # files = list(changeset_downloads.iterdir())
     changeset_urls = get_changeset_urls(driver)
     print(changeset_urls)
 
@@ -121,10 +125,9 @@ def scrape_changeset(driver, changeset_downloads):
         _id = changeset_url.split("/")[-2]
 
         valid_file_paths = get_valid_paths(driver)
-        latest_file = download_changeset(driver, changeset_downloads, downloaded_ctr)
+        latest_file = download_changeset(driver, changeset_downloads)
         extract_path = clean_extract(latest_file, _id)
         validate_files(valid_file_paths, extract_path, latest_file.stem)
-        shutil.rmtree(latest_file.stem, ignore_errors=True)
 
 
 def validate_files(valid_file_paths, extract_path, downloaded_file_name):
