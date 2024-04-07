@@ -29,7 +29,9 @@ def download_changeset(driver, changeset_downloads):
 
 
 def wait_for_download(chrome_downloads):
-    files = [file for file in chrome_downloads.iterdir() if not file.name.startswith('.')]
+    files = [
+        file for file in chrome_downloads.iterdir() if not file.name.startswith(".")
+    ]
     latest_file = None
     print("Initial", files)
 
@@ -38,7 +40,9 @@ def wait_for_download(chrome_downloads):
 
     while len(files) != 1 or (latest_file and "crdownload" in latest_file.name):
         print("Waiting for download to finish...")
-        files = [file for file in chrome_downloads.iterdir() if not file.name.startswith('.')]
+        files = [
+            file for file in chrome_downloads.iterdir() if not file.name.startswith(".")
+        ]
         print("While ", files)
 
         if not files:
@@ -59,17 +63,50 @@ def wait_for_download(chrome_downloads):
     return latest_file
 
 
+def get_all_changeset_urls(driver):
+    changeset_urls = get_changeset_urls(driver)
+
+    scroll_increment = 650
+    content_container = find_element_by_xpath(driver, "//div[@role='main']/div")
+    content_height = driver.execute_script(
+        "return arguments[0].scrollHeight;", content_container
+    )
+    scroll_init = 0
+
+    while scroll_init <= content_height:
+        driver.execute_script(
+            "arguments[0].scrollTop += arguments[1];",
+            content_container,
+            scroll_increment,
+        )
+
+        # Wait to load page
+        time.sleep(0.5)
+
+        # Get urls
+        changeset_body = find_element_by_xpath(driver, "//tbody")
+        changesets = find_elements_by_xpath(changeset_body, "a")
+        new_contents = []
+
+        for changeset in changesets:
+            changeset_url = changeset.get_attribute("href")
+            if changeset_url not in changeset_urls:
+                changeset_urls.append(changeset_url)
+                new_contents.append(changeset_url)
+
+        scroll_init += scroll_increment
+
+    return changeset_urls
+
+
 def get_changeset_urls(driver):
     try:
         changeset_body = find_element_by_xpath(driver, "//tbody")
         changesets = find_elements_by_xpath(changeset_body, "a")
         changeset_urls = []
-        print("Changeset count ", len(changesets))
 
         for changeset in changesets:
             changeset_urls.append(changeset.get_attribute("href"))
-
-        changeset_urls.reverse()
 
         return changeset_urls
 
@@ -115,8 +152,8 @@ def clean_extract(latest_file, _id):
 
 
 def scrape_changeset(driver, changeset_downloads):
-    changeset_urls = get_changeset_urls(driver)
-    print(changeset_urls)
+    changeset_urls = get_all_changeset_urls(driver)
+    print("Changeset URLs ", len(changeset_urls))
 
     for changeset_url in changeset_urls:
         print("Scraping ", changeset_url)
