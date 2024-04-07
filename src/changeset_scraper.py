@@ -29,7 +29,7 @@ def download_changeset(driver, changeset_downloads):
 
 
 def wait_for_download(chrome_downloads):
-    files = list(chrome_downloads.iterdir())
+    files = [file for file in chrome_downloads.iterdir() if not file.name.startswith('.')]
     latest_file = None
     print("Initial", files)
 
@@ -38,7 +38,7 @@ def wait_for_download(chrome_downloads):
 
     while len(files) != 1 or (latest_file and "crdownload" in latest_file.name):
         print("Waiting for download to finish...")
-        files = list(chrome_downloads.iterdir())
+        files = [file for file in chrome_downloads.iterdir() if not file.name.startswith('.')]
         print("While ", files)
 
         if not files:
