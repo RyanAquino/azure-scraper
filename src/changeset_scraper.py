@@ -16,8 +16,6 @@ from main import login
 
 
 def download_changeset(driver, changeset_downloads):
-    orig_file_ctr = list(changeset_downloads.iterdir())
-
     browse_files = find_element_by_xpath(driver, "//a[@id='__bolt-browse-files']")
     driver.execute_script("arguments[0].click();", browse_files)
 
@@ -32,9 +30,13 @@ def download_changeset(driver, changeset_downloads):
 
 def wait_for_download(chrome_downloads):
     files = list(chrome_downloads.iterdir())
+    latest_file = None
     print("Initial", files)
 
-    while len(files) != 1:
+    if files:
+        latest_file = Path(files[0])
+
+    while len(files) != 1 or (latest_file and "crdownload" in latest_file.name):
         print("Waiting for download to finish...")
         files = list(chrome_downloads.iterdir())
         print("While ", files)
@@ -46,15 +48,7 @@ def wait_for_download(chrome_downloads):
         latest_file = Path(
             chrome_downloads, max(files, key=lambda f: f.stat().st_mtime)
         )
-
         print(latest_file.name)
-        while "crdownload" in latest_file.name:
-            files = list(chrome_downloads.iterdir())
-            latest_file = Path(
-                chrome_downloads, max(files, key=lambda f: f.stat().st_mtime)
-            )
-            print("Waiting file to be saved on disk...")
-            time.sleep(1)
         time.sleep(2)
     else:
         print("File downloaded")
@@ -66,16 +60,22 @@ def wait_for_download(chrome_downloads):
 
 
 def get_changeset_urls(driver):
-    changeset_body = find_element_by_xpath(driver, "//tbody")
-    changesets = find_elements_by_xpath(changeset_body, "a")
-    changeset_urls = []
+    try:
+        changeset_body = find_element_by_xpath(driver, "//tbody")
+        changesets = find_elements_by_xpath(changeset_body, "a")
+        changeset_urls = []
+        print("Changeset count ", len(changesets))
 
-    for changeset in changesets:
-        changeset_urls.append(changeset.get_attribute("href"))
+        for changeset in changesets:
+            changeset_urls.append(changeset.get_attribute("href"))
 
-    changeset_urls.reverse()
+        changeset_urls.reverse()
 
-    return changeset_urls
+        return changeset_urls
+
+    except Exception as e:
+        print("Retrying...")
+        return get_changeset_urls(driver)
 
 
 def get_valid_paths(driver):
@@ -115,7 +115,6 @@ def clean_extract(latest_file, _id):
 
 
 def scrape_changeset(driver, changeset_downloads):
-    # files = list(changeset_downloads.iterdir())
     changeset_urls = get_changeset_urls(driver)
     print(changeset_urls)
 
