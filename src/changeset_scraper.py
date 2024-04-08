@@ -66,14 +66,14 @@ def wait_for_download(chrome_downloads):
 def get_all_changeset_urls(driver):
     changeset_urls = get_changeset_urls(driver)
 
-    scroll_increment = 650
+    scroll_increment = 250
     content_container = find_element_by_xpath(driver, "//div[@role='main']/div")
     content_height = driver.execute_script(
         "return arguments[0].scrollHeight;", content_container
     )
     scroll_init = 0
 
-    while scroll_init <= content_height:
+    while scroll_init <= content_height + (scroll_increment * 2):
         driver.execute_script(
             "arguments[0].scrollTop += arguments[1];",
             content_container,
@@ -86,13 +86,11 @@ def get_all_changeset_urls(driver):
         # Get urls
         changeset_body = find_element_by_xpath(driver, "//tbody")
         changesets = find_elements_by_xpath(changeset_body, "a")
-        new_contents = []
 
         for changeset in changesets:
             changeset_url = changeset.get_attribute("href")
             if changeset_url not in changeset_urls:
                 changeset_urls.append(changeset_url)
-                new_contents.append(changeset_url)
 
         scroll_init += scroll_increment
 
