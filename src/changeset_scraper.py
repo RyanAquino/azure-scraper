@@ -33,7 +33,7 @@ def wait_for_download(chrome_downloads):
         file for file in chrome_downloads.iterdir() if not file.name.startswith(".")
     ]
     latest_file = None
-    print("Initial", files)
+    # print("Initial", files)
 
     if files:
         latest_file = Path(files[0])
@@ -43,7 +43,7 @@ def wait_for_download(chrome_downloads):
         files = [
             file for file in chrome_downloads.iterdir() if not file.name.startswith(".")
         ]
-        print("While ", files)
+        # print("While ", files)
 
         if not files:
             time.sleep(2)
@@ -52,12 +52,12 @@ def wait_for_download(chrome_downloads):
         latest_file = Path(
             chrome_downloads, max(files, key=lambda f: f.stat().st_mtime)
         )
-        print(latest_file.name)
+        # print(latest_file.name)
         time.sleep(2)
     else:
         print("File downloaded")
 
-    print("Downloads ", os.listdir(chrome_downloads))
+    # print("Downloads ", os.listdir(chrome_downloads))
     latest_file = Path(chrome_downloads, max(files, key=lambda f: f.stat().st_mtime))
 
     return latest_file
@@ -81,7 +81,7 @@ def get_all_changeset_urls(driver):
         )
 
         # Wait to load page
-        time.sleep(0.5)
+        time.sleep(3)
 
         # Get urls
         changeset_body = find_element_by_xpath(driver, "//tbody")
@@ -93,6 +93,11 @@ def get_all_changeset_urls(driver):
                 changeset_urls.append(changeset_url)
 
         scroll_init += scroll_increment
+
+        content_container = find_element_by_xpath(driver, "//div[@role='main']/div")
+        content_height = driver.execute_script(
+            "return arguments[0].scrollHeight;", content_container
+        )
 
     return changeset_urls
 
@@ -139,7 +144,7 @@ def get_valid_paths(driver):
 
 
 def clean_extract(latest_file, _id):
-    print("Extracting ", latest_file)
+    # print("Extracting ", latest_file)
     extract_path = Path(latest_file.parent.parent, "changesets", _id)
     with ZipFile(latest_file, "r") as zObject:
         zObject.extractall(path=extract_path)
@@ -157,6 +162,7 @@ def scrape_changeset(driver, changeset_downloads):
         print("Scraping ", changeset_url)
         driver.get(changeset_url)
         _id = changeset_url.split("/")[-2]
+        print("Change set ID: ", _id)
 
         valid_file_paths = get_valid_paths(driver)
         latest_file = download_changeset(driver, changeset_downloads)
