@@ -166,7 +166,10 @@ def scrape_changeset(driver, changeset_downloads):
 
         valid_file_paths = get_valid_paths(driver)
         latest_file = download_changeset(driver, changeset_downloads)
-        extract_path = clean_extract(latest_file, _id)
+        extract_path = Path(latest_file.parent.parent, "changesets", _id)
+        os.makedirs(extract_path)
+        shutil.move(latest_file, extract_path)
+        # extract_path = clean_extract(latest_file, _id)
         # validate_files(valid_file_paths, extract_path, latest_file.stem)
 
 
