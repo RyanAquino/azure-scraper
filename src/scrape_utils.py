@@ -945,99 +945,24 @@ def scrape_discussions(driver, request_session, chrome_downloads):
         return scrape_discussions(driver, request_session, chrome_downloads)
 
 
-def scrape_changesets(driver, chrome_downloads, request_session):
+def scrape_changesets(driver):
     results = []
+
     files_changed = find_elements_by_xpath(driver, "//tr[@role='treeitem']")
 
-    files = list(chrome_downloads.iterdir())
-    downloaded_ctr = len(files) + 1
-
-    for idx, file in enumerate(files_changed, start=1):
+    for file in files_changed:
         driver.execute_script("arguments[0].click();", file)
-        file.click()
 
         header_xpath = "//span[@role='heading']"
-        file_name = get_text(driver, header_xpath)
-
-        pattern = r"^\d+ changed files?$"
-        match = re.match(pattern, file_name)
-
-        if match:
-            continue
-
-        more_options_btn = file.find_element(
-            "xpath",
-            f"//tr[@role='treeitem'][{idx}]//td[@role='gridcell']/div/div[last()]",
-        )
-        more_options_btn.click()
-
-        actions = ActionChains(driver)
-        actions.move_to_element(file)
-        actions.perform()
-
-        download_btn = find_element_by_xpath(
-            more_options_btn, "//tr[@id='__bolt-file-download']"
-        )
-        driver.execute_script("arguments[0].click();", download_btn)
-
-        try:
-            WebDriverWait(driver, 3).until_not(EC.number_of_windows_to_be(3))
-        except selenium.common.exceptions.TimeoutException:
-            pass
-
-        while len(files) != downloaded_ctr:
-            print("Waiting for download to finish...")
-            files = list(chrome_downloads.iterdir())
-
-            if len(driver.window_handles) == 2:
-                if not files:
-                    time.sleep(2)
-                    continue
-
-                latest_file = Path(
-                    chrome_downloads, max(files, key=lambda f: f.stat().st_mtime)
-                )
-
-                while "crdownload" in latest_file.name:
-                    files = list(chrome_downloads.iterdir())
-                    latest_file = Path(
-                        chrome_downloads, max(files, key=lambda f: f.stat().st_mtime)
-                    )
-                    print("File downloaded. waiting to be saved on disk")
-                    time.sleep(1)
-
-            if len(driver.window_handles) == 3:
-                original_window = driver.current_window_handle
-                driver.switch_to.window(driver.window_handles[-1])
-                url = driver.current_url
-                request_download_image(
-                    request_session, url, driver, Path(chrome_downloads, file_name)
-                )
-                files.append(Path(chrome_downloads, file_name))
-                driver.close()
-                driver.switch_to.window(original_window)
-                print("File downloaded")
-
-            time.sleep(2)
-
-        latest_file = Path(
-            chrome_downloads, max(files, key=lambda f: f.stat().st_mtime)
-        )
-        new_file_name = f"{uuid4()}_{latest_file.name}"
-        new_file_path = Path(latest_file.parent, new_file_name)
-        latest_file.rename(new_file_path)
-        downloaded_ctr += 1
 
         result = {
-            "File Name": file_name,
+            "File Name": get_text(driver, header_xpath),
             "Path": get_text(
                 driver, f"{header_xpath}/parent::span/following-sibling::span"
-            ),
-            "artifact_file_name": new_file_name,
+            )
         }
 
         results.append(result)
-
     return results
 
 
@@ -1077,9 +1002,7 @@ def scrape_development(driver, chrome_downloads, request_session):
                 result = {
                     "ID": driver.current_url.split("/")[-1],
                     "Title": driver.title,
-                    "change_sets": scrape_changesets(
-                        driver, chrome_downloads, request_session
-                    ),
+                    "change_sets": scrape_changesets(driver)
                 }
                 results.append(result)
 
@@ -1087,7 +1010,7 @@ def scrape_development(driver, chrome_downloads, request_session):
                 driver.switch_to.window(original_window)
         return results
     except StaleElementReferenceException:
-        return scrape_development(driver, chrome_downloads)
+        return scrape_development(driver, chrome_downloads, request_session)
 
 
 def log_html(page_source, log_file_path="source.log"):
