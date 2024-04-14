@@ -154,17 +154,22 @@ def clean_extract(latest_file, _id):
     return extract_path
 
 
-def scrape_changeset(driver, changeset_downloads):
+def scrape_changeset(driver, changeset_downloads, id_folders):
     changeset_urls = get_all_changeset_urls(driver)
     print("Changeset URLs ", len(changeset_urls))
 
     for changeset_url in changeset_urls:
         print("Scraping ", changeset_url)
-        driver.get(changeset_url)
+
         _id = changeset_url.split("/")[-2]
         print("Change set ID: ", _id)
 
-        valid_file_paths = get_valid_paths(driver)
+        if _id in id_folders:
+            print("Skipping existing ID: ", _id)
+            continue
+
+        driver.get(changeset_url)
+        # valid_file_paths = get_valid_paths(driver)
         latest_file = download_changeset(driver, changeset_downloads)
         extract_path = Path(latest_file.parent.parent, "changesets", _id)
         os.makedirs(extract_path)
@@ -210,12 +215,14 @@ def init_chrome_config():
 
 def main():
     chrome_config, changeset_downloads = init_chrome_config()
+    changesets = Path(Path(changeset_downloads).parent, "changesets")
+    id_folders = {file.name for file in changesets.iterdir() if file.is_dir()}
 
     try:
         with webdriver.Chrome(**chrome_config) as driver:
             login(driver, config.CHANGESET_URL, config.EMAIL, config.PASSWORD)
             time.sleep(5)
-            scrape_changeset(driver, Path(changeset_downloads))
+            scrape_changeset(driver, Path(changeset_downloads), id_folders)
     except Exception as e:
         print(str(e))
         print(traceback.format_exc())
