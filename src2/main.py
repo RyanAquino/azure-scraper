@@ -85,7 +85,7 @@ def scrape_child_work_items(driver, request_session, chrome_downloads):
 
     try:
         work_item_data, desc_att = scrape_basic_fields(
-            dialog_box, driver, request_session, chrome_downloads
+            dialog_box, driver, request_session, chrome_downloads, dialog_xpath
         )
         work_item_data["img_description"] = desc_att
         work_item_data["Title"] = title

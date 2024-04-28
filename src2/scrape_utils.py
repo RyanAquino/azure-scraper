@@ -28,7 +28,7 @@ from action_utils import (
 from driver_utils import session_re_authenticate
 
 
-def scrape_basic_fields(dialog_box, driver, request_session, chrome_downloads):
+def scrape_basic_fields(dialog_box, driver, request_session, chrome_downloads, dialog_xpath):
     labels = [
         "ID Field",
         "Assigned To Field",
@@ -45,8 +45,8 @@ def scrape_basic_fields(dialog_box, driver, request_session, chrome_downloads):
 
     basic_fields = {}
     description_images = None
-    summary_xpath = f".//li[@aria-label='Summary']"
-    steps_xpath = f".//li[@aria-label='Steps']"
+    summary_xpath = f"{dialog_xpath}//ul[@role='tablist']/li[2]"
+    steps_xpath = f"{dialog_xpath}//ul[@role='tablist']/li[1]"
 
     try:
         html = dialog_box.get_attribute("innerHTML")
