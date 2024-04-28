@@ -1,10 +1,12 @@
+import logging
 import re
 import time
 import urllib.parse
+from uuid import uuid4
 
 from bs4 import BeautifulSoup
 from dateutil.parser import ParserError
-from selenium.common.exceptions import StaleElementReferenceException
+from selenium.common.exceptions import StaleElementReferenceException, JavascriptException
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
@@ -23,8 +25,10 @@ from action_utils import (
     validate_title,
 )
 
+from driver_utils import session_re_authenticate
 
-def scrape_basic_fields(dialog_box, driver):
+
+def scrape_basic_fields(dialog_box, driver, request_session, chrome_downloads):
     labels = [
         "ID Field",
         "Assigned To Field",
@@ -40,11 +44,13 @@ def scrape_basic_fields(dialog_box, driver):
     ]
 
     basic_fields = {}
+    description_images = None
+    summary_xpath = f".//li[@aria-label='Summary']"
+    steps_xpath = f".//li[@aria-label='Steps']"
 
     try:
         html = dialog_box.get_attribute("innerHTML")
         soup = BeautifulSoup(html, "html.parser")
-        description_element = None
         img_urls = []
 
         for element in soup.find_all(attrs={"aria-label": True}):
@@ -83,6 +89,7 @@ def scrape_basic_fields(dialog_box, driver):
         elif soup.find(attrs={"aria-label": "Resolution section."}):
             description_element = soup.find(attrs={"aria-label": "Description"})
             resolution_element = soup.find(attrs={"aria-label": "Resolution"})
+            description_images = description_element.find_all("img")
             description = convert_to_markdown(description_element)
             resolution = (
                 f"* Repro Steps\n\t* {convert_to_markdown(resolution_element)}\n"
@@ -90,28 +97,84 @@ def scrape_basic_fields(dialog_box, driver):
 
             basic_fields["Description"] = description + "\n" + resolution
 
-        else:
-            description_element = soup.find(attrs={"aria-label": "Description"})
+        elif description_element := soup.find(attrs={"aria-label": "Description"}):
+            description_images = description_element.find_all("img")
             description = convert_to_markdown(description_element)
             basic_fields["Description"] = description
 
-        if description_element and description_element.img:
-            img_atts = description_element.find_all("img")
-            for att in img_atts:
+        elif soup.find(attrs={"aria-label": "Steps"}):
+            steps_content = soup.find("div", {"class": "test-steps-list"})
+            steps_content = steps_content.find(
+                "div", {"class": "grid-canvas", "role": "presentation"}
+            )
+            description = ""
+            temp_steps = []
+
+            for step in steps_content.select('div[class*="grid-row grid-row-normal"]')[:-1]:
+                temp_steps += step.find_all("p")
+
+                temp_steps.append(
+                    BeautifulSoup("<p><br/></p>", features="html.parser").p
+                )  # Adding for consistency
+
+                temp_step_att = BeautifulSoup("<a></a>", features="html.parser").a
+
+                if steps_att := step.find_all("a"):
+                    combined_steps_att = ""
+
+                    for step_att in steps_att:
+                        combined_steps_att += f"{step_att.text.split(' ')[0]} "
+
+                    temp_step_att = BeautifulSoup(
+                        f"<div>{combined_steps_att}</div>", features="html.parser"
+                    ).div
+
+                temp_steps.append(temp_step_att)
+
+            for idx in range(0, len(temp_steps), 4):
+                description += f"{temp_steps[idx].text} \t {temp_steps[idx + 1].text} \t {temp_steps[idx + 2].text} \t {temp_steps[idx + 3].text}\n"
+
+            if desc := find_element_by_xpath(driver, summary_xpath):
+                driver.execute_script("arguments[0].click();", desc)
+                html = dialog_box.get_attribute("innerHTML")
+                soup = BeautifulSoup(html, "html.parser")
+                description_element = soup.find(attrs={"aria-label": "Description"})
+
+                description_images = description_element.find_all("img")
+                description += convert_to_markdown(description_element)
+
+            if steps_tab := find_element_by_xpath(driver, steps_xpath):
+                driver.execute_script("arguments[0].click();", steps_tab)
+
+            basic_fields["Description"] = description
+
+        if description_images:
+            for att in description_images:
                 if img_src := att.get("src"):
                     parsed_url = urllib.parse.urlparse(img_src)
                     query_params = urllib.parse.parse_qs(parsed_url.query)
-                    resource_id = parsed_url.path.split("/")[-1]
-                    new_file_name = f"{resource_id}_{query_params.get('fileName')[0]}"
-                    query_params["fileName"] = [new_file_name]
-                    query_params["download"] = "true"
+
+                    key = "fileName"
+                    orig_file_name = query_params.get(key)
+
+                    if not orig_file_name:
+                        key = "FileName"
+                        orig_file_name = query_params.get(key)
+
+                    if not orig_file_name:
+                        continue
+
+                    orig_file_name = orig_file_name[0]
+                    file_name = f"{uuid4()}_{orig_file_name}"
+                    query_params[key] = [file_name]
+                    query_params["download"] = "True"
                     updated_url = urllib.parse.urlunparse(
                         parsed_url._replace(
                             query=urllib.parse.urlencode(query_params, doseq=True)
                         )
                     )
-                    img_urls.append({"url": updated_url, "filename": new_file_name})
                     driver.get(updated_url)
+                    img_urls.append({"filename": file_name})
 
         return {
             "Task id": basic_fields["ID Field"],
@@ -129,13 +192,14 @@ def scrape_basic_fields(dialog_box, driver):
         }, img_urls
 
     except AttributeError:
-        return scrape_basic_fields(dialog_box, driver)
+        return scrape_basic_fields(dialog_box, driver, request_session, chrome_downloads)
 
 
-def scrape_attachments(driver):
+def scrape_attachments(request_session, driver, chrome_downloads):
     dialog_xpath = "//div[@role='dialog'][last()]"
     attachments_tab = f"{dialog_xpath}//ul[@role='tablist']/li[4]"
     details_tab = f"{dialog_xpath}//ul[@role='tablist']/li[1]"
+    steps_xpath = f"{dialog_xpath}//li[@aria-label='Steps']"
 
     # Attachment count
     attachments_count = get_text(driver, f"{attachments_tab}/span[2]")
@@ -171,16 +235,29 @@ def scrape_attachments(driver):
                 f"Retrying to find attachment row items... {retry}/{config.MAX_RETRIES}"
             )
 
+        grid_rows_ctr = 0
         retry = 0
-        attachment_href = None
 
-        for grid_row in grid_rows:
+        print(f"Initial # of attachment found: {len(grid_rows)}")
+
+        while grid_rows_ctr < len(grid_rows):
+            grid_row = grid_rows[grid_rows_ctr]
+            attachment_href = find_element_by_xpath(grid_row, ".//a")
+
             while not attachment_href and retry < config.MAX_RETRIES:
+                print("Retrying attachment href...")
+                grid_rows = find_elements_by_xpath(
+                    driver,
+                    f"({dialog_xpath}//div[@class='grid-content-spacer'])[last()]/parent::div//div[@role='row']",
+                )
+                print(f"# attachments re-found: {len(grid_rows)}")
+                grid_row = grid_rows[grid_rows_ctr]
                 attachment_href = find_element_by_xpath(grid_row, ".//a")
                 retry += 1
-                print("Retrying attachment href...")
 
             if not attachment_href:
+                print(f"attachment not found")
+                grid_rows_ctr += 1
                 continue
 
             date_attached = find_element_by_xpath(grid_row, "./div[3]")
@@ -189,12 +266,21 @@ def scrape_attachments(driver):
             query_params = urllib.parse.parse_qs(parsed_url.query)
 
             updated_at = convert_date(date_attached.text, date_format="%d/%m/%Y %H:%M")
-            resource_id = parsed_url.path.split("/")[-1]
+            key = "fileName"
+            file_name = query_params.get(key)
 
-            file_name = query_params.get("fileName")[0]
-            new_file_name = f"{updated_at}_{resource_id}_{file_name}"
+            if not file_name:
+                key = "FileName"
+                file_name = query_params.get(key)
 
-            query_params["fileName"] = [new_file_name]
+            if not file_name:
+                print(f"File name not found on attachment: {attachment_url}")
+                continue
+
+            file_name = file_name[0]
+            new_file_name = f"{updated_at}_{uuid4()}_{file_name}"
+
+            query_params[key] = [new_file_name]
             updated_url = urllib.parse.urlunparse(
                 parsed_url._replace(
                     query=urllib.parse.urlencode(query_params, doseq=True)
@@ -202,14 +288,23 @@ def scrape_attachments(driver):
             )
             attachments_data.append({"url": updated_url, "filename": new_file_name})
 
+            print(f"Downloading attachment: {updated_url}")
+            # request_download_image(
+            #     request_session, updated_url, driver, chrome_downloads / new_file_name
+            # )
             driver.get(updated_url)
 
+            grid_rows_ctr += 1
+
         # Navigate back to details
-        click_button_by_xpath(driver, details_tab)
+        if find_element_by_xpath(driver, details_tab):
+            click_button_by_xpath(driver, details_tab)
+        else:
+            click_button_by_xpath(driver, steps_xpath)
 
         return attachments_data
     except (StaleElementReferenceException, AttributeError):
-        return scrape_attachments(driver)
+        return scrape_attachments(request_session, driver, chrome_downloads)
 
 
 def get_element_text(element):
@@ -217,12 +312,18 @@ def get_element_text(element):
         return element.text
 
 
-def scrape_history(driver):
+def scrape_history(driver, request_session, chrome_downloads):
     results = []
     dialog_box_xpath = "//div[@role='dialog'][last()]"
     details_tab_xpath = f"{dialog_box_xpath}//ul[@role='tablist']/li[1]"
+    steps_tab_xpath = f"{dialog_box_xpath}//li[@aria-label='Steps']"
     history_xpath = f"{dialog_box_xpath}//ul[@role='tablist']/li[2]"
     history_items_xpath = f"{dialog_box_xpath}//div[@class='history-item-summary' or contains(@class, 'history-item-selected')]"
+
+    history_tab = find_element_by_xpath(driver, history_xpath)
+
+    if history_tab and history_tab.accessible_name != "History":
+        history_xpath = f"{dialog_box_xpath}//ul[@role='tablist']/li[4]"
 
     # Navigate to history tab
     click_button_by_xpath(driver, history_xpath)
@@ -246,224 +347,490 @@ def scrape_history(driver):
         retry += 1
         print(f"Retrying to find history items... {retry}/{config.MAX_RETRIES}")
 
-    for history in history_items:
-        history.click()
+    try:
+        for history in history_items:
+            driver.execute_script("arguments[0].click();", history)
+            time.sleep(1)
 
-        details_xpath = f"{dialog_box_xpath}//div[@class='history-item-viewer']"
-        details = find_element_by_xpath(driver, details_xpath)
+            details_xpath = f"{dialog_box_xpath}//div[@class='history-item-viewer']"
+            details = find_element_by_xpath(driver, details_xpath)
 
-        soup = BeautifulSoup(details.get_attribute("innerHTML"), "html.parser")
-        username = soup.find("span", {"class": "history-item-name-changed-by"}).text
-        date = soup.find("span", {"class": "history-item-date"}).text
-        summary = soup.find("div", {"class": "history-item-summary-text"}).text
+            soup = BeautifulSoup(details.get_attribute("innerHTML"), "html.parser")
+            username = soup.find("span", {"class": "history-item-name-changed-by"}).text
+            date = soup.find("span", {"class": "history-item-date"}).text
+            summary = soup.find("div", {"class": "history-item-summary-text"}).text
 
-        result = {
-            "User": username,
-            "Date": date,
-            "Title": summary,
-            "Links": [],
-            "Fields": [],
-        }
+            result = {
+                "User": username,
+                "Date": date,
+                "Title": summary,
+                "Links": [],
+                "Fields": [],
+                "Attachments": [],
+            }
 
-        if history_fields := soup.find("div", class_="fields"):
-            fields = history_fields.find_all("div", class_="field-name")
+            if history_fields := soup.find("div", class_="fields"):
+                fields = history_fields.find_all("div", class_="field-name")
 
-            for field in fields:
-                field_name = field.span.text
-                field_value = field.find_next_sibling("div", class_="field-values")
+                for field in fields:
+                    field_name = field.span.text
+                    field_value = field.find_next_sibling("div", class_="field-values")
 
-                new_value = field_value.find("span", class_="field-new-value")
-                old_value = field_value.find("span", class_="field-old-value")
+                    new_value = field_value.find("span", class_="field-new-value")
+                    old_value = field_value.find("span", class_="field-old-value")
+                    result["Fields"].append(
+                        {
+                            "name": field_name,
+                            "old_value": get_element_text(old_value),
+                            "new_value": get_element_text(new_value),
+                        }
+                    )
+            if html_field := soup.find("div", class_="html-field"):
+                field_name = html_field.find("div", {"class": "html-field-name"}).text
+                new_value = html_field.find("div", class_="html-field-new-value-container")
+                new_value_text = new_value.find_all("span")[-1] if new_value else None
+                old_value = html_field.find("div", class_="html-field-old-value-container")
+                old_value_images = []
+
+                if old_value:
+                    old_image_urls = old_value.find_all("a")
+                    old_value = old_value.find_all("span")[-1]
+
+                    for image_url in old_image_urls:
+                        image_url = image_url.get("href")
+                        parsed_url = urllib.parse.urlparse(image_url)
+                        query_params = urllib.parse.parse_qs(parsed_url.query)
+                        key = "fileName"
+                        orig_file_name = query_params.get(key)
+
+                        if not orig_file_name:
+                            key = "FileName"
+                            orig_file_name = query_params.get(key)
+
+                        if not orig_file_name:
+                            continue
+
+                        orig_file_name = orig_file_name[0]
+
+                        new_file_name = f"{uuid4()}_{orig_file_name}"
+
+                        query_params[key] = [new_file_name]
+                        query_params["download"] = "True"
+
+                        updated_url = urllib.parse.urlunparse(
+                            parsed_url._replace(
+                                query=urllib.parse.urlencode(query_params, doseq=True)
+                            )
+                        )
+                        # request_download_image(
+                        #     request_session,
+                        #     updated_url,
+                        #     driver,
+                        #     chrome_downloads / new_file_name,
+                        # )
+                        driver.get(updated_url)
+
+                        old_value_images.append({"File Name": new_file_name})
+
+                new_value_images = []
+
+                if new_value and (image_urls := new_value.find_all("a")):
+                    for image_url in image_urls:
+                        image_url = image_url.get("href")
+                        parsed_url = urllib.parse.urlparse(image_url)
+                        query_params = urllib.parse.parse_qs(parsed_url.query)
+                        key = "fileName"
+                        orig_file_name = query_params.get(key)
+
+                        if not orig_file_name:
+                            key = "FileName"
+                            orig_file_name = query_params.get(key)
+
+                        if not orig_file_name:
+                            continue
+
+                        orig_file_name = orig_file_name[0]
+
+                        new_file_name = f"{uuid4()}_{orig_file_name}"
+
+                        query_params[key] = [new_file_name]
+                        query_params["download"] = "True"
+
+                        updated_url = urllib.parse.urlunparse(
+                            parsed_url._replace(
+                                query=urllib.parse.urlencode(query_params, doseq=True)
+                            )
+                        )
+                        # request_download_image(
+                        #     request_session,
+                        #     updated_url,
+                        #     driver,
+                        #     chrome_downloads / new_file_name,
+                        # )
+                        driver.get(updated_url)
+
+                        new_value_images.append({"File Name": new_file_name})
+
                 result["Fields"].append(
                     {
                         "name": field_name,
                         "old_value": get_element_text(old_value),
-                        "new_value": get_element_text(new_value),
+                        "old_attachments": old_value_images,
+                        "new_value": get_element_text(new_value_text),
+                        "new_attachments": new_value_images,
                     }
                 )
-        if html_field := soup.find("div", class_="html-field"):
-            field_name = html_field.find("div", {"class": "html-field-name"}).text
-            old_value = html_field.find("div", class_="html-field-old-value-container")
-            new_value = html_field.find("div", class_="html-field-new-value-container")
 
-            result["Fields"].append(
-                {
-                    "name": field_name,
-                    "old_value": get_element_text(old_value),
-                    "new_value": get_element_text(new_value),
-                }
-            )
+            if added_comment := soup.find("div", {"class": "history-item-comment"}):
+                img_discussion_attachments = []
+                if image_urls := added_comment.find_all("a"):
+                    for image_url in image_urls:
+                        image_url = image_url.get("href")
+                        parsed_url = urllib.parse.urlparse(image_url)
+                        query_params = urllib.parse.parse_qs(parsed_url.query)
+                        key = "fileName"
+                        orig_file_name = query_params.get(key)
 
-        if added_comment := soup.find("div", {"class": "history-item-comment"}):
-            result["Fields"].append(
-                {
-                    "name": "Comments",
-                    "old_value": None,
-                    "new_value": added_comment.text,
-                }
-            )
+                        if not orig_file_name:
+                            key = "FileName"
+                            orig_file_name = query_params.get(key)
 
-        if editted_comments := soup.find(
-            "div", {"class": "history-item-comment-edited"}
-        ):
-            old_comment = editted_comments.find("div", class_="old-comment")
-            new_comment = editted_comments.find("div", class_="new-comment")
+                        if not orig_file_name:
+                            continue
 
-            result["Fields"].append(
-                {
-                    "name": "Comments",
-                    "old_value": old_comment.text,
-                    "new_value": new_comment.text,
-                }
-            )
+                        orig_file_name = orig_file_name[0]
+                        new_file_name = f"{uuid4()}_{orig_file_name}"
 
-        # Get Links
-        if link := soup.find("div", class_="history-links"):
-            display_name = link.find("span", class_="link-display-name").text
-            link = link.find("span", class_="link-text")
+                        query_params[key] = [new_file_name]
+                        query_params["download"] = "True"
 
-            result["Links"].append(
-                {
-                    "Type": display_name,
-                    "Link to item file": link.a.get("href") if link.a else None,
-                    "Title": link.span.text.lstrip(": ") if link.span else None,
-                }
-            )
+                        updated_url = urllib.parse.urlunparse(
+                            parsed_url._replace(
+                                query=urllib.parse.urlencode(query_params, doseq=True)
+                            )
+                        )
+                        # request_download_image(
+                        #     request_session,
+                        #     updated_url,
+                        #     driver,
+                        #     chrome_downloads / new_file_name,
+                        # )
+                        driver.get(updated_url)
 
-        results.append(result)
+                        img_discussion_attachments.append({"File Name": new_file_name})
 
-    # Navigate back to details tab
-    click_button_by_xpath(driver, details_tab_xpath)
+                result["Fields"].append(
+                    {
+                        "name": "Comments",
+                        "old_value": None,
+                        "new_value": added_comment.text,
+                        "new_attachments": img_discussion_attachments,
+                    }
+                )
 
-    return results
+            if editted_comments := soup.find(
+                "div", {"class": "history-item-comment-edited"}
+            ):
+                old_comment = editted_comments.find("div", class_="old-comment")
+                new_comment = editted_comments.find("div", class_="new-comment")
+
+                new_comment_atts = []
+                old_comment_atts = []
+
+                if image_urls := old_comment.find_all("a"):
+                    for image_url in image_urls:
+                        image_url = image_url.get("href")
+                        parsed_url = urllib.parse.urlparse(image_url)
+                        query_params = urllib.parse.parse_qs(parsed_url.query)
+                        key = "fileName"
+                        orig_file_name = query_params.get(key)
+
+                        if not orig_file_name:
+                            key = "FileName"
+                            orig_file_name = query_params.get(key)
+
+                        if not orig_file_name:
+                            continue
+
+                        orig_file_name = orig_file_name[0]
+                        new_file_name = f"{uuid4()}_{orig_file_name}"
+
+                        query_params[key] = [new_file_name]
+                        query_params["download"] = "True"
+
+                        updated_url = urllib.parse.urlunparse(
+                            parsed_url._replace(
+                                query=urllib.parse.urlencode(query_params, doseq=True)
+                            )
+                        )
+                        # request_download_image(
+                        #     request_session,
+                        #     updated_url,
+                        #     driver,
+                        #     chrome_downloads / new_file_name,
+                        # )
+                        driver.get(updated_url)
+
+                        old_comment_atts.append({"File Name": new_file_name})
+
+                if image_urls := new_comment.find_all("a"):
+                    for image_url in image_urls:
+                        image_url = image_url.get("href")
+                        parsed_url = urllib.parse.urlparse(image_url)
+                        query_params = urllib.parse.parse_qs(parsed_url.query)
+                        key = "fileName"
+                        orig_file_name = query_params.get(key)
+
+                        if not orig_file_name:
+                            key = "FileName"
+                            orig_file_name = query_params.get(key)
+
+                        if not orig_file_name:
+                            continue
+
+                        orig_file_name = orig_file_name[0]
+                        new_file_name = f"{uuid4()}_{orig_file_name}"
+
+                        query_params[key] = [new_file_name]
+                        query_params["download"] = "True"
+
+                        updated_url = urllib.parse.urlunparse(
+                            parsed_url._replace(
+                                query=urllib.parse.urlencode(query_params, doseq=True)
+                            )
+                        )
+                        # request_download_image(
+                        #     request_session,
+                        #     updated_url,
+                        #     driver,
+                        #     chrome_downloads / new_file_name,
+                        # )
+                        driver.get(updated_url)
+
+                        new_comment_atts.append({"File Name": new_file_name})
+
+                result["Fields"].append(
+                    {
+                        "name": "Comments",
+                        "old_value": old_comment.find(
+                            "div", class_="history-item-comment"
+                        ).text,
+                        "new_value": new_comment.find(
+                            "div", class_="history-item-comment"
+                        ).text,
+                        "old_attachments": old_comment_atts,
+                        "new_attachments": new_comment_atts,
+                    }
+                )
+
+            # Get Links
+            if links := soup.find("div", class_="history-links"):
+                links = links.find_all("div", class_="link")
+
+                for link in links:
+                    is_deleted = (
+                        "Deleted" if "link-delete" in link.get("class") else "Added"
+                    )
+                    display_name = link.find("span", class_="link-display-name").text
+                    link = link.find("span", class_="link-text")
+
+                    try:
+                        title = link.a.text.lstrip(": ")
+                    except AttributeError:
+                        title = link.text
+
+                    try:
+                        link_item_file = link.a.get("href")
+                    except AttributeError:
+                        link_item_file = link.text
+
+                    result["Links"].append(
+                        {
+                            "Change Type": is_deleted,
+                            "Type": display_name,
+                            "Link to item file": link_item_file,
+                            "Title": title,
+                        }
+                    )
+
+            # Attachments
+            if attachments := soup.find("div", class_="history-attachments"):
+                attachments = attachments.find_all("div", class_="attachment")
+
+                for attachment in attachments:
+                    attachment_file_name = attachment.find(
+                        "button", class_="attachment-text"
+                    )
+                    is_deleted = attachment.find("del")
+                    attachment_change_type = "Deleted" if is_deleted else "Added"
+                    result["Attachments"].append(
+                        {
+                            "Change Type": attachment_change_type,
+                            "File Name": get_element_text(attachment_file_name),
+                        }
+                    )
+            results.append(result)
+
+        # Navigate back to details tab
+        if find_element_by_xpath(driver, details_tab_xpath):
+            click_button_by_xpath(driver, details_tab_xpath)
+        else:
+            click_button_by_xpath(driver, steps_tab_xpath)
+
+        return results
+    except StaleElementReferenceException:
+        return scrape_history(driver, request_session, chrome_downloads)
 
 
 def scrape_related_work(driver, dialog_box):
-    results = []
-    details_xpath = ".//ul[@role='tablist']/li[1]"
-    related_work_xpath = ".//ul[@role='tablist']/li[3]"
+    try:
+        results = []
+        details_xpath = ".//ul[@role='tablist']/li[1]"
+        related_work_xpath = ".//ul[@role='tablist']/li[3]"
+        steps_xpath = ".//li[@aria-label='Steps']"
 
-    # Navigate to related work tab
-    related_work_tab = find_element_by_xpath(dialog_box, related_work_xpath)
+        # Navigate to related work tab
+        related_work_tab = find_element_by_xpath(dialog_box, related_work_xpath)
 
-    if not related_work_tab.text:
-        return []
+        retry = 0
 
-    related_work_tab.click()
+        while not related_work_tab and retry < config.MAX_RETRIES:
+            related_work_tab = find_element_by_xpath(dialog_box, related_work_xpath)
+            print(f"Retrying related work tab... {retry}/{config.MAX_RETRIES}")
+            time.sleep(1)
+            retry += 1
 
-    grid_canvas_container_xpath = ".//div[@class='grid-canvas']"
-    grid_canvas_container = find_element_by_xpath(
-        dialog_box, grid_canvas_container_xpath
-    )
-    driver.execute_script(
-        "arguments[0].scrollTop = arguments[0].scrollHeight", grid_canvas_container
-    )
+        if not related_work_tab.text or "Links" not in related_work_tab.accessible_name:
+            return []
 
-    related_work_items_xpath = f"{grid_canvas_container_xpath}//div[contains(@class, 'grid-row grid-row-normal') and @aria-level]"
-    related_work_items = find_elements_by_xpath(dialog_box, related_work_items_xpath)
+        related_work_tab.click()
 
-    # Click last work item to load all
-    related_work_items[-1].click()
+        time.sleep(3)
 
-    related_work_items = find_elements_by_xpath(dialog_box, related_work_items_xpath)
-    related_work_items_elements = [
-        related_work_item for related_work_item in related_work_items
-    ]
+        grid_canvas_container_xpath = ".//div[@class='grid-canvas']"
+        grid_canvas_container = find_element_by_xpath(
+            dialog_box, grid_canvas_container_xpath
+        )
 
-    soup = BeautifulSoup(dialog_box.get_attribute("innerHTML"), "html.parser")
-    soup = soup.find("div", {"class": "grid-canvas"})
-    related_work_type = None
-    related_work_data = {}
-    valid_labels = [
-        "Child",
-        "Duplicate",
-        "Duplicate Of",
-        "Predecessor",
-        "Related",
-        "Successor",
-        "Tested By",
-        "Tests",
-        "Parent",
-    ]
-
-    for index, element in enumerate(soup.find_all("div", {"aria-level": True})):
-        is_label = element.get("aria-level") == "1"
-
-        if not is_label and related_work_type:
-            work_item = element.find("a")
-
-            work_item_url = work_item.get("href")
-            related_work_item_id = work_item_url.split("/")[-1]
-            related_work_title = validate_title(work_item.get_text())
-
-            updated_date = find_element_by_xpath(
-                related_work_items_elements[index],
-                ".//span[contains(text(), 'Updated')]",
-            )
-
-            if not updated_date:
-                continue
-
+        if grid_canvas_container:
             driver.execute_script(
-                "arguments[0].dispatchEvent(new MouseEvent('mouseover', {'bubbles': true}));",
-                updated_date,
+                "arguments[0].scrollTop = arguments[0].scrollHeight", grid_canvas_container
             )
-            updated_at_element = find_element_by_xpath(
-                driver,
-                "(.//div[contains(text(), 'Updated by') and contains(@class, 'popup-content-container')])[last()]",
-            )
-            updated_at = updated_at_element.text
 
-            related_work_data[related_work_type].append(
-                {
-                    "filename_source": f"{related_work_item_id}_{related_work_title}",
-                    "link_target": f"{related_work_item_id}_{related_work_title}_update_{convert_date(updated_at)}_{related_work_type}",
-                    "updated_at": " ".join(updated_at.split(" ")[-4:]),
-                    "url": work_item_url,
-                }
-            )
-            driver.execute_script(
-                "arguments[0].parentNode.removeChild(arguments[0]);", updated_at_element
-            )
+        related_work_items_xpath = f"{grid_canvas_container_xpath}//div[contains(@class, 'grid-row grid-row-normal') and @aria-level]"
+
+        related_work_items = find_elements_by_xpath(dialog_box, related_work_items_xpath)
+
+        # Click last work item to load all
+        related_work_items[-1].click()
+
+        related_work_items = find_elements_by_xpath(dialog_box, related_work_items_xpath)
+        related_work_items_elements = [
+            related_work_item for related_work_item in related_work_items
+        ]
+
+        soup = BeautifulSoup(dialog_box.get_attribute("innerHTML"), "html.parser")
+        soup = soup.find("div", {"class": "grid-canvas"})
+        related_work_type = None
+        related_work_data = {}
+        valid_labels = [
+            "Child",
+            "Duplicate",
+            "Duplicate Of",
+            "Predecessor",
+            "Related",
+            "Successor",
+            "Tested By",
+            "Tests",
+            "Parent",
+        ]
+
+        for index, element in enumerate(soup.find_all("div", {"aria-level": True})):
+            is_label = element.get("aria-level") == "1"
+
+            if not is_label and related_work_type:
+                work_item = element.find("a")
+
+                work_item_url = work_item.get("href")
+                related_work_item_id = work_item_url.split("/")[-1]
+                related_work_title = validate_title(work_item.get_text())
+
+                updated_date = find_element_by_xpath(
+                    related_work_items_elements[index],
+                    ".//span[contains(text(), 'Updated')]",
+                )
+
+                if not updated_date:
+                    continue
+
+                driver.execute_script(
+                    "arguments[0].dispatchEvent(new MouseEvent('mouseover', {'bubbles': true}));",
+                    updated_date,
+                )
+                updated_at_element = find_element_by_xpath(
+                    driver,
+                    "(.//div[contains(text(), 'Updated by') and contains(@class, 'popup-content-container')])[last()]",
+                )
+                updated_at = updated_at_element.text
+
+                related_work_data[related_work_type].append(
+                    {
+                        "filename_source": f"{related_work_item_id}_{related_work_title}",
+                        "link_target": f"{related_work_item_id}_{related_work_title}_update_{convert_date(updated_at)}_{related_work_type}",
+                        "updated_at": " ".join(updated_at.split(" ")[-4:]),
+                        "url": work_item_url,
+                    }
+                )
+                driver.execute_script(
+                    "arguments[0].parentNode.removeChild(arguments[0]);", updated_at_element
+                )
+            else:
+                related_work_type = element.find("span").get_text(strip=True)
+
+                if related_work_type:
+                    related_work_type = re.search(r"([^\(]+)", related_work_type)
+                    related_work_type = related_work_type.group(1)
+                    related_work_type = related_work_type.replace("\xa0", "")
+
+                if related_work_type not in valid_labels:
+                    related_work_type = None
+                    continue
+
+                related_work_type = re.search(r"^\w+", related_work_type).group()
+                related_work_data[related_work_type] = []
+
+        # Format
+        for work_item_type, related_works in related_work_data.items():
+            results.append({"type": work_item_type, "related_work_items": related_works})
+
+        # Navigate back to details tab
+        if find_elements_by_xpath(dialog_box, details_xpath):
+            click_button_by_xpath(dialog_box, details_xpath)
         else:
-            related_work_type = element.find("span").get_text(strip=True)
+            click_button_by_xpath(dialog_box, steps_xpath)
 
-            if related_work_type:
-                related_work_type = re.search(r"([^\(]+)", related_work_type)
-                related_work_type = related_work_type.group(1)
-                related_work_type = related_work_type.replace("\xa0", "")
-
-            if related_work_type not in valid_labels:
-                related_work_type = None
-                continue
-
-            related_work_type = re.search(r"^\w+", related_work_type).group()
-            related_work_data[related_work_type] = []
-
-    # Format
-    for work_item_type, related_works in related_work_data.items():
-        results.append({"type": work_item_type, "related_work_items": related_works})
-
-    # Navigate back to details tab
-    click_button_by_xpath(dialog_box, details_xpath)
-
-    return results
+        return results
+    except JavascriptException:
+        return scrape_related_work(driver, dialog_box)
 
 
-def scrape_discussion_attachments(driver, attachment, discussion_date):
+def scrape_discussion_attachments(driver, attachment, discussion_date, request_session, chrome_downloads):
     parsed_url = urllib.parse.urlparse(attachment.get("src"))
     query_params = urllib.parse.parse_qs(parsed_url.query)
-    resource_id = parsed_url.path.split("/")[-1]
+    key = "fileName"
+    file_name = query_params.get(key)
 
-    file_name = query_params.get("fileName")
+    if not file_name:
+        key = "FileName"
+        file_name = query_params.get(key)
 
     if not file_name:
         return {}
 
     file_name = file_name[0]
-    new_file_name = f"{discussion_date}_{resource_id}_{file_name}"
+    new_file_name = f"{discussion_date}_{uuid4()}_{file_name}"
 
-    query_params["fileName"] = [new_file_name]
+    query_params[key] = [new_file_name]
 
     if "download" not in query_params:
         query_params["download"] = "True"
@@ -471,12 +838,18 @@ def scrape_discussion_attachments(driver, attachment, discussion_date):
     updated_url = urllib.parse.urlunparse(
         parsed_url._replace(query=urllib.parse.urlencode(query_params, doseq=True))
     )
+    # request_download_image(
+    #     request_session,
+    #     updated_url,
+    #     driver,
+    #     chrome_downloads / new_file_name,
+    # )
     driver.get(updated_url)
 
-    return {"url": updated_url, "filename": query_params["fileName"][0]}
+    return {"url": updated_url, "filename": new_file_name}
 
 
-def scrape_discussions(driver):
+def scrape_discussions(driver, request_session, chrome_downloads):
     try:
         results = []
         dialog_xpath = "//div[@role='dialog'][last()]"
@@ -510,8 +883,8 @@ def scrape_discussions(driver):
                 index += 1
                 username = discussion.find("span", class_="user-display-name").text
                 discussion_content = discussion.find("div", class_="comment-content")
-                content = convert_to_markdown(discussion_content)
                 attachments = discussion.find_all("img")
+                content = convert_to_markdown(discussion_content)
 
                 comment_header_xpath = (
                     f"({container_xpath}//div[@class='comment-header-left'])[{index}]"
@@ -560,7 +933,7 @@ def scrape_discussions(driver):
 
                 for attachment in attachments or []:
                     attachment_data = scrape_discussion_attachments(
-                        driver, attachment, date
+                        driver, attachment, date, request_session, chrome_downloads
                     )
 
                     if attachment_data:
@@ -569,7 +942,7 @@ def scrape_discussions(driver):
                 results.append(result)
         return results
     except (StaleElementReferenceException, AttributeError):
-        return scrape_discussions(driver)
+        return scrape_discussions(driver, request_session, chrome_downloads)
 
 
 def scrape_changesets(driver):
@@ -577,101 +950,28 @@ def scrape_changesets(driver):
 
     files_changed = find_elements_by_xpath(driver, "//div[@role='treeitem']")
 
-    for file in files_changed:
-        file.click()
+    if not files_changed:
+        return results
 
-        time.sleep(5)
+    files_changed = files_changed[1:]
 
-        header_xpath = "//span[@role='heading']"
+    for idx, file in enumerate(files_changed, start=2):
+        driver.execute_script("arguments[0].click();", file)
+
+        header_xpath = f"(//span[@class='file-name'])[{idx}]"
 
         result = {
             "File Name": get_text(driver, header_xpath),
             "Path": get_text(
-                driver, f"{header_xpath}/parent::div/following-sibling::div"
-            ),
-            "content": get_text(
-                driver,
-                "(//div[contains(@class,'lines-content')])[last()]",
-            ),
+                driver, "//span[@class='diff-summary-filepath']"
+            )
         }
-
-        time.sleep(2)
-
-        content_container = find_element_by_xpath(
-            driver, "(//div[contains(@class,'overflow-guard')])[last()]"
-        )
-
-        if content_container and not result.get("content"):
-            scroll_increment = 550
-            contents = None
-
-            while True:
-                c = get_text(
-                    driver, "(//div[contains(@class,'lines-content')])[last()]"
-                )
-
-                if c:
-                    c = c.strip(" ")
-
-                if not contents:
-                    contents = c
-                else:
-                    new_content = remove_longest_common_substring(contents, c)
-                    if new_content == contents:
-                        break
-                    contents = new_content
-
-                driver.execute_script(
-                    "arguments[0].scrollTop += arguments[1];",
-                    content_container,
-                    scroll_increment,
-                )
-
-            result["content"] = contents
-
-        if not result.get("content"):
-            result["content"] = get_text(
-                driver, "(//div[@class='vc-preview-content-container'])[last()]"
-            )
-
-        if not result.get("Path"):
-            span_label = find_element_by_xpath(
-                file, ".//span[@class='vc-sparse-files-tree-cell']/div"
-            )
-            result["Path"] = span_label.get_attribute("content")
 
         results.append(result)
     return results
 
 
-def remove_longest_common_substring(str1, str2):
-    m = len(str1)
-    n = len(str2)
-    # Create a table to store the lengths of common substrings
-    dp = [[0] * (n + 1) for _ in range(m + 1)]
-    # Variables to store the length of the longest common substring
-    max_length = 0
-    end_index = 0
-    for i in range(1, m + 1):
-        for j in range(1, n + 1):
-            if str1[i - 1] == str2[j - 1]:
-                dp[i][j] = dp[i - 1][j - 1] + 1
-                # Update the length and ending index of the longest common substring
-                if dp[i][j] > max_length:
-                    max_length = dp[i][j]
-                    end_index = i - 1
-            else:
-                dp[i][j] = 0
-    # Extract the longest common substring
-    longest_substring = str1[end_index - max_length + 1 : end_index + 1]
-    # Remove the longest common substring from the second string
-    modified_str2 = str2.replace(longest_substring, "", 1)
-    str1 += modified_str2
-
-    return str1
-
-
-def scrape_development(driver):
+def scrape_development(driver, chrome_downloads, request_session):
     try:
         results = []
         dialog_box = "//div[@role='dialog'][last()]"
@@ -714,11 +1014,28 @@ def scrape_development(driver):
                 driver.close()
                 driver.switch_to.window(original_window)
         return results
-
     except StaleElementReferenceException:
-        return scrape_development(driver)
+        return scrape_development(driver, chrome_downloads, request_session)
 
 
 def log_html(page_source, log_file_path="source.log"):
     with open(log_file_path, "w", encoding="utf-8") as file:
         file.write(page_source)
+
+
+def request_download_image(request_session, img_src, driver, file_path):
+    response = request_session.get(img_src)
+
+    if response.status_code == 203:
+        session_re_authenticate(request_session, driver)
+        response = request_session.get(img_src)
+
+    if response.status_code != 200:
+        logging.info(
+            f"Error downloading image description: {response.status_code}: {str(response.content)}"
+        )
+
+    with open(file_path, "wb") as f:
+        f.write(response.content)
+
+    return response

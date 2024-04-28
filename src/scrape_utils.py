@@ -2,10 +2,8 @@ import logging
 import re
 import time
 import urllib.parse
-from pathlib import Path
 from uuid import uuid4
 
-import selenium.common.exceptions
 from bs4 import BeautifulSoup
 from dateutil.parser import ParserError
 from selenium.common.exceptions import (

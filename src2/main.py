@@ -1,9 +1,11 @@
+import argparse
 import json
 import time
 import traceback
 from pathlib import Path
 from urllib.parse import urlparse
 
+import requests
 from selenium import webdriver
 from selenium.common.exceptions import StaleElementReferenceException, TimeoutException
 from selenium.webdriver.common.action_chains import ActionChains
@@ -54,7 +56,7 @@ def login(driver, url, email, password):
         login(driver, url, email, password)
 
 
-def scrape_child_work_items(driver):
+def scrape_child_work_items(driver, request_session, chrome_downloads):
     dialog_xpath = "//div[@role='dialog'][last()]"
     title_xpath = f"{dialog_xpath}//input[@aria-label='Title Field']"
     close_xpath = ".//button[contains(@class, 'ui-button')]"
@@ -81,14 +83,30 @@ def scrape_child_work_items(driver):
         retry += 1
         print(f"Retrying finding of dialog box ... {retry}/{config.MAX_RETRIES}")
 
-    work_item_data, desc_att = scrape_basic_fields(dialog_box, driver)
-    work_item_data["img_description"] = desc_att
-    work_item_data["Title"] = title
-    work_item_data["discussions"] = scrape_discussions(driver)
-    work_item_data["related_work"] = scrape_related_work(driver, dialog_box)
-    work_item_data["development"] = scrape_development(driver)
-    work_item_data["history"] = scrape_history(driver)
-    work_item_data["attachments"] = scrape_attachments(driver)
+    try:
+        work_item_data, desc_att = scrape_basic_fields(
+            dialog_box, driver, request_session, chrome_downloads
+        )
+        work_item_data["img_description"] = desc_att
+        work_item_data["Title"] = title
+        work_item_data["discussions"] = scrape_discussions(
+            driver, request_session, chrome_downloads
+        )
+        work_item_data["related_work"] = scrape_related_work(driver, dialog_box)
+        work_item_data["development"] = scrape_development(
+            driver, chrome_downloads, request_session
+        )
+        work_item_data["history"] = scrape_history(
+            driver, request_session, chrome_downloads
+        )
+        work_item_data["attachments"] = scrape_attachments(
+            request_session, driver, chrome_downloads
+        )
+    except Exception:
+        from uuid import uuid4
+
+        driver.get_screenshot_as_file(f"error-{uuid4()}.png")
+        raise
 
     for key, value in work_item_data.items():
         print(key, ":", value)
@@ -110,10 +128,12 @@ def scrape_child_work_items(driver):
             click_button_by_xpath(work_item, ".//a", web_driver=driver)
 
             actions = ActionChains(driver)
-            actions.move_by_offset(0, 0)
+            actions.move_to_element(dialog_box)
             actions.perform()
 
-            child_data = scrape_child_work_items(driver)
+            child_data = scrape_child_work_items(
+                driver, request_session, chrome_downloads
+            )
             children.append(child_data)
 
         work_item_data["children"] = children
@@ -149,12 +169,22 @@ def scraper(
     email,
     password,
     file_path,
+    chrome_downloads,
     default_result_set=None,
     default_start_index=0,
 ):
     logging.info(f"Navigate and login to {url}")
     login(driver, url, email, password)
     logging.info("Done")
+
+    request_session = requests.Session()
+    selenium_user_agent = driver.execute_script("return navigator.userAgent;")
+    request_session.headers.update({"user-agent": selenium_user_agent})
+
+    for cookie in driver.get_cookies():
+        request_session.cookies.set(
+            cookie["name"], cookie["value"], domain=cookie["domain"]
+        )
 
     # Find each work item
     work_item_selector = (
@@ -171,11 +201,13 @@ def scraper(
 
     work_items = None
     retry_ctr = 0
+    time.sleep(5)
 
-    while not work_items or retry_ctr < config.MAX_RETRIES:
+    while (not work_items and retry_ctr < config.MAX_RETRIES) or (retry_ctr < 3):
         work_items = find_elements_by_xpath(driver, work_item_selector)
         retry_ctr += 1
-        time.sleep(3)
+        print("Retrying finding works items...")
+        time.sleep(1)
 
     work_items_count = len(work_items)
     work_items_ctr = default_start_index
@@ -196,7 +228,9 @@ def scraper(
 
         # Scrape Child Items
         try:
-            work_item_data = scrape_child_work_items(driver)
+            work_item_data = scrape_child_work_items(
+                driver, request_session, chrome_downloads
+            )
         except Exception as e:
             traceback.print_exception(e)
             err_msg = str(e)
@@ -257,6 +291,7 @@ def main(default_start_index):
             config.EMAIL,
             config.PASSWORD,
             save_file,
+            chrome_downloads,
             default_result_set,
             default_start_index,
         )
@@ -270,5 +305,9 @@ def main(default_start_index):
 
 
 if __name__ == "__main__":
-    start_index = input("Start work item index: ")
+    parser = argparse.ArgumentParser(description="sample argument parser")
+    parser.add_argument("--index", type=int, default=0)
+    args = parser.parse_args()
+    # start_index = input("Start work item index: ")
+    start_index = args.index
     main(int(start_index))
