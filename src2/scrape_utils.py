@@ -873,6 +873,17 @@ def scrape_discussions(driver, request_session, chrome_downloads):
 
         discussion_container = find_element_by_xpath(driver, container_xpath)
 
+        retry = 0
+        while discussion_container is None and retry < 3:
+            discussion_container = find_element_by_xpath(driver, container_xpath)
+
+            if discussion_container:
+                break
+
+            retry += 1
+            time.sleep(1)
+            print("retrying discussion container...")
+
         html = discussion_container.get_attribute("innerHTML")
         soup = BeautifulSoup(html, "html.parser")
 
