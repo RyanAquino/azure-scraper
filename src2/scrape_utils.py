@@ -170,6 +170,7 @@ def scrape_basic_fields(dialog_box, driver, request_session, chrome_downloads, d
                     query_params["fileName"] = [file_name]
 
                     query_params["download"] = "True"
+                    query_params.pop("FileName", None)
                     path_url = parsed_url.path.split("/")[:-1]
 
                     payload = {
@@ -178,7 +179,7 @@ def scrape_basic_fields(dialog_box, driver, request_session, chrome_downloads, d
 
                     if guid:
                         path_url.append(guid[0])
-                        query_params.pop("FileName", None)
+
                         payload["path"] = "/".join(path_url)
 
                     updated_url = urllib.parse.urlunparse(
