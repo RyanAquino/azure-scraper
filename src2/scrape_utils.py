@@ -179,7 +179,6 @@ def scrape_basic_fields(dialog_box, driver, request_session, chrome_downloads, d
 
                     if guid:
                         path_url.append(guid[0])
-
                         payload["path"] = "/".join(path_url)
 
                     updated_url = urllib.parse.urlunparse(
