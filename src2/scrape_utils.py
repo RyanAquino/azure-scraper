@@ -153,7 +153,7 @@ def scrape_basic_fields(dialog_box, driver, request_session, chrome_downloads, d
                 if img_src := att.get("src"):
                     parsed_url = urllib.parse.urlparse(img_src)
                     query_params = urllib.parse.parse_qs(parsed_url.query)
-                    guid = query_params.get("FileNameGuid")
+                    guid = query_params.pop("FileNameGuid", None)
 
                     key = "fileName"
                     orig_file_name = query_params.get(key)
@@ -178,6 +178,7 @@ def scrape_basic_fields(dialog_box, driver, request_session, chrome_downloads, d
 
                     if guid:
                         path_url.append(guid[0])
+                        query_params.pop("FileName", None)
                         payload["path"] = "/".join(path_url)
 
                     updated_url = urllib.parse.urlunparse(
