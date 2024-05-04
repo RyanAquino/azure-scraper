@@ -409,6 +409,7 @@ def scrape_history(driver, request_session, chrome_downloads):
                         image_url = image_url.get("href")
                         parsed_url = urllib.parse.urlparse(image_url)
                         query_params = urllib.parse.parse_qs(parsed_url.query)
+                        guid = query_params.pop("FileNameGuid", None)
                         key = "fileName"
                         orig_file_name = query_params.get(key)
 
@@ -422,21 +423,25 @@ def scrape_history(driver, request_session, chrome_downloads):
                         orig_file_name = orig_file_name[0]
 
                         new_file_name = f"{uuid4()}_{orig_file_name}"
-
-                        query_params[key] = [new_file_name]
+                        query_params["fileName"] = [new_file_name]
                         query_params["download"] = "True"
+                        query_params.pop("FileName", None)
+                        path_url = parsed_url.path.split("/")[:-1]
+
+                        payload = {
+                            "query": urllib.parse.urlencode(query_params, doseq=True)
+                        }
+
+                        if guid:
+                            path_url.append("attachments")
+                            path_url.append(guid[0])
+                            payload["path"] = "/".join(path_url)
 
                         updated_url = urllib.parse.urlunparse(
                             parsed_url._replace(
-                                query=urllib.parse.urlencode(query_params, doseq=True)
+                                **payload
                             )
                         )
-                        # request_download_image(
-                        #     request_session,
-                        #     updated_url,
-                        #     driver,
-                        #     chrome_downloads / new_file_name,
-                        # )
                         driver.get(updated_url)
 
                         old_value_images.append({"File Name": new_file_name})
@@ -448,6 +453,7 @@ def scrape_history(driver, request_session, chrome_downloads):
                         image_url = image_url.get("href")
                         parsed_url = urllib.parse.urlparse(image_url)
                         query_params = urllib.parse.parse_qs(parsed_url.query)
+                        guid = query_params.pop("FileNameGuid", None)
                         key = "fileName"
                         orig_file_name = query_params.get(key)
 
@@ -462,20 +468,25 @@ def scrape_history(driver, request_session, chrome_downloads):
 
                         new_file_name = f"{uuid4()}_{orig_file_name}"
 
-                        query_params[key] = [new_file_name]
+                        query_params["fileName"] = [new_file_name]
                         query_params["download"] = "True"
+                        query_params.pop("FileName", None)
+                        path_url = parsed_url.path.split("/")[:-1]
+
+                        payload = {
+                            "query": urllib.parse.urlencode(query_params, doseq=True)
+                        }
+
+                        if guid:
+                            path_url.append("attachments")
+                            path_url.append(guid[0])
+                            payload["path"] = "/".join(path_url)
 
                         updated_url = urllib.parse.urlunparse(
                             parsed_url._replace(
-                                query=urllib.parse.urlencode(query_params, doseq=True)
+                                **payload
                             )
                         )
-                        # request_download_image(
-                        #     request_session,
-                        #     updated_url,
-                        #     driver,
-                        #     chrome_downloads / new_file_name,
-                        # )
                         driver.get(updated_url)
 
                         new_value_images.append({"File Name": new_file_name})
@@ -497,6 +508,7 @@ def scrape_history(driver, request_session, chrome_downloads):
                         image_url = image_url.get("href")
                         parsed_url = urllib.parse.urlparse(image_url)
                         query_params = urllib.parse.parse_qs(parsed_url.query)
+                        guid = query_params.pop("FileNameGuid", None)
                         key = "fileName"
                         orig_file_name = query_params.get(key)
 
@@ -510,20 +522,25 @@ def scrape_history(driver, request_session, chrome_downloads):
                         orig_file_name = orig_file_name[0]
                         new_file_name = f"{uuid4()}_{orig_file_name}"
 
-                        query_params[key] = [new_file_name]
+                        query_params["fileName"] = [new_file_name]
                         query_params["download"] = "True"
+                        query_params.pop("FileName", None)
+                        path_url = parsed_url.path.split("/")[:-1]
+
+                        payload = {
+                            "query": urllib.parse.urlencode(query_params, doseq=True)
+                        }
+
+                        if guid:
+                            path_url.append("attachments")
+                            path_url.append(guid[0])
+                            payload["path"] = "/".join(path_url)
 
                         updated_url = urllib.parse.urlunparse(
                             parsed_url._replace(
-                                query=urllib.parse.urlencode(query_params, doseq=True)
+                                **payload
                             )
                         )
-                        # request_download_image(
-                        #     request_session,
-                        #     updated_url,
-                        #     driver,
-                        #     chrome_downloads / new_file_name,
-                        # )
                         driver.get(updated_url)
 
                         img_discussion_attachments.append({"File Name": new_file_name})
@@ -551,6 +568,7 @@ def scrape_history(driver, request_session, chrome_downloads):
                         image_url = image_url.get("href")
                         parsed_url = urllib.parse.urlparse(image_url)
                         query_params = urllib.parse.parse_qs(parsed_url.query)
+                        guid = query_params.pop("FileNameGuid", None)
                         key = "fileName"
                         orig_file_name = query_params.get(key)
 
@@ -564,20 +582,25 @@ def scrape_history(driver, request_session, chrome_downloads):
                         orig_file_name = orig_file_name[0]
                         new_file_name = f"{uuid4()}_{orig_file_name}"
 
-                        query_params[key] = [new_file_name]
+                        query_params["fileName"] = [new_file_name]
                         query_params["download"] = "True"
+                        query_params.pop("FileName", None)
+                        path_url = parsed_url.path.split("/")[:-1]
+
+                        payload = {
+                            "query": urllib.parse.urlencode(query_params, doseq=True)
+                        }
+
+                        if guid:
+                            path_url.append("attachments")
+                            path_url.append(guid[0])
+                            payload["path"] = "/".join(path_url)
 
                         updated_url = urllib.parse.urlunparse(
                             parsed_url._replace(
-                                query=urllib.parse.urlencode(query_params, doseq=True)
+                                **payload
                             )
                         )
-                        # request_download_image(
-                        #     request_session,
-                        #     updated_url,
-                        #     driver,
-                        #     chrome_downloads / new_file_name,
-                        # )
                         driver.get(updated_url)
 
                         old_comment_atts.append({"File Name": new_file_name})
@@ -587,6 +610,7 @@ def scrape_history(driver, request_session, chrome_downloads):
                         image_url = image_url.get("href")
                         parsed_url = urllib.parse.urlparse(image_url)
                         query_params = urllib.parse.parse_qs(parsed_url.query)
+                        guid = query_params.pop("FileNameGuid", None)
                         key = "fileName"
                         orig_file_name = query_params.get(key)
 
@@ -600,20 +624,25 @@ def scrape_history(driver, request_session, chrome_downloads):
                         orig_file_name = orig_file_name[0]
                         new_file_name = f"{uuid4()}_{orig_file_name}"
 
-                        query_params[key] = [new_file_name]
+                        query_params["fileName"] = [new_file_name]
                         query_params["download"] = "True"
+                        query_params.pop("FileName", None)
+                        path_url = parsed_url.path.split("/")[:-1]
+
+                        payload = {
+                            "query": urllib.parse.urlencode(query_params, doseq=True)
+                        }
+
+                        if guid:
+                            path_url.append("attachments")
+                            path_url.append(guid[0])
+                            payload["path"] = "/".join(path_url)
 
                         updated_url = urllib.parse.urlunparse(
                             parsed_url._replace(
-                                query=urllib.parse.urlencode(query_params, doseq=True)
+                                **payload
                             )
                         )
-                        # request_download_image(
-                        #     request_session,
-                        #     updated_url,
-                        #     driver,
-                        #     chrome_downloads / new_file_name,
-                        # )
                         driver.get(updated_url)
 
                         new_comment_atts.append({"File Name": new_file_name})
