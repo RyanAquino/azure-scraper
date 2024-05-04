@@ -213,7 +213,6 @@ def scrape_attachments(request_session, driver, chrome_downloads):
     dialog_xpath = "//div[@role='dialog'][last()]"
     attachments_tab = f"{dialog_xpath}//ul[@role='tablist']/li[4]"
     details_tab = f"{dialog_xpath}//ul[@role='tablist']/li[1]"
-    steps_xpath = f"{dialog_xpath}//li[@aria-label='Steps']"
 
     # Attachment count
     attachments_count = get_text(driver, f"{attachments_tab}/span[2]")
@@ -311,10 +310,7 @@ def scrape_attachments(request_session, driver, chrome_downloads):
             grid_rows_ctr += 1
 
         # Navigate back to details
-        if find_element_by_xpath(driver, details_tab):
-            click_button_by_xpath(driver, details_tab)
-        else:
-            click_button_by_xpath(driver, steps_xpath)
+        click_button_by_xpath(driver, details_tab)
 
         return attachments_data
     except (StaleElementReferenceException, AttributeError):
@@ -330,7 +326,6 @@ def scrape_history(driver, request_session, chrome_downloads):
     results = []
     dialog_box_xpath = "//div[@role='dialog'][last()]"
     details_tab_xpath = f"{dialog_box_xpath}//ul[@role='tablist']/li[1]"
-    steps_tab_xpath = f"{dialog_box_xpath}//li[@aria-label='Steps']"
     history_xpath = f"{dialog_box_xpath}//ul[@role='tablist']/li[2]"
     history_items_xpath = f"{dialog_box_xpath}//div[@class='history-item-summary' or contains(@class, 'history-item-selected')]"
 
@@ -686,10 +681,7 @@ def scrape_history(driver, request_session, chrome_downloads):
             results.append(result)
 
         # Navigate back to details tab
-        if find_element_by_xpath(driver, details_tab_xpath):
-            click_button_by_xpath(driver, details_tab_xpath)
-        else:
-            click_button_by_xpath(driver, steps_tab_xpath)
+        click_button_by_xpath(driver, details_tab_xpath)
 
         return results
     except StaleElementReferenceException:
@@ -701,7 +693,6 @@ def scrape_related_work(driver, dialog_box):
         results = []
         details_xpath = ".//ul[@role='tablist']/li[1]"
         related_work_xpath = ".//ul[@role='tablist']/li[3]"
-        steps_xpath = ".//li[@aria-label='Steps']"
 
         # Navigate to related work tab
         related_work_tab = find_element_by_xpath(dialog_box, related_work_xpath)
@@ -818,10 +809,7 @@ def scrape_related_work(driver, dialog_box):
             results.append({"type": work_item_type, "related_work_items": related_works})
 
         # Navigate back to details tab
-        if find_elements_by_xpath(dialog_box, details_xpath):
-            click_button_by_xpath(dialog_box, details_xpath)
-        else:
-            click_button_by_xpath(dialog_box, steps_xpath)
+        click_button_by_xpath(dialog_box, details_xpath)
 
         return results
     except JavascriptException:
