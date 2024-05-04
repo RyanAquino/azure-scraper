@@ -848,6 +848,7 @@ def scrape_related_work(driver, dialog_box):
 def scrape_discussion_attachments(driver, attachment, discussion_date, request_session, chrome_downloads):
     parsed_url = urllib.parse.urlparse(attachment.get("src"))
     query_params = urllib.parse.parse_qs(parsed_url.query)
+    guid = query_params.pop("FileNameGuid", None)
     key = "fileName"
     file_name = query_params.get(key)
 
@@ -861,20 +862,25 @@ def scrape_discussion_attachments(driver, attachment, discussion_date, request_s
     file_name = file_name[0]
     new_file_name = f"{discussion_date}_{uuid4()}_{file_name}"
 
-    query_params[key] = [new_file_name]
-
     if "download" not in query_params:
         query_params["download"] = "True"
 
+    query_params["fileName"] = [new_file_name]
+    query_params.pop("FileName", None)
+    path_url = parsed_url.path.split("/")[:-1]
+
+    payload = {
+        "query": urllib.parse.urlencode(query_params, doseq=True)
+    }
+
+    if guid:
+        path_url.append("attachments")
+        path_url.append(guid[0])
+        payload["path"] = "/".join(path_url)
+
     updated_url = urllib.parse.urlunparse(
-        parsed_url._replace(query=urllib.parse.urlencode(query_params, doseq=True))
+        parsed_url._replace(**payload)
     )
-    # request_download_image(
-    #     request_session,
-    #     updated_url,
-    #     driver,
-    #     chrome_downloads / new_file_name,
-    # )
     driver.get(updated_url)
 
     return {"url": updated_url, "filename": new_file_name}
