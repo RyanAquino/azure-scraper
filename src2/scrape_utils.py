@@ -99,8 +99,9 @@ def scrape_basic_fields(dialog_box, driver, request_session, chrome_downloads, d
 
         elif description_element := soup.find(attrs={"aria-label": "Description"}):
             description_images = description_element.find_all("img")
-            description = convert_to_markdown(description_element)
-            basic_fields["Description"] = description
+            basic_fields["Source Description"] = description_element.text
+            # description = convert_to_markdown(description_element)
+            basic_fields["Description"] = description_element.text
 
         elif soup.find(attrs={"aria-label": "Steps"}):
             steps_content = soup.find("div", {"class": "test-steps-list"})
@@ -203,6 +204,7 @@ def scrape_basic_fields(dialog_box, driver, request_session, chrome_downloads, d
             "Effort": basic_fields.get("Effort"),
             "Severity": basic_fields.get("Severity"),
             "description": basic_fields.get("Description"),
+            "Source Description": basic_fields.get("Source Description")
         }, img_urls
 
     except AttributeError:
