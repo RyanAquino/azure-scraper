@@ -136,6 +136,10 @@ def create_directory_hierarchy(
             for discussion in d.pop("discussions"):
                 file_name = f'{discussion["Date"]}_{discussion["User"]}.md'
                 new_date = discussion["Date"]
+
+                with open(Path(discussion_path, f"source_discussion_{file_name}.md"), "w", encoding="utf-8") as file:
+                    file.write(discussion["Source Content"])
+
                 with open(
                     Path(discussion_path, file_name), "a+", encoding="utf-8"
                 ) as file:

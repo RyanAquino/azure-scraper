@@ -99,8 +99,8 @@ def scrape_basic_fields(dialog_box, driver, request_session, chrome_downloads, d
 
         elif description_element := soup.find(attrs={"aria-label": "Description"}):
             description_images = description_element.find_all("img")
-            basic_fields["Source Description"] = description_element.text
-            # description = convert_to_markdown(description_element)
+            basic_fields["Source Description"] = str(description_element)
+            # description =convert_to_markdown(description_element)
             basic_fields["Description"] = description_element.text
 
         elif soup.find(attrs={"aria-label": "Steps"}):
@@ -979,6 +979,7 @@ def scrape_discussions(driver, request_session, chrome_downloads):
                     "Content": content,
                     "Date": date,
                     "attachments": [],
+                    "Source Content": str(discussion_content)
                 }
 
                 for attachment in attachments or []:
