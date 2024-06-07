@@ -393,19 +393,22 @@ def scrape_history(driver, request_session, chrome_downloads):
                         {
                             "name": field_name,
                             "old_value": get_element_text(old_value),
+                            "raw_old_value": str(old_value) if old_value else None,
                             "new_value": get_element_text(new_value),
+                            "raw_new_value": str(new_value)
                         }
                     )
             if html_field := soup.find("div", class_="html-field"):
                 field_name = html_field.find("div", {"class": "html-field-name"}).text
                 new_value = html_field.find("div", class_="html-field-new-value-container")
                 new_value_text = new_value.find_all("span")[-1] if new_value else None
-                old_value = html_field.find("div", class_="html-field-old-value-container")
+                old_value_container = html_field.find("div", class_="html-field-old-value-container")
                 old_value_images = []
+                old_value = None
 
-                if old_value:
-                    old_image_urls = old_value.find_all("a")
-                    old_value = old_value.find_all("span")[-1]
+                if old_value_container:
+                    old_image_urls = old_value_container.find_all("a")
+                    old_value = old_value_container.find_all("span")[-1]
 
                     for image_url in old_image_urls:
                         image_url = image_url.get("href")
@@ -497,8 +500,10 @@ def scrape_history(driver, request_session, chrome_downloads):
                     {
                         "name": field_name,
                         "old_value": get_element_text(old_value),
+                        "raw_old_value": str(old_value_container) if old_value_container else None,
                         "old_attachments": old_value_images,
                         "new_value": get_element_text(new_value_text),
+                        "raw_new_value": str(new_value),
                         "new_attachments": new_value_images,
                     }
                 )
@@ -552,6 +557,7 @@ def scrape_history(driver, request_session, chrome_downloads):
                         "name": "Comments",
                         "old_value": None,
                         "new_value": added_comment.text,
+                        "raw_new_value": str(added_comment),
                         "new_attachments": img_discussion_attachments,
                     }
                 )
@@ -649,15 +655,20 @@ def scrape_history(driver, request_session, chrome_downloads):
 
                         new_comment_atts.append({"File Name": new_file_name})
 
+                old_value = old_comment.find(
+                    "div", class_="history-item-comment"
+                )
+                new_value = new_comment.find(
+                    "div", class_="history-item-comment"
+                )
+
                 result["Fields"].append(
                     {
                         "name": "Comments",
-                        "old_value": old_comment.find(
-                            "div", class_="history-item-comment"
-                        ).text,
-                        "new_value": new_comment.find(
-                            "div", class_="history-item-comment"
-                        ).text,
+                        "old_value": old_value.text,
+                        "raw_old_value": str(old_value),
+                        "new_value": new_value.text,
+                        "raw_new_value": str(new_value),
                         "old_attachments": old_comment_atts,
                         "new_attachments": new_comment_atts,
                     }

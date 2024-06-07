@@ -23,8 +23,10 @@ def create_history_metadata(history, history_path, attachments_path):
         path = Path(history_path, filename)
 
         history_attachments_path = Path(history_path, "attachments")
+        history_contents_path = Path(history_path, "contents")
         history_deleted_attachments_path = Path(history_path, "removed_attachments")
         os.makedirs(history_attachments_path, exist_ok=True)
+        os.makedirs(history_contents_path, exist_ok=True)
         os.makedirs(history_deleted_attachments_path, exist_ok=True)
 
         with open(path, "w", encoding="utf-8") as file:
@@ -40,6 +42,14 @@ def create_history_metadata(history, history_path, attachments_path):
                     file.write(f"       * {field['name']}\n")
                     file.write(f"           * Old Value: {field['old_value']}\n")
                     file.write(f"           * New Value: {field['new_value']}\n")
+
+                    if raw_old_val := field.get("raw_old_value"):
+                        with open(Path(history_contents_path, f"old_{path.name}"), "w", encoding="utf-8") as raw_file:
+                            raw_file.write(raw_old_val)
+
+                    if raw_new_val := field.get("raw_new_value"):
+                        with open(Path(history_contents_path, f"new_{path.name}"), "w", encoding="utf-8") as raw_file:
+                            raw_file.write(raw_new_val)
 
                     if old_atts := field.get("old_attachments"):
                         file.write(f"           * Old Attachments\n")
@@ -135,6 +145,10 @@ def create_directory_hierarchy(
             for discussion in d.pop("discussions"):
                 file_name = f'{discussion["Date"]}_{discussion["User"]}.md'
                 new_date = discussion["Date"]
+
+                with open(Path(discussion_path, f"source_discussion_{file_name}.md"), "w", encoding="utf-8") as file:
+                    file.write(discussion["Source Content"])
+
                 with open(
                     Path(discussion_path, file_name), "a+", encoding="utf-8"
                 ) as file:
