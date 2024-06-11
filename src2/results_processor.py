@@ -44,11 +44,11 @@ def create_history_metadata(history, history_path, attachments_path):
                     file.write(f"           * New Value: {field['new_value']}\n")
 
                     if raw_old_val := field.get("raw_old_value"):
-                        with open(Path(history_contents_path, f"old_{path.name}"), "w", encoding="utf-8") as raw_file:
+                        with open(Path(history_contents_path, f"{path.stem}_old{path.suffix}"), "w", encoding="utf-8") as raw_file:
                             raw_file.write(raw_old_val)
 
                     if raw_new_val := field.get("raw_new_value"):
-                        with open(Path(history_contents_path, f"new_{path.name}"), "w", encoding="utf-8") as raw_file:
+                        with open(Path(history_contents_path, f"{path.stem}_new{path.suffix}"), "w", encoding="utf-8") as raw_file:
                             raw_file.write(raw_new_val)
 
                     if old_atts := field.get("old_attachments"):
@@ -121,6 +121,7 @@ def create_directory_hierarchy(
         dir_path = Path(path, dir_name)
         history_path = Path(dir_path, "history")
         discussion_path = Path(dir_path, "discussion")
+        discussion_contents_path = Path(discussion_path, "contents")
         development_path = Path(dir_path, "development")
         work_item_attachments_path = Path(dir_path, "attachments")
         discussion_attachments_path = Path(discussion_path, "attachments")
@@ -132,7 +133,7 @@ def create_directory_hierarchy(
         os.makedirs(dir_path, exist_ok=True)
         os.makedirs(history_path, exist_ok=True)
         os.makedirs(discussion_path, exist_ok=True)
-        shutil.rmtree(discussion_path)
+        os.makedirs(discussion_contents_path, exist_ok=True)
         os.makedirs(discussion_attachments_path, exist_ok=True)
         os.makedirs(development_path, exist_ok=True)
         os.makedirs(work_item_attachments_path, exist_ok=True)
@@ -144,10 +145,11 @@ def create_directory_hierarchy(
 
         if "discussions" in d and d["discussions"]:
             for discussion in d.pop("discussions"):
-                file_name = f'{discussion["Date"]}_{discussion["User"]}.md'
+                user = "_".join(discussion["User"].split(" "))
+                file_name = f'{discussion["Date"]}_{user}.md'
                 new_date = discussion["Date"]
 
-                with open(Path(discussion_path, f"source_discussion_{file_name}.md"), "w", encoding="utf-8") as file:
+                with open(Path(discussion_contents_path, file_name), "w", encoding="utf-8") as file:
                     file.write(discussion["Source Content"])
 
                 with open(
