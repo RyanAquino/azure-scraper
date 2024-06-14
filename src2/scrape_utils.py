@@ -86,6 +86,8 @@ def scrape_basic_fields(dialog_box, driver, request_session, chrome_downloads, d
                 acceptance = f"* Acceptance criteria \n** {acceptance}\n"
 
             basic_fields["Description"] = retro + system_info + acceptance
+            basic_fields["Source Description"] = f"{repro_steps_element} {system_info_element} {acceptance_element}"
+
         elif soup.find(attrs={"aria-label": "Resolution section."}):
             description_element = soup.find(attrs={"aria-label": "Description"})
             resolution_element = soup.find(attrs={"aria-label": "Resolution"})
@@ -96,6 +98,7 @@ def scrape_basic_fields(dialog_box, driver, request_session, chrome_downloads, d
             )
 
             basic_fields["Description"] = description + "\n" + resolution
+            basic_fields["Source Description"] = f"{description} \n {resolution}"
 
         elif description_element := soup.find(attrs={"aria-label": "Description"}):
             description_images = description_element.find_all("img")
@@ -148,6 +151,7 @@ def scrape_basic_fields(dialog_box, driver, request_session, chrome_downloads, d
                 driver.execute_script("arguments[0].click();", steps_tab)
 
             basic_fields["Description"] = description
+            basic_fields["Source Description"] = str(description_element)
 
         if description_images:
             for att in description_images:
