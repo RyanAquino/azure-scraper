@@ -965,6 +965,9 @@ def scrape_changesets(driver):
 
     files_changed = find_elements_by_xpath(driver, "//tr[@role='treeitem']")
 
+    if not files_changed:
+        return results
+
     for file in files_changed:
         driver.execute_script("arguments[0].click();", file)
 
