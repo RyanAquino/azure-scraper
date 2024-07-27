@@ -199,6 +199,17 @@ def scraper(
 
     while work_items_ctr < work_items_count:
         work_items = find_elements_by_xpath(driver, work_item_selector)
+        retry_ctr = 0
+
+        while not work_items and retry_ctr < config.MAX_RETRIES:
+            work_items = find_elements_by_xpath(driver, work_item_selector)
+            retry_ctr += 1
+            print("Retrying finding works items...")
+            time.sleep(1)
+
+        if not work_items:
+            save_json_file(file_path, result_set)
+            return work_items_ctr if work_items_ctr in work_items else 0
 
         # Add new work items after scroll
         # for item in work_items_temp:
