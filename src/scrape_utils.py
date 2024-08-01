@@ -133,6 +133,7 @@ def scrape_basic_fields(dialog_box, driver, request_session, chrome_downloads):
 
             temp_steps.append(temp_step_att)
 
+        logging.info(f"steps: {temp_steps}")
         for idx in range(0, len(temp_steps), 4):
             description += f"{temp_steps[idx].text} \t {temp_steps[idx+1].text} \t {temp_steps[idx+2].text} \t {temp_steps[idx+3].text}\n"
 
