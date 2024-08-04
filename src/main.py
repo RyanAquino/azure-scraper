@@ -209,7 +209,7 @@ def scraper(
 
         if not work_items:
             save_json_file(file_path, result_set)
-            return work_items_ctr if work_items_ctr in work_items else 0
+            return work_items_ctr
 
         # Add new work items after scroll
         # for item in work_items_temp:
