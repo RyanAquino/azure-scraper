@@ -346,6 +346,15 @@ def scrape_history(driver, request_session, chrome_downloads):
             return
 
         retry += 1
+
+        # Navigate back to details tab
+        if find_element_by_xpath(driver, details_tab_xpath):
+            click_button_by_xpath(driver, details_tab_xpath)
+        else:
+            click_button_by_xpath(driver, steps_tab_xpath)
+
+        click_button_by_xpath(driver, history_xpath)
+
         print(f"Retrying to find history items... {retry}/{config.MAX_RETRIES}")
 
     try:
