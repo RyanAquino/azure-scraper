@@ -325,6 +325,7 @@ def scrape_history(driver, request_session, chrome_downloads):
     steps_tab_xpath = f"{dialog_box_xpath}//li[@aria-label='Steps']"
     history_xpath = f"{dialog_box_xpath}//li[@aria-label='History']"
     history_items_xpath = f"{dialog_box_xpath}//div[@class='history-item-summary' or contains(@class, 'history-item-selected')]"
+    refresh_history_xpath = f"{dialog_box_xpath}//li[@command='refresh-work-item']//span[@aria-label='Refresh']"
 
     # Navigate to history tab
     click_button_by_xpath(driver, history_xpath)
@@ -346,15 +347,9 @@ def scrape_history(driver, request_session, chrome_downloads):
             return
 
         retry += 1
-
-        # Navigate back to details tab
-        if find_element_by_xpath(driver, details_tab_xpath):
-            click_button_by_xpath(driver, details_tab_xpath)
-        else:
-            click_button_by_xpath(driver, steps_tab_xpath)
-
-        click_button_by_xpath(driver, history_xpath)
-
+        refresh_btn = find_element_by_xpath(driver, refresh_history_xpath)
+        driver.execute_script("arguments[0].click();", refresh_btn)
+        time.sleep(1)
         print(f"Retrying to find history items... {retry}/{config.MAX_RETRIES}")
 
     try:

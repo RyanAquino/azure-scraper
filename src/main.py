@@ -188,6 +188,9 @@ def scraper(
         print("Retrying finding works items...")
         time.sleep(1)
 
+        if work_items:
+            break
+
     # board_view = find_element_by_xpath(driver, "//div[@class='grid-canvas ui-draggable']")
     work_items_count = len(work_items)
     work_items_ctr = default_start_index
