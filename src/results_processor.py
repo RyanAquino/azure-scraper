@@ -116,8 +116,13 @@ def create_directory_hierarchy(
     ]
 
     for d in dicts:
-        dir_name = f"{d['Task id']}_{validate_title(d['Title'])}"
+        dir_name = f"{d['Task id']}_{validate_title(d['Title'])}"[:50]
+        d["dir_name"] = dir_name
         dir_path = Path(path, dir_name)
+
+        print(" " * indent + dir_name)
+        logging.info(f"Creating directory in {dir_path}")
+        os.makedirs(dir_path, exist_ok=True)
         history_path = Path(dir_path, "history")
         discussion_path = Path(dir_path, "discussion")
         discussion_contents_path = Path(discussion_path, "contents")
@@ -127,9 +132,6 @@ def create_directory_hierarchy(
         related_works_path = Path(dir_path, "related")
         work_item_img_description_path = Path(dir_path, "img_description")
 
-        print(" " * indent + dir_name)
-        logging.info(f"Creating directory in {dir_path}")
-        os.makedirs(dir_path, exist_ok=True)
         os.makedirs(history_path, exist_ok=True)
         os.makedirs(discussion_path, exist_ok=True)
         os.makedirs(discussion_contents_path, exist_ok=True)
@@ -231,9 +233,7 @@ def create_directory_hierarchy(
 
 def create_related_work_contents(scrape_results, path: Path = Path("data")):
     for item in scrape_results:
-        task_id = item.get("Task id")
-        task_title = validate_title(item.get("Title"))
-        folder_name = f"{task_id}_{task_title}"
+        folder_name = item["dir_name"]
         dir_path = Path(path, folder_name)
 
         folder_path = [i for i in Path(Path.cwd(), path).resolve().rglob(folder_name)]
@@ -245,7 +245,7 @@ def create_related_work_contents(scrape_results, path: Path = Path("data")):
             for work_items in related_work.get("related_work_items", []):
                 work_item_target = work_items.get("link_target")
                 project_url = work_items.get("url")
-                work_item_file_name = work_items.get("filename_source")
+                work_item_file_name = work_items.get("filename_source", "")[:50]
                 work_item_updated_at = convert_date(work_items.get("updated_at"))
 
                 target_path = Path(related_dir, work_item_target)

@@ -773,7 +773,7 @@ def scrape_related_work(driver, dialog_box):
 
                 work_item_url = work_item.get("href")
                 related_work_item_id = work_item_url.split("/")[-1]
-                related_work_title = validate_title(work_item.get_text())
+                related_work_title = validate_title(work_item.get_text())[:50]
 
                 updated_date = find_element_by_xpath(
                     related_work_items_elements[index],
