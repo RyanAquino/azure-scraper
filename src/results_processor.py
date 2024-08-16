@@ -113,6 +113,7 @@ def create_directory_hierarchy(
         "attachments",
         "development",
         "img_description",
+        "Source Description"
     ]
 
     for d in dicts:
@@ -209,6 +210,9 @@ def create_directory_hierarchy(
             for key, value in d.items():
                 if key not in exclude_fields:
                     file.write(f"* {key}: {value}\n")
+
+        with open(Path(dir_path, "source_description.md"), "w", encoding="utf-8") as file:
+            file.write(d["Source Description"])
 
         with open(Path(dir_path, "origin.md"), "w", encoding="utf-8") as file:
             scheme, domain, url_path = urlparse(config.BASE_URL)[0:3]

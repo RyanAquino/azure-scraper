@@ -197,6 +197,7 @@ def scrape_basic_fields(dialog_box, driver, request_session, chrome_downloads):
         "Effort": basic_fields.get("Effort"),
         "Severity": basic_fields.get("Severity"),
         "description": basic_fields.get("Description"),
+        "Source Description": basic_fields.get("Source Description")
     }, img_urls
 
 
