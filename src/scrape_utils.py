@@ -184,6 +184,9 @@ def scrape_basic_fields(dialog_box, driver, request_session, chrome_downloads):
                 with open(chrome_downloads / file_name, "wb") as f:
                     f.write(response.content)
 
+    if "Source Description" not in basic_fields:
+        raise Exception("Source Description missing")
+
     return {
         "Task id": basic_fields.get("ID Field"),
         "User Name": basic_fields.get("Assigned To Field"),
