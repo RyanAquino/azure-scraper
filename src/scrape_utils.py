@@ -47,6 +47,9 @@ def scrape_basic_fields(dialog_box, driver, request_session, chrome_downloads):
 
     basic_fields = {}
 
+    # Wait page load
+    find_elements_by_xpath(driver, "//div[contains(@class, 'test-steps-multiline')]")
+
     html = dialog_box.get_attribute("innerHTML")
     soup = BeautifulSoup(html, "html.parser")
     description_images = None
@@ -112,9 +115,14 @@ def scrape_basic_fields(dialog_box, driver, request_session, chrome_downloads):
         )
         description = ""
         temp_steps = []
+        temp_p_step = BeautifulSoup("<p><br/></p>", features="html.parser").p
 
         for step in steps_content.select('div[class*="grid-row grid-row-normal"]')[:-1]:
-            temp_steps += step.find_all("p")
+
+            if (shared_step := step.find("div", {"class": "shared-test-step"})) and step.find("div", {"class": "shared-test-step"}).text:
+                temp_steps += [shared_step, temp_p_step, temp_p_step]
+            else:
+                temp_steps += step.find_all("p")
 
             temp_step_att = BeautifulSoup("<a></a>", features="html.parser").a
 
@@ -124,9 +132,7 @@ def scrape_basic_fields(dialog_box, driver, request_session, chrome_downloads):
                 for step_att in steps_att:
                     combined_steps_att += f"{step_att.text.split(' ')[0]} "
 
-                temp_steps.append(
-                    BeautifulSoup("<p><br/></p>", features="html.parser").p
-                )  # Adding for consistency
+                temp_steps.append(temp_p_step)  # Adding for consistency
                 temp_step_att = BeautifulSoup(
                     f"<div>{combined_steps_att}</div>", features="html.parser"
                 ).div
