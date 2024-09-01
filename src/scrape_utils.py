@@ -143,7 +143,7 @@ def scrape_basic_fields(dialog_box, driver, request_session, chrome_downloads):
         for idx in range(0, len(temp_steps), 4):
             description += f"{temp_steps[idx].text} \t {temp_steps[idx+1].text} \t {temp_steps[idx+2].text} \t {temp_steps[idx+3].text}\n"
 
-        if desc := find_element_by_xpath(driver, summary_xpath):
+        if desc := find_element_by_xpath(dialog_box, summary_xpath):
             driver.execute_script("arguments[0].click();", desc)
             html = dialog_box.get_attribute("innerHTML")
             soup = BeautifulSoup(html, "html.parser")
@@ -152,7 +152,7 @@ def scrape_basic_fields(dialog_box, driver, request_session, chrome_downloads):
             description_images = description_element.find_all("img")
             description += convert_to_markdown(description_element)
 
-        if steps_tab := find_element_by_xpath(driver, steps_xpath):
+        if steps_tab := find_element_by_xpath(dialog_box, steps_xpath):
             driver.execute_script("arguments[0].click();", steps_tab)
 
         basic_fields["Description"] = description

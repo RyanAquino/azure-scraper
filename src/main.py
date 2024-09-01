@@ -113,6 +113,16 @@ def scrape_child_work_items(driver, request_session, chrome_downloads):
     )
     child_work_items = find_elements_by_xpath(dialog_box, child_xpath)
 
+    shared_steps_container = "//div[@class='la-group-title' and contains(text(), 'Shared Steps')]"
+    shared_steps_xpath = f".{shared_steps_container}/following-sibling::div"
+    shared_test_items = find_elements_by_xpath(dialog_box, shared_steps_xpath)
+
+    if shared_test_items:
+        if child_work_items:
+            child_work_items += shared_test_items
+        else:
+            child_work_items = shared_test_items
+
     if child_work_items:
         children = []
         for work_item in child_work_items:
