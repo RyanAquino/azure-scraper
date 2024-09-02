@@ -118,11 +118,10 @@ def scrape_basic_fields(dialog_box, driver, request_session, chrome_downloads):
         temp_p_step = BeautifulSoup("<p><br/></p>", features="html.parser").p
 
         for step in steps_content.select('div[class*="grid-row grid-row-normal"]')[:-1]:
-
             if (shared_step := step.find("div", {"class": "shared-test-step"})) and step.find("div", {"class": "shared-test-step"}).text:
-                temp_steps += [shared_step, temp_p_step, temp_p_step]
+                temp_step = [shared_step, temp_p_step, temp_p_step]
             else:
-                temp_steps += step.find_all("p")
+                temp_step = step.find_all("p")
 
             temp_step_att = BeautifulSoup("<a></a>", features="html.parser").a
 
@@ -132,12 +131,14 @@ def scrape_basic_fields(dialog_box, driver, request_session, chrome_downloads):
                 for step_att in steps_att:
                     combined_steps_att += f"{step_att.text.split(' ')[0]} "
 
-                temp_steps.append(temp_p_step)  # Adding for consistency
+                if len(temp_step) == 2:
+                    temp_step.append(temp_p_step)  # Adding for consistency
                 temp_step_att = BeautifulSoup(
                     f"<div>{combined_steps_att}</div>", features="html.parser"
                 ).div
 
-            temp_steps.append(temp_step_att)
+            temp_step.append(temp_step_att)
+            temp_steps += temp_step
 
         logging.info(f"steps: {temp_steps}")
         for idx in range(0, len(temp_steps), 4):
