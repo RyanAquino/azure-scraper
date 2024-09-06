@@ -138,6 +138,16 @@ def scrape_basic_fields(dialog_box, driver, request_session, chrome_downloads):
                 ).div
 
             temp_step.append(temp_step_att)
+
+            if len(temp_step) % 4 != 0:
+                remaining = 4 - len(temp_step)
+
+                if remaining > 0:
+                    for _ in range(remaining):
+                        temp_step.append(temp_p_step)
+                else:
+                    temp_step = temp_step[:4]
+
             temp_steps += temp_step
 
         logging.info(f"steps: {temp_steps}")
@@ -1000,14 +1010,14 @@ def scrape_changesets(driver):
     return results
 
 
-def scrape_development(driver, chrome_downloads, request_session):
+def scrape_development(driver, dialog_box, chrome_downloads, request_session):
     try:
         results = []
-        dialog_box = "//div[@role='dialog'][last()]"
+        dialog_box_xpath = "//div[@role='dialog'][last()]"
         development_section = "//span[@aria-label='Development section.']/ancestor::div[@class='grid-group']"
-        show_more(driver, f"{development_section}//div[@class='la-show-more']")
+        show_more(driver, dialog_box, f"{development_section}//div[@class='la-show-more']")
         development_items = find_elements_by_xpath(
-            driver, f"{dialog_box}{development_section}//div[@class='la-item']"
+            driver, f"{dialog_box_xpath}{development_section}//div[@class='la-item']"
         )
 
         original_window = driver.current_window_handle
@@ -1016,6 +1026,7 @@ def scrape_development(driver, chrome_downloads, request_session):
         failed_texts = [
             ".//span[starts-with(text(), 'Integrated in build link can not be read.')]",
             ".//span[@class='la-text build-failed']",
+            ".//span[starts-with(text(), 'Found in build link can not be read')]",
             ".//div[starts-with(text(), 'Integrated in build')]",
         ]
 
@@ -1044,7 +1055,7 @@ def scrape_development(driver, chrome_downloads, request_session):
                 driver.switch_to.window(original_window)
         return results
     except StaleElementReferenceException:
-        return scrape_development(driver, chrome_downloads, request_session)
+        return scrape_development(driver, dialog_box, chrome_downloads, request_session)
 
 
 def log_html(page_source, log_file_path="source.log"):

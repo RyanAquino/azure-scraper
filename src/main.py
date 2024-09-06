@@ -89,7 +89,7 @@ def scrape_child_work_items(driver, request_session, chrome_downloads):
         )
         work_item_data["related_work"] = scrape_related_work(driver, dialog_box)
         work_item_data["development"] = scrape_development(
-            driver, chrome_downloads, request_session
+            driver, dialog_box, chrome_downloads, request_session
         )
         work_item_data["history"] = scrape_history(
             driver, request_session, chrome_downloads
@@ -109,6 +109,7 @@ def scrape_child_work_items(driver, request_session, chrome_downloads):
     child_container = "//div[@class='la-group-title' and contains(text(), 'Child')]"
     child_xpath = f".{child_container}/following-sibling::div"
     show_more(
+        driver,
         dialog_box, "//div[@class='la-group-title']/../..//div[@class='la-show-more']"
     )
     child_work_items = find_elements_by_xpath(dialog_box, child_xpath)

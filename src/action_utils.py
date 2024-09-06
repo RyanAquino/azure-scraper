@@ -226,10 +226,10 @@ def convert_to_markdown(soup):
     return soup.get_text().rstrip()
 
 
-def show_more(dialog_box, xpath):
+def show_more(driver, dialog_box, xpath):
     if show_more_button := find_element_by_xpath(dialog_box, xpath):
-        show_more_button.click()
-        show_more(dialog_box, xpath)
+        driver.execute_script("arguments[0].click();", show_more_button)
+        show_more(driver, dialog_box, xpath)
 
     return None
 
