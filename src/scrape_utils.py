@@ -1027,6 +1027,7 @@ def scrape_development(driver, dialog_box, chrome_downloads, request_session):
             ".//span[starts-with(text(), 'Integrated in build link can not be read.')]",
             ".//span[@class='la-text build-failed']",
             ".//span[starts-with(text(), 'Found in build link can not be read')]",
+            ".//span[starts-with(text(), 'Build link can not be read')]",
             ".//div[starts-with(text(), 'Integrated in build')]",
         ]
 
