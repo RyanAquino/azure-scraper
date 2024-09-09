@@ -792,6 +792,10 @@ def scrape_related_work(driver, dialog_box):
             if not is_label and related_work_type:
                 work_item = element.find("a")
 
+                # Skip failed or no work item
+                if not work_item:
+                    continue
+
                 work_item_url = work_item.get("href")
                 related_work_item_id = work_item_url.split("/")[-1]
                 related_work_title = validate_title(work_item.get_text())[:50]
