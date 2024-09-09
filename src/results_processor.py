@@ -17,7 +17,7 @@ def create_history_metadata(history, history_path, attachments_path):
     for item in history:
         uuid_randomizer = "".join(random.choices(characters, k=2))
         formatted_date = convert_date(item["Date"], date_format="%a %d/%m/%Y %H:%M")
-        title = validate_title(item["Title"])
+        title = validate_title(item["Title"])[:config.MSG_CLIP_SIZE]
         user = "_".join(item["User"].split(" "))
         filename = f"{formatted_date}_{uuid_randomizer}_{user}_{title}.md"
         path = Path(history_path, filename)
@@ -117,7 +117,7 @@ def create_directory_hierarchy(
     ]
 
     for d in dicts:
-        dir_name = f"{d['Task id']}_{validate_title(d['Title'])}"[:50]
+        dir_name = f"{d['Task id']}_{validate_title(d['Title'])}"[:config.MSG_CLIP_SIZE]
         d["dir_name"] = dir_name
         dir_path = Path(path, dir_name)
 
@@ -235,6 +235,19 @@ def create_directory_hierarchy(
             create_directory_hierarchy(d["children"], dir_path, indent=indent + 2)
 
 
+def clipped_related_work_title(related_work):
+    work_item_target = related_work.get("link_target")
+    work_item_file_name = related_work.get("filename_source", "")
+
+    work_item_id, work_item_target_name, *_ = work_item_file_name.split("_", 1)
+    work_item_file_name = f"{work_item_id}_{work_item_target_name[:config.MSG_CLIP_SIZE]}"
+
+    work_item_id, work_item_target_name, substring = work_item_target.split("_", 2)
+    work_item_target = f"{work_item_id}_{work_item_target_name[:config.MSG_CLIP_SIZE]}_{substring}"
+    
+    return work_item_target, work_item_file_name
+
+
 def create_related_work_contents(scrape_results, path: Path = Path("data")):
     for item in scrape_results:
         folder_name = item["dir_name"]
@@ -247,9 +260,8 @@ def create_related_work_contents(scrape_results, path: Path = Path("data")):
             related_work_type = related_work.get("type")
 
             for work_items in related_work.get("related_work_items", []):
-                work_item_target = work_items.get("link_target")
                 project_url = work_items.get("url")
-                work_item_file_name = work_items.get("filename_source", "")[:50]
+                work_item_target, work_item_file_name = clipped_related_work_title(work_items)
                 work_item_updated_at = convert_date(work_items.get("updated_at"))
 
                 target_path = Path(related_dir, work_item_target)

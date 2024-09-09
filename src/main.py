@@ -294,24 +294,27 @@ def main(default_start_index):
     default_result_set = retrieve_result_set(save_file)
     chrome_config, chrome_downloads = chrome_settings_init()
 
-    with webdriver.Chrome(**chrome_config) as driver:
-        last_error_ctr = scraper(
-            driver,
-            config.BASE_URL,
-            config.EMAIL,
-            config.PASSWORD,
-            save_file,
-            chrome_downloads,
-            default_result_set,
-            default_start_index,
-        )
-
-    if last_error_ctr or last_error_ctr == 0:
-        err_msg = f"Error encountered. Please reprocess on index: {last_error_ctr}"
-        logging.error(err_msg)
-        print(err_msg)
-    else:
+    if config.POSTPROCESS_ONLY:
         post_process_results(save_file, chrome_downloads)
+    else:
+        with webdriver.Chrome(**chrome_config) as driver:
+            last_error_ctr = scraper(
+                driver,
+                config.BASE_URL,
+                config.EMAIL,
+                config.PASSWORD,
+                save_file,
+                chrome_downloads,
+                default_result_set,
+                default_start_index,
+            )
+
+        if last_error_ctr or last_error_ctr == 0:
+            err_msg = f"Error encountered. Please reprocess on index: {last_error_ctr}"
+            logging.error(err_msg)
+            print(err_msg)
+        else:
+            post_process_results(save_file, chrome_downloads)
 
 
 if __name__ == "__main__":
