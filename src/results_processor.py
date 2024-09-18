@@ -117,7 +117,7 @@ def create_directory_hierarchy(
     ]
 
     for d in dicts:
-        dir_name = f"{d['Task id']}_{validate_title(d['Title'])}"[:config.MSG_CLIP_SIZE]
+        dir_name = f"{d['Task id']}_{validate_title(d['Title'])[:config.MSG_CLIP_SIZE]}"
         d["dir_name"] = dir_name
         dir_path = Path(path, dir_name)
 
