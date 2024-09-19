@@ -11,14 +11,14 @@ from action_utils import add_line_break, convert_date, create_symlink, validate_
 from logger import logging
 
 
-def create_history_metadata(history, history_path, attachments_path):
+def create_history_metadata(history, history_path, attachments_path, msg_clip_size):
     characters = string.ascii_letters + string.digits
 
     for item in history:
         uuid_randomizer = "".join(random.choices(characters, k=2))
         formatted_date = convert_date(item["Date"], date_format="%a %d/%m/%Y %H:%M")
         title = validate_title(item["Title"])
-        title = title[: config.MSG_CLIP_SIZE] if config.MSG_CLIP_SIZE else title
+        title = title[: msg_clip_size] if msg_clip_size else title
         user = "_".join(item["User"].split(" "))
         filename = f"{formatted_date}_{uuid_randomizer}_{user}_{title}.md"
         path = Path(history_path, filename)
@@ -79,7 +79,7 @@ def create_history_metadata(history, history_path, attachments_path):
                                 f"               * Absolute link to attachment:  [{att_file_name}]({destination})\n"
                             )
                             if os.path.exists(source):
-                                shutil.move(source, destination)
+                                shutil.copy(source, destination)
 
                     if new_atts := field.get("new_attachments"):
                         file.write(f"           * New Attachments\n")
@@ -93,7 +93,7 @@ def create_history_metadata(history, history_path, attachments_path):
                             )
 
                             if os.path.exists(source):
-                                shutil.move(source, destination)
+                                shutil.copy(source, destination)
 
             if links := item.get("Links"):
                 for link in links:
@@ -114,6 +114,7 @@ def create_history_metadata(history, history_path, attachments_path):
 
 def create_directory_hierarchy(
     dicts,
+    msg_clip_size,
     attachments_path=(Path(Path.cwd(), "data", "attachments")),
     indent=0,
 ):
@@ -130,7 +131,7 @@ def create_directory_hierarchy(
 
     for d in dicts:
         title = validate_title(d["Title"])
-        title = title[: config.MSG_CLIP_SIZE] if config.MSG_CLIP_SIZE else title
+        title = title[: msg_clip_size] if msg_clip_size else title
         dir_name = f"{d['Task id']}_{title}"
         d["dir_name"] = dir_name
         dir_path = Path(dir_name)
@@ -159,7 +160,7 @@ def create_directory_hierarchy(
         os.makedirs(work_item_img_description_path, exist_ok=True)
 
         if "history" in d and d["history"]:
-            create_history_metadata(d.pop("history"), history_path, attachments_path)
+            create_history_metadata(d.pop("history"), history_path, attachments_path, msg_clip_size)
 
         if "discussions" in d and d["discussions"]:
             for discussion in d.pop("discussions"):
@@ -200,7 +201,7 @@ def create_directory_hierarchy(
                             )
 
                             if os.path.exists(source):
-                                shutil.move(source, destination)
+                                shutil.copy(source, destination)
 
         if d.get("attachments"):
             for attachment in d["attachments"]:
@@ -209,7 +210,7 @@ def create_directory_hierarchy(
                 logging.info(f"Attachment: {attachment['filename']}")
 
                 if os.path.exists(source):
-                    shutil.move(source, destination)
+                    shutil.copy(source, destination)
 
         if d.get("img_description"):
             for attachment in d["img_description"]:
@@ -220,7 +221,7 @@ def create_directory_hierarchy(
                 logging.info(f"Image description Attachment: {attachment['filename']}")
 
                 if os.path.exists(source):
-                    shutil.move(source, destination)
+                    shutil.copy(source, destination)
 
         with open(Path("description.md"), "w", encoding="utf-8") as file:
             if d["description"]:
@@ -250,30 +251,30 @@ def create_directory_hierarchy(
                         file.write(f"* 'Path': {change_set['Path']}\n")
 
         if "children" in d:
-            create_directory_hierarchy(d["children"], indent=indent + 2)
+            create_directory_hierarchy(d["children"], msg_clip_size, indent=indent + 2)
 
         os.chdir("..")
 
 
-def clipped_related_work_title(related_work):
+def clipped_related_work_title(related_work, msg_clip_size):
     work_item_target = related_work.get("link_target")
     work_item_file_name = related_work.get("filename_source", "")
 
-    if config.MSG_CLIP_SIZE:
+    if msg_clip_size:
         work_item_id, work_item_target_name, *_ = work_item_file_name.split("_", 1)
         work_item_file_name = (
-            f"{work_item_id}_{work_item_target_name[:config.MSG_CLIP_SIZE]}"
+            f"{work_item_id}_{work_item_target_name[:msg_clip_size]}"
         )
 
         work_item_id, work_item_target_name, substring = work_item_target.split("_", 2)
         work_item_target = (
-            f"{work_item_id}_{work_item_target_name[:config.MSG_CLIP_SIZE]}_{substring}"
+            f"{work_item_id}_{work_item_target_name[:msg_clip_size]}_{substring}"
         )
 
     return work_item_target, work_item_file_name
 
 
-def create_related_work_contents(scrape_results, main_data_path: Path):
+def create_related_work_contents(scrape_results, main_data_path: Path, msg_clip_size):
     for item in scrape_results:
         folder_name = item["dir_name"]
         os.chdir(folder_name)
@@ -285,7 +286,7 @@ def create_related_work_contents(scrape_results, main_data_path: Path):
             for work_items in related_work.get("related_work_items", []):
                 project_url = work_items.get("url")
                 work_item_target, work_item_file_name = clipped_related_work_title(
-                    work_items
+                    work_items, msg_clip_size
                 )
                 work_item_updated_at = convert_date(work_items.get("updated_at"))
                 target_path = Path(related_dir, work_item_target)
@@ -314,7 +315,7 @@ def create_related_work_contents(scrape_results, main_data_path: Path):
                     file.write(f"    * Last update: {work_item_updated_at}\n\n")
 
         if "children" in item:
-            create_related_work_contents(item["children"], main_data_path)
+            create_related_work_contents(item["children"], main_data_path, msg_clip_size)
 
         os.chdir("..")
 
@@ -330,18 +331,24 @@ def cleanup_existing_folders():
             shutil.rmtree(item_path)
 
 
-def post_process_results(save_file, downloads_directory):
-    if os.path.exists(save_file):
+def post_process_results(save_file, downloads_directory, msg_clip_size=os.pathconf("/", 'PC_NAME_MAX')):
+    data_folder = Path(Path.cwd(), "data")
+
+    try:
         with open(save_file, "r", encoding="utf-8") as file:
             scrape_result = json.load(file)
-            data_folder = Path(Path.cwd(), "data")
             os.makedirs(data_folder, exist_ok=True)
             os.chdir(data_folder)
             cleanup_existing_folders()
-            create_directory_hierarchy(scrape_result)
-            create_related_work_contents(scrape_result, data_folder)
+            create_directory_hierarchy(scrape_result, msg_clip_size)
+            create_related_work_contents(scrape_result, data_folder, msg_clip_size=msg_clip_size)
             os.chdir("..")
 
-    # Clean downloads directory after post process
-    if downloads_directory.exists() and downloads_directory.is_dir():
-        shutil.rmtree(downloads_directory)
+            # Clean downloads directory after post process
+            if downloads_directory.exists() and downloads_directory.is_dir():
+                shutil.rmtree(downloads_directory)
+
+    except OSError:
+        os.chdir("..")
+        print(f"Retrying folder creation on clip size: {msg_clip_size - 10}")
+        post_process_results(save_file, downloads_directory, msg_clip_size - 10)
