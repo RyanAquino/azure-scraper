@@ -110,11 +110,14 @@ def scrape_child_work_items(driver, request_session, chrome_downloads):
     child_xpath = f".{child_container}/following-sibling::div"
     show_more(
         driver,
-        dialog_box, "//div[@class='la-group-title']/../..//div[@class='la-show-more']"
+        dialog_box,
+        "//div[@class='la-group-title']/../..//div[@class='la-show-more']",
     )
     child_work_items = find_elements_by_xpath(dialog_box, child_xpath)
 
-    shared_steps_container = "//div[@class='la-group-title' and contains(text(), 'Shared Steps')]"
+    shared_steps_container = (
+        "//div[@class='la-group-title' and contains(text(), 'Shared Steps')]"
+    )
     shared_steps_xpath = f".{shared_steps_container}/following-sibling::div"
     shared_test_items = find_elements_by_xpath(dialog_box, shared_steps_xpath)
 

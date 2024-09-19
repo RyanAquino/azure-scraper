@@ -90,7 +90,9 @@ def scrape_basic_fields(dialog_box, driver, request_session, chrome_downloads):
             acceptance = f"* Acceptance criteria \n** {acceptance}\n"
 
         basic_fields["Description"] = retro + system_info + acceptance
-        basic_fields["Source Description"] = f"{repro_steps_element} {system_info_element} {acceptance_element}"
+        basic_fields["Source Description"] = (
+            f"{repro_steps_element} {system_info_element} {acceptance_element}"
+        )
 
     elif soup.find(attrs={"aria-label": "Resolution section."}):
         description_element = soup.find(attrs={"aria-label": "Description"})
@@ -118,7 +120,9 @@ def scrape_basic_fields(dialog_box, driver, request_session, chrome_downloads):
         temp_p_step = BeautifulSoup("<p><br/></p>", features="html.parser").p
 
         for step in steps_content.select('div[class*="grid-row grid-row-normal"]')[:-1]:
-            if (shared_step := step.find("div", {"class": "shared-test-step"})) and step.find("div", {"class": "shared-test-step"}).text:
+            if (
+                shared_step := step.find("div", {"class": "shared-test-step"})
+            ) and step.find("div", {"class": "shared-test-step"}).text:
                 temp_step = [shared_step, temp_p_step, temp_p_step]
             else:
                 temp_step = step.find_all("p")
@@ -217,7 +221,7 @@ def scrape_basic_fields(dialog_box, driver, request_session, chrome_downloads):
         "Effort": basic_fields.get("Effort"),
         "Severity": basic_fields.get("Severity"),
         "description": basic_fields.get("Description"),
-        "Source Description": basic_fields.get("Source Description")
+        "Source Description": basic_fields.get("Source Description"),
     }, img_urls
 
 
@@ -410,7 +414,7 @@ def scrape_history(driver, request_session, chrome_downloads):
                             "old_value": get_element_text(old_value),
                             "raw_old_value": str(old_value) if old_value else None,
                             "new_value": get_element_text(new_value),
-                            "raw_new_value": str(new_value)
+                            "raw_new_value": str(new_value),
                         }
                     )
             if html_field := soup.find("div", class_="html-field"):
@@ -507,7 +511,9 @@ def scrape_history(driver, request_session, chrome_downloads):
                     {
                         "name": field_name,
                         "old_value": get_element_text(old_value),
-                        "raw_old_value": str(old_value_container) if old_value_container else None,
+                        "raw_old_value": (
+                            str(old_value_container) if old_value_container else None
+                        ),
                         "old_attachments": old_value_images,
                         "new_value": get_element_text(new_value_text),
                         "raw_new_value": str(new_value),
@@ -643,12 +649,8 @@ def scrape_history(driver, request_session, chrome_downloads):
 
                         new_comment_atts.append({"File Name": new_file_name})
 
-                old_value = old_comment.find(
-                    "div", class_="history-item-comment"
-                )
-                new_value = new_comment.find(
-                    "div", class_="history-item-comment"
-                )
+                old_value = old_comment.find("div", class_="history-item-comment")
+                new_value = new_comment.find("div", class_="history-item-comment")
 
                 result["Fields"].append(
                     {
@@ -973,7 +975,7 @@ def scrape_discussions(driver, request_session, chrome_downloads):
                     "Content": content,
                     "Date": date,
                     "attachments": [],
-                    "Source Content": str(discussion_content)
+                    "Source Content": str(discussion_content),
                 }
 
                 for attachment in attachments or []:
@@ -1007,7 +1009,7 @@ def scrape_changesets(driver):
             "File Name": get_text(driver, header_xpath),
             "Path": get_text(
                 driver, f"{header_xpath}/parent::span/following-sibling::span"
-            )
+            ),
         }
 
         results.append(result)
@@ -1019,7 +1021,9 @@ def scrape_development(driver, dialog_box, chrome_downloads, request_session):
         results = []
         dialog_box_xpath = "//div[@role='dialog'][last()]"
         development_section = "//span[@aria-label='Development section.']/ancestor::div[@class='grid-group']"
-        show_more(driver, dialog_box, f"{development_section}//div[@class='la-show-more']")
+        show_more(
+            driver, dialog_box, f"{development_section}//div[@class='la-show-more']"
+        )
         development_items = find_elements_by_xpath(
             driver, f"{dialog_box_xpath}{development_section}//div[@class='la-item']"
         )
@@ -1052,7 +1056,7 @@ def scrape_development(driver, dialog_box, chrome_downloads, request_session):
                 result = {
                     "ID": driver.current_url.split("/")[-1],
                     "Title": driver.title,
-                    "change_sets": scrape_changesets(driver)
+                    "change_sets": scrape_changesets(driver),
                 }
                 results.append(result)
 

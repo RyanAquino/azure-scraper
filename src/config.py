@@ -1,6 +1,7 @@
 """
 Set scrape configurations
 """
+
 import os
 
 from dotenv import load_dotenv
@@ -17,5 +18,5 @@ MAX_WAIT_TIME = int(0 if max2 is None else max2)
 ON_PREM = os.getenv("on_prem", "false").lower() == "true"
 UNPARENTED = os.getenv("unparented", "false").lower() == "true"
 CHANGESET_URL = os.getenv("changeset_url")
-MSG_CLIP_SIZE = int(os.getenv("msg_clip_size", 50))
-POSTPROCESS_ONLY = bool(os.getenv("postprocess_only", False))
+MSG_CLIP_SIZE = int(os.getenv("msg_clip_size", 0))
+POSTPROCESS_ONLY = bool(os.getenv("postprocess_only", "").lower() == "true")

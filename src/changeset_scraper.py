@@ -223,7 +223,9 @@ def main():
         with webdriver.Chrome(**chrome_config) as driver:
             login(driver, config.CHANGESET_URL, config.EMAIL, config.PASSWORD)
             time.sleep(5)
-            scrape_changeset(driver, Path(changeset_downloads), id_folders, changesets_dir)
+            scrape_changeset(
+                driver, Path(changeset_downloads), id_folders, changesets_dir
+            )
     except Exception as e:
         print(str(e))
         print(traceback.format_exc())
