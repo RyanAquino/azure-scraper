@@ -350,7 +350,7 @@ def post_process_results(save_file, downloads_directory, src_directory, msg_clip
                 shutil.rmtree(downloads_directory)
 
     except OSError as e:
-        if e.args[1] == "File name too long":
+        if "File name too long" in e.args[1]:
             os.chdir("..")
             print(f"Retrying folder creation on clip size: {msg_clip_size - 10}")
             post_process_results(save_file, downloads_directory, src_directory, msg_clip_size - 10)

@@ -1052,9 +1052,26 @@ def scrape_development(driver, dialog_box, chrome_downloads, request_session):
                     EC.number_of_windows_to_be(2)
                 )
 
-                driver.switch_to.window(driver.window_handles[-1])
+                dev_id = None
+                dev_id_retry = 0
+
+                while dev_id is None:
+                    if dev_id_retry == config.MAX_RETRIES:
+                        raise Exception("Max retries of dev item id reached")
+
+                    try:
+                        print("Open window handles: ", driver.window_handles)
+                        driver.switch_to.window(driver.window_handles[-1])
+                        dev_id = driver.current_url.split("/")[-1]
+                        int(dev_id)
+                    except ValueError:
+                        dev_id = None
+                        dev_id_retry += 1
+                        print("Waiting dev item to load...")
+                        time.sleep(3)
+
                 result = {
-                    "ID": driver.current_url.split("/")[-1],
+                    "ID": dev_id,
                     "Title": driver.title,
                     "change_sets": scrape_changesets(driver),
                 }
