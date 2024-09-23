@@ -301,6 +301,7 @@ def main(default_start_index):
         post_process_results(save_file, chrome_downloads, Path.cwd())
     else:
         with webdriver.Chrome(**chrome_config) as driver:
+            driver.execute_cdp_cmd("Network.setCacheDisabled", {"cacheDisabled": True})
             last_error_ctr = scraper(
                 driver,
                 config.BASE_URL,

@@ -15,10 +15,12 @@ def chrome_settings_init():
 
     chrome_options = ChromeOptions()
     chrome_options.add_argument("--headless=new")
+    chrome_options.add_argument("--disable-gpu")
     chrome_options.accept_insecure_certs = True
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--start-maximized")
     chrome_options.add_argument("--incognito")
+    chrome_options.add_argument("--disk-cache-size=0")
     chrome_options.add_argument("--disable-dev-shm-usage")
     chrome_options.add_argument("--window-size=1900,1080")
     chrome_options.add_experimental_option(
