@@ -298,7 +298,7 @@ def main(default_start_index):
     chrome_config, chrome_downloads = chrome_settings_init()
 
     if config.POSTPROCESS_ONLY:
-        post_process_results(save_file, chrome_downloads)
+        post_process_results(save_file, chrome_downloads, Path.cwd())
     else:
         with webdriver.Chrome(**chrome_config) as driver:
             last_error_ctr = scraper(
@@ -317,7 +317,7 @@ def main(default_start_index):
             logging.error(err_msg)
             print(err_msg)
         else:
-            post_process_results(save_file, chrome_downloads)
+            post_process_results(save_file, chrome_downloads, Path.cwd())
 
 
 if __name__ == "__main__":

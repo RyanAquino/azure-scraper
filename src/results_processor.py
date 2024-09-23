@@ -331,8 +331,9 @@ def cleanup_existing_folders():
             shutil.rmtree(item_path)
 
 
-def post_process_results(save_file, downloads_directory, msg_clip_size=os.pathconf("/", 'PC_NAME_MAX')):
-    data_folder = Path(Path.cwd(), "data")
+def post_process_results(save_file, downloads_directory, src_directory, msg_clip_size=os.pathconf("/", 'PC_NAME_MAX')):
+    os.chdir(src_directory)
+    data_folder = Path("data")
 
     try:
         with open(save_file, "r", encoding="utf-8") as file:
@@ -349,9 +350,10 @@ def post_process_results(save_file, downloads_directory, msg_clip_size=os.pathco
                 shutil.rmtree(downloads_directory)
 
     except OSError as e:
-        os.chdir("..")
-        print(f"Exception: {str(e)}")
-        print(f"Retrying folder creation on clip size: {msg_clip_size - 10}")
-        if msg_clip_size - 10 == 0:
+        if e.args[1] == "File name too long":
+            os.chdir("..")
+            print(f"Retrying folder creation on clip size: {msg_clip_size - 10}")
+            post_process_results(save_file, downloads_directory, src_directory, msg_clip_size - 10)
             return
-        post_process_results(save_file, downloads_directory, msg_clip_size - 10)
+        print(f"Exception: {str(e)}")
+
