@@ -348,7 +348,10 @@ def post_process_results(save_file, downloads_directory, msg_clip_size=os.pathco
             if downloads_directory.exists() and downloads_directory.is_dir():
                 shutil.rmtree(downloads_directory)
 
-    except OSError:
+    except OSError as e:
         os.chdir("..")
+        print(f"Exception: {str(e)}")
         print(f"Retrying folder creation on clip size: {msg_clip_size - 10}")
+        if msg_clip_size - 10 == 0:
+            return
         post_process_results(save_file, downloads_directory, msg_clip_size - 10)
