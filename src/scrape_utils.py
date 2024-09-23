@@ -9,6 +9,7 @@ from dateutil.parser import ParserError
 from selenium.common.exceptions import (
     JavascriptException,
     StaleElementReferenceException,
+    TimeoutException,
 )
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.support import expected_conditions as EC
@@ -1080,7 +1081,7 @@ def scrape_development(driver, dialog_box, chrome_downloads, request_session):
                 driver.close()
                 driver.switch_to.window(original_window)
         return results
-    except StaleElementReferenceException:
+    except (StaleElementReferenceException, TimeoutException):
         return scrape_development(driver, dialog_box, chrome_downloads, request_session)
 
 
